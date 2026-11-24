@@ -139,3 +139,14 @@ Asselartiger Kriecher, so lang wie ein großer Hund (1,0 m ohne Fühler, 0,29 m 
 - **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 34 Knochen; Ringplatten als starre Platten an
   `spine_01`, `pelvis` und `abdomen_01..04`; lod0 5432 Dreiecke; Beschreibung
   `data/monsters/mauerkriecher.creature.toml`.
+
+### Kristallkrebs (gebaut 2026-11-23)
+Großer Höhlenkrebs, 1,9 m über die Beine: dunkler Schieferpanzer, auf dem Rücken hellblaue Kristalle, die im Dunkeln
+leuchten (Licht am Socket `socket_glow`; es verrät ihn), zwei große Scheren, acht Beine, Augen auf Stielen.
+- **Verhalten (für engine):** liegt zwischen den Kristallen der Grotte (`s_dormant`, `zs_dormant`); läuft seitwärts
+  (`move_axis = "x"`, 0,8 / 2,5 m/s; engine dreht den Körper quer zur Laufrichtung). Kneift (`t_attack_1`,
+  `t_attack_2`) und hält fest (`t_grab`: `grab` … `release`, der Held ist kurz bewegungsunfähig); bei Magie flammen
+  die Kristalle auf und werfen einen Teil des Zaubers zurück (`t_reflect`, Event `reflect`); stumpfe Waffen
+  splittern die Kristalle (Beute, Werte in Lua).
+- **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 49 Knochen; Kapsel quer; lod0 6896 Dreiecke;
+  Beschreibung `data/monsters/kristallkrebs.creature.toml`.

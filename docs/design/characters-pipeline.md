@@ -824,7 +824,10 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
   Gliederfüßer (§7.5): `gait` mit bis zu 8 Beinen und `splay = true` (jedes Bein dreht um die Senkrechte an der
   Hüfte und knickt in seiner eigenen senkrechten Ebene); `axis = "x"` lässt den Körper seitwärts nach links laufen
   (Krebs). Schritt-Events: Paar 1 `footstep_front_l/r`, das letzte Paar `footstep_back_l/r`. Die Kollisionskapsel
-  lässt Fühler und gespreizte Beine außen vor.
+  lässt Fühler, Augenstiele, gespreizte Beine, Scherenarme und den Kristallträger außen vor. Seitwärts-Arten:
+  `move_axis = "x"` in der Körperbeschreibung schreibt `[rig] move_axis`; `validate` erwartet dann die Root Motion von
+  `s_walk`/`s_run` entlang +X; ist der Rumpf breiter als lang, liegt die Kapsel quer (`axis = "x"`). `teeth_glow`
+  lässt die `tooth`-Kegel in `teeth_colour` leuchten (Kristalle).
 
 | Art | Stand |
 |---|---|
@@ -835,6 +838,7 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
 | `quaderbuckel` | Rig 29 Knochen (Keiler-Benennung mit Schulter-/Hüftknochen, dazu `jaw` und `brow_shield` unter `chest`; Sockets `socket_mouth`, `socket_shield` am Schild), 0,84 m, lod0 7956 / 3978 / 1988 Dreiecke (60 starre Sandstein-Platten), Fell 1024² + Normal-Map 512²; 17 Clips (Mindest-Set + `s_charge` am Ort, `t_warn`, `t_block_in`/`s_block`/`t_block_out`); Tempo 0,8 / 3,5 / Anrennen 4,5 m/s (mit engine 2026-10-07) |
 | `wolf` (Rudeltier) | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 25 Knochen (bisherige 22 mit gleichen Namen, dazu `jaw` und `ear_l/r` mit engine), 0,80 m, lod0 7376 / 3688 / 1844 Dreiecke, Fell 1024² + Normal-Map 512²; graues Fell mit dunklem Sattel, Halskrause, buschiger Schwanz; 13/13 Clips mit denselben Namen, Events und Tempo (1,2 / 3,0 / 6,0 m/s), alle eigen; dazu `t_transform_in/out` für die Verwandlung (M12) |
 | `keiler` | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 28 Knochen (bisherige 25 mit gleichen Namen und Hierarchie, dazu `jaw` und `ear_l/r` mit engine), 0,84 m mit Borstenkamm, lod0 7590 / 3734 / 1836 Dreiecke, Fell 1024² + Normal-Map 512²; dunkles Borstenfell, Borstenkamm (`tuft_shell`), Rüsselscheibe, gebogene Hauer am Unterkiefer, Maul mit Innenraum, kurze kräftige Läufe; 12/12 Clips mit denselben Namen, Events und Tempo (1,0 / 5,0 m/s), alle eigen |
+| `kristallkrebs` | Dungeon (2026-11-23), Gliederfüßer §7.5 mit `move_axis = "x"`: Rig 49 Knochen (`pelvis`, `spine_01`, `neck_01`, `head`, `mandible_l/r`, `eye_stalk_l/r`, `abdomen_01`, Scheren `arm_upper/lower_l/r` → `claw_l/r` → `claw_finger_l/r`, Beine `leg_1..4_upper/lower/foot_l/r`, starre Träger `crystals` und `carapace_l/r`; Sockets `socket_mouth`, `socket_claw_l/r`, `socket_glow`), 1,9 m über die Beine, 1,05 m hoch mit Kristallen, Kapsel liegend **quer** (`axis = "x"`) r 0,40 / l 1,00; leuchtende Kristalle als `tooth`-Kegel mit `teeth_glow`; lod0 6896 / 3448 / 1724 Dreiecke; 16 Clips (Mindest-Set + `s_dormant`, `t_wake`, `t_grab` mit `grab`/`release`, `t_reflect` mit `reflect`); Tempo 0,8 / 2,5 m/s seitwärts |
 | `laufvogel` | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 16 Knochen (bisherige 12 mit Vogel-Namen `thigh/calf/foot`, dazu `neck_02`, `jaw` (Schnabel) und `wing_l/r` mit engine), 1,66 m (Kopf mit Federkamm), lod0 6824 / 3412 / 1706 Dreiecke, Federn 1024² + Normal-Map 512²; eigene Silhouette: schieferblaues Gefieder, rostroter Halskragen, Federkamm, Hakenschnabel, Stummelflügel, Schwanzbusch, Schuppenläufe mit drei Krallenzehen; 12/12 Clips mit denselben Namen, Events und Tempo (1,3 / 6,5 m/s), alle eigen |
 | `schinder` | Rig 26 Knochen, 0,92 m, lod0 7834 / 3916 / 1958 Dreiecke, Fell 1024² + Normal-Map 512²; 15 Clips (Mindest-Set + `s_sneak`, `t_call`, `s_cower`); Tempo 1,3 / 6,5 / Schleichen 0,7 m/s (mit engine 2026-10-07) |
 

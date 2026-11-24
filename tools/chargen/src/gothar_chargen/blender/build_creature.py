@@ -510,6 +510,10 @@ def _add_pieces(c: Creature, body: bpy.types.Object, folder: Path) -> None:
             bsdf = mat.node_tree.nodes["Principled BSDF"]
             bsdf.inputs["Emission Color"].default_value = (*_linear(c.eye_glow_colour), 1.0)
             bsdf.inputs["Emission Strength"].default_value = min(1.0, c.eye_glow)
+        if kind == "tooth" and c.teeth_glow > 0:  # glowing crystals (Kristallkrebs)
+            bsdf = mat.node_tree.nodes["Principled BSDF"]
+            bsdf.inputs["Emission Color"].default_value = (*_linear(colour), 1.0)
+            bsdf.inputs["Emission Strength"].default_value = min(1.0, c.teeth_glow)
         me.materials.append(mat)
         bpy.ops.object.select_all(action="DESELECT")
         ob.select_set(True)
@@ -631,6 +635,7 @@ def main() -> None:
         args.rig_out,
         {**_ORIENTATION, **c.orientation},
         f"build_creature.py from {args.spec.name} (own work)",
+        c.move_axis,
     )
     print(f"[chargen] {c.art}: height {height:.3f} m, {len(arm.data.bones)} bones")
 

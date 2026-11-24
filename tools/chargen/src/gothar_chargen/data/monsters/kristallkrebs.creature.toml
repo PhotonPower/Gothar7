@@ -1,0 +1,433 @@
+# Creature "kristallkrebs" (F5, own work, dungeon 2026-11-23): a big cave crab, 1.8 m across the
+# legs - a dark slate carapace with pale blue crystals growing on its back that glow in the dark
+# (the light gives it away), two big pincers, eight legs, eyes on stalks. Walks sideways; its
+# pincers hold fast; the crystals flare and throw part of a spell back.
+# Design: docs/design/monsters.md "Dungeon-Arten".
+# Arthropod plan (characters-pipeline §7.5): pelvis (middle of the body, carries legs 2-4),
+# spine_01 -> neck_01 -> head forwards, abdomen_01 (tucked under the rear), mandible_l/r,
+# eye_stalk_l/r, legs leg_1..4_upper/lower/foot_<s> (pair 1 on spine_01), pincers
+# arm_upper/lower_<s> -> claw_<s> -> claw_finger_<s> on spine_01; the rigid carrier `crystals`
+# holds socket_glow (light of the crystals), carapace_l/r keep the shell rigid. move_axis "x": s_walk/s_run go sideways (+X).
+# Built by `gothar-chargen creature kristallkrebs` (blender/build_creature.py, creature.py).
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. Sizes are
+# half axes.
+
+art = "kristallkrebs"
+material = "fur"
+voxel = 0.006
+smooth = 6
+ao = 0.7
+normal_size = 512
+normal_strength = 1.0
+triangles = 6400       # lod0 body; crystals, eyes and pincer tips add ~0.5 k
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 83
+move_axis = "x"
+eye_colour = "#0e0d0c"
+teeth_colour = "#8fd4ff"          # the crystals (tooth cones) ...
+teeth_glow = 0.9                  # ... glow pale blue
+
+[orientation]                # wide and low: pelvis above root, pair 1 left/right
+up = ["root", "pelvis"]
+left = ["leg_1_foot_r", "leg_1_foot_l"]
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.04 }
+socket_claw_l = { parent = "claw_l", length = 0.04 }     # tip of the pincer: hit and hold
+socket_claw_r = { parent = "claw_r", length = 0.04 }
+socket_glow = { parent = "crystals", length = 0.04 }     # light of the crystals (engine)
+
+# --- rig (arthropod plan §7.5) ---
+
+[[bone]]
+name = "pelvis"
+head = [0, 0.08, 0.42]
+tail = [0, -0.10, 0.42]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, -0.10, 0.42]
+tail = [0, -0.26, 0.42]
+
+[[bone]]
+name = "neck_01"
+parent = "spine_01"
+head = [0, -0.26, 0.42]
+tail = [0, -0.32, 0.41]
+
+[[bone]]
+name = "head"
+parent = "neck_01"
+head = [0, -0.32, 0.41]
+tail = [0, -0.42, 0.37]
+
+[[bone]]
+name = "mandible_l"
+parent = "head"
+mirror = true
+head = [0.05, -0.38, 0.33]
+tail = [0.03, -0.45, 0.30]
+
+[[bone]]
+name = "eye_stalk_l"
+parent = "head"
+mirror = true
+head = [0.08, -0.34, 0.50]
+tail = [0.11, -0.40, 0.63]
+
+[[bone]]
+name = "abdomen_01"
+parent = "pelvis"
+head = [0, 0.08, 0.42]
+tail = [0, 0.32, 0.34]
+
+[[bone]]
+name = "crystals"            # rigid carrier of the light (not animated)
+parent = "pelvis"
+head = [0, 0.0, 0.58]
+tail = [0, 0.0, 0.80]
+
+[[bone]]
+name = "carapace_l"          # rigid carrier of the shell's flank (not animated): keeps the legs off it
+parent = "pelvis"
+mirror = true
+head = [0.06, -0.02, 0.47]
+tail = [0.46, -0.02, 0.45]
+
+[[bone]]
+name = "arm_upper_l"
+parent = "spine_01"
+mirror = true
+head = [0.22, -0.28, 0.40]
+tail = [0.42, -0.48, 0.44]
+
+[[bone]]
+name = "arm_lower_l"
+parent = "arm_upper_l"
+mirror = true
+head = [0.42, -0.48, 0.44]
+tail = [0.40, -0.70, 0.38]
+
+[[bone]]
+name = "claw_l"
+parent = "arm_lower_l"
+mirror = true
+head = [0.40, -0.70, 0.38]
+tail = [0.34, -0.98, 0.32]
+
+[[bone]]
+name = "claw_finger_l"
+parent = "claw_l"
+mirror = true
+head = [0.42, -0.80, 0.33]
+tail = [0.38, -0.97, 0.27]
+
+[[bone]]
+name = "leg_1_upper_l"
+parent = "spine_01"
+mirror = true
+head = [0.40, -0.18, 0.38]
+tail = [0.70, -0.27, 0.56]
+
+[[bone]]
+name = "leg_1_lower_l"
+parent = "leg_1_upper_l"
+mirror = true
+head = [0.70, -0.27, 0.56]
+tail = [0.88, -0.30, 0.08]
+
+[[bone]]
+name = "leg_1_foot_l"
+parent = "leg_1_lower_l"
+mirror = true
+head = [0.88, -0.30, 0.08]
+tail = [0.92, -0.31, 0.0]
+
+[[bone]]
+name = "leg_2_upper_l"
+parent = "pelvis"
+mirror = true
+head = [0.44, -0.05, 0.38]
+tail = [0.74, -0.08, 0.57]
+
+[[bone]]
+name = "leg_2_lower_l"
+parent = "leg_2_upper_l"
+mirror = true
+head = [0.74, -0.08, 0.57]
+tail = [0.92, -0.09, 0.08]
+
+[[bone]]
+name = "leg_2_foot_l"
+parent = "leg_2_lower_l"
+mirror = true
+head = [0.92, -0.09, 0.08]
+tail = [0.96, -0.09, 0.0]
+
+[[bone]]
+name = "leg_3_upper_l"
+parent = "pelvis"
+mirror = true
+head = [0.44, 0.08, 0.38]
+tail = [0.74, 0.12, 0.57]
+
+[[bone]]
+name = "leg_3_lower_l"
+parent = "leg_3_upper_l"
+mirror = true
+head = [0.74, 0.12, 0.57]
+tail = [0.92, 0.14, 0.08]
+
+[[bone]]
+name = "leg_3_foot_l"
+parent = "leg_3_lower_l"
+mirror = true
+head = [0.92, 0.14, 0.08]
+tail = [0.96, 0.15, 0.0]
+
+[[bone]]
+name = "leg_4_upper_l"
+parent = "pelvis"
+mirror = true
+head = [0.38, 0.20, 0.38]
+tail = [0.66, 0.30, 0.54]
+
+[[bone]]
+name = "leg_4_lower_l"
+parent = "leg_4_upper_l"
+mirror = true
+head = [0.66, 0.30, 0.54]
+tail = [0.82, 0.36, 0.08]
+
+[[bone]]
+name = "leg_4_foot_l"
+parent = "leg_4_lower_l"
+mirror = true
+head = [0.82, 0.36, 0.08]
+tail = [0.85, 0.37, 0.0]
+
+# --- colour zones ---
+
+[zone.shell]                 # dark slate carapace with bluish mottling and pale crust
+colour = "#30353c"
+colour2 = "#3d434c"
+variation = 0.14
+spots = 0.35
+stripe_colour = "#5d7384"
+relief = 1.3
+wrinkles = 0.25
+
+[zone.belly]                 # paler underside and joints
+colour = "#5e6166"
+colour2 = "#4f5257"
+variation = 0.1
+wrinkles = 0.6
+
+[zone.leg]
+colour = "#2b3036"
+colour2 = "#384049"
+variation = 0.12
+spots = 0.2
+stripe_colour = "#566c7c"
+
+[zone.tip]                   # dark tips of the pincers and legs
+colour = "#141518"
+variation = 0.06
+
+[zone.mouth]
+colour = "#2a1a18"
+variation = 0.06
+
+# --- carapace and body (merged) ---
+
+[[shape]]
+kind = "ellipsoid"           # carapace: wider than long
+zone = "shell"
+center = [0, -0.02, 0.44]
+size = [0.50, 0.37, 0.17]
+
+[[shape]]
+kind = "ellipsoid"           # raised middle
+zone = "shell"
+center = [0, 0.0, 0.52]
+size = [0.32, 0.26, 0.12]
+
+[[shape]]
+kind = "ridge"               # serrated front rim over the eyes
+zone = "shell"
+points = [[-0.36, -0.28, 0.46], [0, -0.38, 0.48], [0.36, -0.28, 0.46]]
+sizes = [[0.04, 0.03, 0.025], [0.05, 0.035, 0.03], [0.04, 0.03, 0.025]]
+count = 9
+
+[[shape]]
+kind = "ellipsoid"           # underside
+zone = "belly"
+center = [0, 0.0, 0.34]
+size = [0.40, 0.30, 0.08]
+
+[[shape]]
+kind = "ellipsoid"           # tail plate tucked under the rear
+zone = "belly"
+center = [0, 0.22, 0.32]
+size = [0.14, 0.12, 0.05]
+
+[[shape]]
+kind = "ellipsoid"           # head under the rim
+zone = "belly"
+center = [0, -0.36, 0.38]
+size = [0.10, 0.06, 0.06]
+
+[[shape]]
+kind = "cut_box"             # mouth
+zone = "mouth"
+center = [0, -0.42, 0.34]
+size = [0.04, 0.02, 0.006]
+
+[[shape]]
+kind = "capsule"             # mouth parts
+zone = "tip"
+mirror = true
+a = [0.05, -0.38, 0.33]
+b = [0.03, -0.45, 0.30]
+r = 0.014
+r2 = 0.008
+
+[[shape]]
+kind = "capsule"             # eye stalks ...
+zone = "leg"
+mirror = true
+a = [0.08, -0.34, 0.50]
+b = [0.11, -0.40, 0.62]
+r = 0.014
+r2 = 0.011
+
+[[shape]]
+kind = "eye"                 # ... with black eyes
+mirror = true
+bone = "eye_stalk_l"
+center = [0.112, -0.403, 0.64]
+size = [0.022, 0.022, 0.022]
+
+# --- pincers ---
+
+[[shape]]
+kind = "chain"
+zone = "leg"
+mirror = true
+points = [[0.22, -0.28, 0.40], [0.42, -0.48, 0.44], [0.40, -0.70, 0.38]]
+radii = [0.05, 0.045, 0.05]
+
+[[shape]]
+kind = "ellipsoid"           # heavy palm of the pincer
+zone = "shell"
+mirror = true
+center = [0.39, -0.77, 0.37]
+size = [0.10, 0.13, 0.08]
+rotate = [8, 0, 12]
+
+[[shape]]
+kind = "cone"                # fixed finger
+zone = "tip"
+mirror = true
+a = [0.37, -0.86, 0.38]
+b = [0.33, -0.99, 0.33]
+r = 0.04
+
+[[shape]]
+kind = "cone"                # movable finger
+zone = "tip"
+mirror = true
+a = [0.41, -0.84, 0.32]
+b = [0.38, -0.97, 0.27]
+r = 0.032
+
+# --- legs: up to a high knee, down to a pointed tip ---
+
+[[shape]]
+kind = "chain"
+zone = "leg"
+mirror = true
+points = [[0.40, -0.18, 0.38], [0.70, -0.27, 0.56], [0.88, -0.30, 0.08], [0.92, -0.31, 0.005]]
+radii = [0.035, 0.028, 0.016, 0.006]
+
+[[shape]]
+kind = "chain"
+zone = "leg"
+mirror = true
+points = [[0.44, -0.05, 0.38], [0.74, -0.08, 0.57], [0.92, -0.09, 0.08], [0.96, -0.09, 0.005]]
+radii = [0.035, 0.028, 0.016, 0.006]
+
+[[shape]]
+kind = "chain"
+zone = "leg"
+mirror = true
+points = [[0.44, 0.08, 0.38], [0.74, 0.12, 0.57], [0.92, 0.14, 0.08], [0.96, 0.15, 0.005]]
+radii = [0.035, 0.028, 0.016, 0.006]
+
+[[shape]]
+kind = "chain"
+zone = "leg"
+mirror = true
+points = [[0.38, 0.20, 0.38], [0.66, 0.30, 0.54], [0.82, 0.36, 0.08], [0.85, 0.37, 0.005]]
+radii = [0.032, 0.026, 0.015, 0.006]
+
+# --- glowing crystals on the back (rigid on the carrier `crystals`) ---
+
+[[shape]]
+kind = "tooth"
+bone = "crystals"
+a = [0.04, 0.0, 0.58]
+b = [0.10, 0.04, 1.05]
+r = 0.07
+
+[[shape]]
+kind = "tooth"
+bone = "crystals"
+a = [-0.10, -0.06, 0.58]
+b = [-0.20, -0.10, 0.92]
+r = 0.06
+
+[[shape]]
+kind = "tooth"
+bone = "crystals"
+a = [0.16, 0.10, 0.56]
+b = [0.30, 0.18, 0.84]
+r = 0.055
+
+[[shape]]
+kind = "tooth"
+bone = "crystals"
+a = [-0.12, 0.14, 0.56]
+b = [-0.18, 0.26, 0.82]
+r = 0.05
+
+[[shape]]
+kind = "tooth"
+bone = "crystals"
+a = [0.0, -0.16, 0.56]
+b = [0.04, -0.24, 0.78]
+r = 0.045
+
+[[shape]]
+kind = "tooth"
+bone = "crystals"
+a = [0.26, -0.08, 0.54]
+b = [0.40, -0.12, 0.72]
+r = 0.04
+
+[[shape]]
+kind = "tooth"
+bone = "crystals"
+a = [-0.28, 0.02, 0.54]
+b = [-0.44, 0.04, 0.70]
+r = 0.04
+
+[[shape]]
+kind = "tooth"
+bone = "crystals"
+a = [0.06, 0.20, 0.55]
+b = [0.10, 0.32, 0.74]
+r = 0.035
