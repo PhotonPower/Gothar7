@@ -443,6 +443,25 @@ def mug(seg: int) -> list[Mesh]:
     return [cup]
 
 
+def ladle(seg: int) -> list[Mesh]:
+    """Wooden cooking ladle for stirring the kettle (FP_COOK, 2026-11-24): held at the upper end of
+    the handle (the origin), the handle runs along +Y to a round bowl at the far end that opens
+    towards +Z (like the broom, the hand holds it pointing down into the kettle)."""
+    wood = Mesh("wood")
+    ys = np.linspace(-0.06, 0.46, 6)
+    t = (ys + 0.06) / 0.52
+    loft(wood, np.stack([0 * ys, ys, -0.004 * np.sin(np.pi * t)], axis=1),
+         [circle(1.0, max(6, seg // 2)) * np.array([0.011 - 0.003 * ti, 0.008 - 0.002 * ti])
+          for ti in t], tile=0.3)  # fmt: skip
+    a = np.linspace(0.0, np.pi / 2, 5)  # the bowl: a flattened half sphere at the end, rim up (+Z)
+    bowl = Mesh("wood")
+    lathe(bowl, [(0.045 * np.sin(x), -0.045 * np.cos(x)) for x in a], seg, tile=0.1)
+    pos = bowl.positions[0]
+    bowl.positions[0] = np.stack([pos[:, 0], 0.5 + pos[:, 2], 0.012 + 0.6 * pos[:, 1]], axis=1)
+    wood.add(*[m[0] for m in (bowl.positions, bowl.uvs, bowl.triangles)])
+    return [wood]
+
+
 def axe(seg: int) -> list[Mesh]:
     """Woodcutter's axe: a handle along +Y (held near its lower end, the origin) and an iron head
     at the top whose edge points to +Z (contract: item +Z = edge)."""
@@ -1077,6 +1096,7 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_lockpick": (lockpick, 8),
     "it_key": (key, 10),
     "it_broom": (broom, 12),
+    "it_ladle": (ladle, 10),
     "it_mug": (mug, 14),
     "it_axe": (axe, 12),
     "it_arrow": (arrow, 5),
