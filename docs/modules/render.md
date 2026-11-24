@@ -796,8 +796,11 @@ void beginFrame();  BatchStats lastBatch();  shared_ptr<const MaterialDefaults> 
   in jeden Pass: in Leonberg etwa 1440 von 1900 Draw-Calls je Bild (vier Kaskaden und Hauptpass je ~360).
 - **Innenräume (Phase 3, E2):** Steht die Kamera in einer Innenzone (`indoorAmount` > 0,5, world.md „Zonen“), zeichnet
   das Bild nur, was näher als `[render] indoor_view_distance` (30 m) liegt – Modelle, Gelände-Kacheln und Figuren;
-  durch Fenster und Tür sieht man die Nähe. Sonnenschatten (durch die Fenster) werfen dann nur Dinge bis
-  `indoor_shadow_distance` (12 m), Kaskaden, die weiter beginnen, ruhen. Ein echtes Portal (nur durch Öffnungen)
+  durch Fenster und Tür sieht man die Nähe. Schatten werfen dann nur diese Dinge (bis 30 m); die Sonnenschatten
+  (durch die Fenster) enden bei `indoor_shadow_distance` (12 m), Kaskaden, die weiter beginnen, entfallen in diesem
+  Bild. Jenseits davon bekommen Räume keine Sonne (`1 − indoorAmount`), draußen volle Sonne (Fix 2026-11-24: vorher
+  wurde mit nie gezeichneten Kaskaden schattiert – Schattenweite 0, Sonne im fensterlosen Weinkeller;
+  GPU-Test `test_engine_indoor_sun.cpp`). Ein echtes Portal (nur durch Öffnungen)
   bleibt offen. Leonberg: Stube der Krummen Gans 2,6 Mio. → 0,26 Mio. Dreiecke, 1917 → 184 Draws (mit E3).
 - **Einrichtung von außen (M17, 2026-11-24):** Was ganz in Innenzonen liegt (alle acht Ecken der Bounds in Boxen,
   5 cm Toleranz; `render::roomsHolding`, je Objekt beim ersten Bild nach dem Laden bzw. nach Zonen-/Szenen-Änderung),

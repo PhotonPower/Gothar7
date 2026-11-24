@@ -70,6 +70,15 @@ int shadowCascade(vec3 worldPosition)
     return -1; // beyond the shadow distance
 }
 
+float indoorAmount(vec3 p);
+
+// Sun visibility beyond the shadow distance: full sun - or, with the camera in a room (shadowExtra.w; only near
+// casters drawn, render.md "Innenräume"), none in the rooms.
+float sunBeyondShadows(vec3 worldPosition)
+{
+    return uLighting.shadowExtra.w > 0.5 ? 1.0 - indoorAmount(worldPosition) : 1.0;
+}
+
 // Sun visibility 0 (shadowed) .. 1 (lit): cascade by view depth, normal offset against acne,
 // 3x3 PCF on top of the hardware 2x2 comparison, faded out over the last 10 % of the distance.
 float sunShadow(vec3 worldPosition, vec3 n)
@@ -81,7 +90,7 @@ float sunShadow(vec3 worldPosition, vec3 n)
     const int cascade = shadowCascade(worldPosition);
     if (cascade < 0)
     {
-        return 1.0;
+        return sunBeyondShadows(worldPosition);
     }
     const vec3 offsetPosition = worldPosition + n * uLighting.cascadeTexelSize[cascade] * uLighting.shadowParams.w;
     const vec4 clip = uLighting.cascadeViewProjection[cascade] * vec4(offsetPosition, 1.0);
@@ -106,7 +115,7 @@ float sunShadow(vec3 worldPosition, vec3 n)
     lit /= 9.0;
     const float viewDepth = dot(worldPosition - uLighting.cameraPosition.xyz, uLighting.cameraForward.xyz);
     const float fade = smoothstep(uLighting.shadowParams.z * 0.9, uLighting.shadowParams.z, viewDepth);
-    return mix(lit, 1.0, fade);
+    return fade > 0.0 ? mix(lit, sunBeyondShadows(worldPosition), fade) : lit;
 }
 
 // Debug colour per cascade (shadow_debug), white outside the shadow distance.
