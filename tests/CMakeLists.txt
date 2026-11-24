@@ -21,7 +21,7 @@ set(_g7_runtime_groups
     "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp"
     "fights|*test_engine_perception.cpp,*test_engine_combat.cpp"
     "dialog|*test_engine_dialog.cpp,*test_engine_weapon_sweep.cpp"
-    "magic|*test_engine_magic.cpp,*test_engine_telekinesis.cpp"
+    "magic|*test_engine_magic.cpp,*test_engine_telekinesis.cpp,*test_engine_spell_glow.cpp"
     "npc_mobs|*test_engine_npc_mobs.cpp"
     "leonberg|*test_engine_leonberg.cpp"
     "leonberg_doors|*test_engine_leonberg_doors.cpp"
@@ -31,7 +31,7 @@ set(_g7_runtime_groups
     "leonberg_save|*test_engine_leonberg_save.cpp"
     "leonberg_chapter|*test_engine_leonberg_chapter.cpp"
     "chapter|*test_engine_chapter_save.cpp"
-    "ui|*test_engine_ui.cpp,*test_engine_save_slots.cpp"
+    "ui|*test_engine_ui.cpp,*test_engine_save_slots.cpp,*test_engine_credits.cpp"
     "slice|*test_engine_vertical_slice.cpp")
 set(_g7_runtime_tests runtime)
 set(_g7_runtime_grouped "")

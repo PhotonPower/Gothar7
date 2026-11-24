@@ -126,7 +126,7 @@ void Engine::selectRune(u32 slot)
         // Another rune in the hand at once (Gothic 1).
         m_heroCast.reset();
         m_weaponDrawn = item;
-        detachFromPlayer("socket_hand_r");
+        detachFromPlayer(kMagicSocket);
         weaponEvent("draw");
     }
     else if (m_weaponMode == 0)
@@ -202,6 +202,11 @@ void Engine::releaseHeroCast()
     }
     HeroCast& cast = *m_heroCast;
     cast.charging = false;
+    if (cast.swirl)
+    {
+        m_particles.stop(*cast.swirl); // M17 V: the swirl ends with the charging
+        cast.swirl.reset();
+    }
     cast.cast = true;
     cast.seconds = 0.0f;
     const i32 mana = gameplay::spellMana(cast.spell, cast.stages);
@@ -432,6 +437,7 @@ bool Engine::beginTransform(std::string_view species)
         const script::Value args[] = {std::string(species)};
         m_scripts->emit("hero_transformed", args);
     }
+    m_wobbleSeconds = render::kWobbleSeconds; // M17 V, decision 12: the picture wobbles
     return true;
 }
 
@@ -474,6 +480,7 @@ void Engine::endTransform()
     }
     HeroTransform t = std::move(*m_transform);
     m_transform.reset();
+    m_wobbleSeconds = render::kWobbleSeconds; // M17 V, decision 12: the picture wobbles
     m_movementSettings = t.humanMovement;
     m_figure = std::move(t.human);
     m_weaponMode = 0;
@@ -926,6 +933,17 @@ void Engine::fixedUpdateHeroMagic(gameplay::MoveInput& input, f32 seconds)
         {
             ++cast.stages;
         }
+        // M17 V (decision 11): from stage 2 a swirl round the hand.
+        const Vec3 hand =
+            m_player.feet() + Vec3(0.0f, 1.3f, 0.0f) + gameplay::forwardOf(m_movement.yaw()) * 0.45f;
+        if (cast.stages >= 2 && !cast.swirl)
+        {
+            cast.swirl = startEffect("invest_swirl", hand);
+        }
+        else if (cast.swirl)
+        {
+            m_particles.move(*cast.swirl, hand, Vec3(0.0f, 1.0f, 0.0f));
+        }
         if (!held)
         {
             releaseHeroCast();
@@ -973,6 +991,7 @@ void Engine::bindMagicFunctions()
     using script::Value;
     script::ScriptVm& vm = *m_scripts;
     bindTelekinesisFunctions(); // M17 part T
+    bindEventFunctions();       // dungeon D1
     vm.bind(
         {"cast_check", "cast_check(item: string, stages?: integer) -> string | nil",
          "Ob der Held die Rune bzw. Spruchrolle wirken kann (M12, Z1-Z3): nil, sonst der Grund (fehlender "

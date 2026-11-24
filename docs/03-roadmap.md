@@ -348,19 +348,26 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [x] Wasser-Rendering (Reflexion, Brechung light), Unterwasser-Effekt – #363, #365, #368, Fließrichtung #372
   - Plan (Teile W1–W3, freigegeben 2026-11-07): `docs/modules/render.md` „Plan M17: Wasser und Post-Processing“
 - [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
+  - Plan ohne Vulkan (freigegeben 2026-11-23, nach Schloss/Dungeon): `docs/modules/render.md` „Plan M17: Spiegelnde Fenster“, Vertrag Glas-Material mit welt, Gefühlsfragen 1–10
 - [x] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional – #358, #360, #375
   - Plan (Teile P1–P3, freigegeben 2026-11-07): ebenda
-- [ ] Vegetation: Instancing, Wind-Animation, Grasfelder – Wind-Animation umgesetzt (Wetter Teil W); offen: Instancing, Grasfelder
+- [ ] Vegetation: Instancing, Wind-Animation, Grasfelder – Wind-Animation umgesetzt (Wetter Teil W); offen: Instancing, Grasfelder – Plan: `render.md` „Plan M17: Grasfelder und Vegetations-Instancing“ (freigegeben 2026-11-23)
 - [ ] Job-System, Multithreading für Animation/KI/Culling – Plan: `docs/modules/perf.md`
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
 - [x] Tracy-Profiling, Performance-Budget pro System – Plan: `docs/modules/perf.md`; Tracy (#387, ADR 0024), Szenarien mit Budgets (#389), KI-LOD-Obergrenze (#391, #392)
-- [ ] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info – Plan: `docs/modules/release.md`; umgesetzt: Build-Info (#380), Absturzberichte (#382), ZIP mit Lizenzprüfung (#384); offen: Figuren im Paket (Teil 0 aus ADR 0025)
-- [ ] Gekochtes Format für Figuren und Animationen (`.g7skin`/`.g7anim`, ADR 0019 Folgearbeit) – spätestens vor dem ersten reinen `.g7pak`-Release; bis dahin laden Figuren und Clips aus losen glTF (`asset.md`); Plan in `asset.md` („Plan M17: gekochte Figuren und Animationen“), ADR 0025 angenommen (2026-11-08)
+- [x] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info – Plan: `docs/modules/release.md`; umgesetzt: Build-Info (#380), Absturzberichte (#382), ZIP mit Lizenzprüfung (#384), Figuren im Paket (#410, gekocht ab #419)
+- [x] Gekochtes Format für Figuren und Animationen (`.g7skin`/`.g7anim`, ADR 0025; Plan in `asset.md`, Teile 0 und A–F, #410 #413 #415–#418 und Teil F): das Paket enthält sie, glTF bleibt Rückfall in der Entwicklung; Leonberg lädt die Figuren in ~0,9 statt ~1,3 s (`docs/perf/2026-11-08-figuren-laden.md`)
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
 - [x] Magie: Telekinese (Zaubertyp „Kontrolle“) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
   - Plan (Teil T, freigegeben 2026-11-08): `docs/modules/gameplay.md` „Plan M17: Magie-Nachträge“, Gefühlsfragen 1–13 nach Vorschlag entschieden; Teil T umgesetzt (Telekinese, Spruchrolle im Testlager)
-- [ ] Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
-  - Plan (Teile G, V, freigegeben 2026-11-08): `docs/modules/render.md` „Plan M17: Zauber-Effekte“
+- [x] Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
+  - Plan (Teile G, V, freigegeben 2026-11-08): `docs/modules/render.md` „Plan M17: Zauber-Effekte“; Teil G (Glühen) und V (Verzerrung) umgesetzt
+- [ ] Schloss, Keller und Dungeon im Geist der Grid-Dungeon-Crawler (Auftrag Projektinhaber 2026-11-23): Mechanik-Plan `docs/modules/dungeon.md` (Teile D1–D8, freigegeben 2026-11-23, Falltür ohne Fallschaden), Bau welt
+  - D1 Ereignis-Netz umgesetzt (`targets`/`action`, Relais, Lua `send`/`dungeon_event`/`relay_state`, Spielstand)
+  - D2 bewegte Teile umgesetzt (`mover`: Gatter, Geheimwand, Falltür; Kollision bewegt sich mit, Einklemmen hält an und fährt zurück, Fallen-Gatter 20 Schaden, gesperrte Wegnetz-Kanten, Lua `mover_state`, Spielstand)
+  - D3 Schalter und Platten umgesetzt (Mob-Typen `lever`, `wall_button` mit `hidden`/`once`, Trittplatten mit Gewicht inkl. Gegenständen, Lua `switch_state`, Spielstand; Clips `mob/lever/t_use`, `mob/button/t_press` von figuren offen)
+  - D4 Teleporter und Fall umgesetzt (in der Welt mit Weißblende und ohne Zurückspringen, in andere Ebenen, Kreaturen und Gegenstände, an/aus per Ereignis; Fall durch den Schacht als Weltwechsel mit Geschwindigkeit, ohne Fallschaden; schwarzes Abblenden nach jedem Weltwechsel)
+  - D5 Nischen und Türen umgesetzt (Mob-Typ `niche` wie eine Truhe ohne Deckel, Türen mit `no_pick` und `one_way`; Clips `mob/niche/…` von figuren offen)
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 
@@ -454,7 +461,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
 ## W7 – Integration & Feinschliff  (benötigt M16, M17)
 - [ ] Handarbeit im Editor, Zellen/Streaming, Performance-Budget
-- [ ] Credits (LGL, OSM, Asset-Lizenzen) im Spiel
+- [x] Credits (LGL, OSM, Asset-Lizenzen) im Spiel – Hauptmenü „Mitwirkende“ aus `assets/licenses.toml` und `THIRD_PARTY_NOTICES.txt`, DE/EN
 - [x] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …) – `uses-suggest` (OSM/ALKIS), Auswahl des Koordinators in `data/leonberg/uses.json` (30 Häuser), Routinen-Wegpunkte, Freepoints und Mobs (`docs/design/leonberg-routinen-orte.md`)
   - Stand: Treppen ins Obergeschoss der 5 begehbaren Häuser (höchstens 35°, Kollision als glatte Rampe, Deckenausschnitt mit Geländer), Obergeschoss mit eigenen Räumen, Fenstern und Licht; Betten und Truhen oben, Wegpunkte `…_TREPPE`, `…_TREPPE_OBEN`, `…_OBEN…`, Innenzonen je Geschoss und über der Treppe
   - Stand: begehbare Häuser Phase 1 – zehn weitere Häuser begehbar (Bäcker, Metzger, Schreiner, Töpfer, Goldschmied, Tuchhändler, Gewandschneider, Kräuterkammer, Badstube, Wachstube am Unteren Tor), eingerichtet nach Nutzung bzw. Gewerk (`uses.<use>.inside`, `insideByTrade`; Ofen, Hackklotz, Töpferscheibe, Tuchregal, Badewanne; Arbeits-Freepoints vor dem Werkstück); Steinböden mit Fußschritt-Hinweis (`surface`); Metzger, Töpfer, Wache und Schreiner vorerst ohne Obergeschoss (`upper: false`, Treppenplatzierung folgt in Phase 2); Wege gerade durch Durchgänge und um Treppen geprüft mit Autopilot-Rundgang und NPC-Probe

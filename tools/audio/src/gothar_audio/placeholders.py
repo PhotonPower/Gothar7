@@ -11,6 +11,7 @@ import random
 from collections.abc import Callable
 
 from gothar_audio.synth import (
+    RATE,
     Samples,
     envelope,
     fade,
@@ -349,6 +350,22 @@ def frog(rng: random.Random) -> Samples:
     return normalise(fade(croak, 0.02, 0.1), 0.6)
 
 
+def water_drip(rng: random.Random) -> Samples:
+    # A drop falling into a puddle in a vault: a short rising "plink" and its echo off the stone.
+    start = 800.0 + 300.0 * rng.random()
+    length = int(0.5 * RATE)
+    out = [0.0] * length
+    phase = 0.0
+    for i in range(int(0.09 * RATE)):
+        t = i / RATE
+        phase += 2.0 * math.pi * start * (1.0 + 7.0 * t) / RATE
+        out[i] = math.sin(phase) * math.exp(-t * 45.0)
+    delay = int(0.13 * RATE)
+    for i in range(length - delay):
+        out[i + delay] += 0.3 * out[i]
+    return normalise(out, 0.6)
+
+
 # --- Footsteps (M13 E): six materials, four variants each (footstep_<material>_<n>) --------------------------
 
 
@@ -426,6 +443,7 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "mug_clink": mug_clink,
     "lute_play": lute_play,
     "frog": frog,
+    "water_drip": water_drip,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,
     "amb_night": amb_night,

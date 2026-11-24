@@ -11,7 +11,13 @@ building palette. ``build_schloss.py`` turns the result into Blender objects and
 from __future__ import annotations
 
 import math
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
+
+if str(Path(__file__).resolve().parent) not in sys.path:  # loaded by path (handmade.py, tests)
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+import schloss_interior as interior  # noqa: E402
 
 Vec3 = tuple[float, float, float]
 
@@ -27,6 +33,14 @@ ROOF_T = 0.22
 GABLE_T = 0.45
 NORTH_ROOF = -0.25
 TERRAIN_F = (0.1, 0.3, 0.5, 0.7, 0.9)  # samples of each side's ground in schloss.json
+# a room's model has no collision of its own (the castle's bodies hold): one tiny body under the
+# floor so the engine does not collide its faces (asset.md "Kollision in Modellen")
+NO_COLLISION = ("COL_HULL_NONE", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02))
+
+
+def room_glb(castle_glb: Path, room: str) -> Path:
+    """The file of a room's model beside the castle's (W7 D1b)."""
+    return castle_glb.with_name(f"schloss_{room}.glb")
 
 
 @dataclass
@@ -37,6 +51,11 @@ class Model:
     collision: list[tuple[str, list[Vec3], list[tuple[int, int, int]]]] = field(
         default_factory=list
     )
+    # W7 D1b: the rooms inside as models of their own (own lights per object): faces per room
+    # while ``part`` names one, else into ``faces`` (the castle)
+    rooms: dict[str, dict[str, list[list[Vec3]]]] = field(default_factory=dict)
+    part: str | None = None
+    inner: object = None  # the walkable wing after ``build`` (its ``windows`` filled)
 
     def poly(self, material: str, pts: list[Vec3], want: Vec3) -> None:
         """Convex planar polygon facing roughly ``want``."""
@@ -47,7 +66,8 @@ class Model:
             return
         if _dot(n, want) < 0:
             pts = pts[::-1]
-        self.faces.setdefault(material, []).append(list(pts))
+        faces = self.faces if self.part is None else self.rooms.setdefault(self.part, {})
+        faces.setdefault(material, []).append(list(pts))
 
     def quad(self, material: str, a: Vec3, b: Vec3, c: Vec3, d: Vec3, want: Vec3) -> None:
         self.poly(material, [a, b, c, d], want)
@@ -81,7 +101,12 @@ class Model:
         self.collision.append((name, list(bottom) + list(top), tris))
 
     def triangles(self) -> int:
+        """Of the castle (without the rooms)."""
         return sum(len(f) - 2 for fs in self.faces.values() for f in fs)
+
+    def room_triangles(self) -> dict[str, int]:
+        return {r: sum(len(f) - 2 for fs in faces.values() for f in fs)
+                for r, faces in sorted(self.rooms.items())}  # fmt: skip
 
 
 def _sub(a: Vec3, b: Vec3) -> Vec3:
@@ -139,6 +164,7 @@ class Wing:
         self.dormer_rows = int(spec.get("dormerRows", 0))
         self.skip: dict[int, list[tuple[float, float]]] = {1: [], -1: []}  # no windows here
         self.doors: dict[int, list[tuple[float, float, float]]] = {1: [], -1: []}  # u0, u1, top
+        self.windows: list[tuple[int, float, float, float]] = []  # side, u, y0, y1 (the inside)
         terr = spec.get("terrain") or {}
         self._terrain = {1: terr.get("court"), -1: terr.get("garden")}
         # sample positions along the wing (fractions); the schloss command measures fresh ones
@@ -293,6 +319,7 @@ def _long_facade(m: Model, w: Wing, side: int) -> None:
 
 
 def _window(m: Model, w: Wing, side: int, u: float, y0: float, y1: float) -> None:
+    w.windows.append((side, u, y0, y1))
     t = side * w.half
     want = w.out(side)
     u0, u1 = u - WINDOW[0] / 2, u + WINDOW[0] / 2
@@ -693,12 +720,14 @@ def _ring(c: tuple[float, float], r: float, y: float, n: int = 8, phase: float =
     ]
 
 
-def _tower(m: Model, spec: dict, w: Wing, base: float, ground: float) -> None:
-    """Octagonal stair tower with slit windows, bell roof (welsche Haube), lantern and spire."""
+def _tower(m: Model, spec: dict, w: Wing, base: float, ground: float, solid: bool = True) -> None:
+    """Octagonal stair tower with slit windows, bell roof (welsche Haube), lantern and spire;
+    ``solid``: one collision body (else the inside builds its walls and stair)."""
     c = (float(spec["at"][0]), float(spec["at"][1]))
     r = float(spec["radius"])
     top = w.eave + float(spec["aboveEave"])
-    lo, hi = _ring(c, r, base), _ring(c, r, top)
+    ph = math.radians(float(spec.get("phaseDeg", 0.0)))
+    lo, hi = _ring(c, r, base, phase=ph), _ring(c, r, top, phase=ph)
     for i in range(8):
         j = (i + 1) % 8
         mid = ((lo[i][0] + lo[j][0]) / 2 - c[0], 0.0, (lo[i][2] + lo[j][2]) / 2 - c[1])
@@ -730,7 +759,7 @@ def _tower(m: Model, spec: dict, w: Wing, base: float, ground: float) -> None:
         (r * 0.62, 2.6),
         (r * 0.35, 3.3),
     ]
-    rings = [_ring(c, rr, top + dy) for rr, dy in profile]
+    rings = [_ring(c, rr, top + dy, phase=ph) for rr, dy in profile]
     m.poly("stone", rings[0][::-1], (0.0, -1.0, 0.0))
     for k in range(len(rings) - 1):
         mat = "stone" if k == 0 else "roof_old"
@@ -764,7 +793,8 @@ def _tower(m: Model, spec: dict, w: Wing, base: float, ground: float) -> None:
         j = (i + 1) % 8
         mid = ((spire[i][0] + spire[j][0]) / 2 - c[0], 0.3, (spire[i][2] + spire[j][2]) / 2 - c[1])
         m.poly("roof_old", [spire[i], spire[j], apex], mid)
-    m.body("COL_HULL_tower", _ring(c, r, base), _ring(c, r, top))
+    if solid:
+        m.body("COL_HULL_tower", _ring(c, r, base, phase=ph), _ring(c, r, top, phase=ph))
 
 
 def _oriel(m: Model, spec: dict, w: Wing) -> None:
@@ -821,7 +851,7 @@ def _oriel(m: Model, spec: dict, w: Wing) -> None:
     m.poly("roof_old", corners[::-1], (0.0, -1.0, 0.0))
 
 
-def _portal(m: Model, spec: dict, w: Wing) -> None:
+def _portal(m: Model, spec: dict, w: Wing, open_: bool = False) -> None:
     side = 1 if spec.get("side", "court") == "court" else -1
     s = w.length * float(spec["t"])
     pw, ph = float(spec["w"]), float(spec["h"])
@@ -831,14 +861,15 @@ def _portal(m: Model, spec: dict, w: Wing) -> None:
     tin = t - side * 0.5
     y0 = w.terrain(side, s)
     w.doors[side].append((s - pw / 2, s + pw / 2, y0 + ph))
-    m.quad(
-        "timber_dark",
-        w.p(s - pw / 2, tin, y0),
-        w.p(s + pw / 2, tin, y0),
-        w.p(s + pw / 2, tin, y0 + ph),
-        w.p(s - pw / 2, tin, y0 + ph),
-        want,
-    )
+    if not open_:  # the closed door leaf (open: the passage into the hall, schloss_interior)
+        m.quad(
+            "timber_dark",
+            w.p(s - pw / 2, tin, y0),
+            w.p(s + pw / 2, tin, y0),
+            w.p(s + pw / 2, tin, y0 + ph),
+            w.p(s - pw / 2, tin, y0 + ph),
+            want,
+        )
     for sgn in (-1, 1):
         x = s + sgn * pw / 2
         m.quad(
@@ -1181,6 +1212,10 @@ def build(spec: dict) -> Model:
     wings = [Wing(s) for s in spec["wings"]]
     by_key = {w.key: w for w in wings}
     tower = spec.get("stairTower")
+    inside = spec.get("interior")  # W7 D1: the main wing walkable (schloss_interior.py)
+    inner_wing = by_key[inside["wing"]] if inside else None
+    if inside and tower:
+        tower = interior.moved_tower(inner_wing, tower)  # against the garden wall
     tower_wing = tower_s = None
     if tower:
         # The tower stands against the main wing: no windows behind it, no dormer in front of it.
@@ -1201,7 +1236,13 @@ def build(spec: dict) -> Model:
     if spec.get("oriel"):
         _oriel(m, spec["oriel"], by_key[spec["oriel"]["wing"]])
     if spec.get("portal"):
-        _portal(m, spec["portal"], by_key[spec["portal"]["wing"]])
+        _portal(m, spec["portal"], by_key[spec["portal"]["wing"]], open_=bool(inside))
+    if inside and tower and tower_wing is inner_wing and tower_s is not None:
+        f = interior.floors(inside)
+        top = f["upper"] + interior.DOOR_H  # the facade open behind the tower (hidden by it)
+        tower_wing.doors[-1 if interior.tower_centre(inner_wing, tower)[1] < 0 else 1].append(
+            (tower_s - interior.DOOR_W / 2, tower_s + interior.DOOR_W / 2, top)
+        )
     for w in wings:
         for side in (-1, 1):
             _long_facade(m, w, side)
@@ -1210,11 +1251,20 @@ def build(spec: dict) -> Model:
         _quoins(m, w)
         _roof(m, w)
         _dormers(m, w, tower_s if w is tower_wing else None)
-        wing_body(m, w)
+        if w is not inner_wing:
+            wing_body(m, w)
     if tower and tower_wing is not None:
         tside = 1 if spec.get("stairTowerSide", "garden") == "court" else -1
         ground = tower_wing.terrain(tside, tower_s) if tower_s is not None else tower_wing.ground
-        _tower(m, tower, tower_wing, min(w.base for w in wings), ground)
+        _tower(m, tower, tower_wing, min(w.base for w in wings), ground, solid=not inside)
+    if inside:
+        portal = (
+            spec.get("portal") if spec.get("portal", {}).get("wing") == inside["wing"] else None
+        )
+        interior.Inside(m, inner_wing, inside, tower, portal).build(min(w.base for w in wings))
+        m.inner = inner_wing
+        if inside.get("apron"):  # measured from the DGM by the schloss command
+            interior.apron(m, inside["apron"])
     for c in spec.get("chimneys", []):
         _chimney(m, by_key[c["wing"]], float(c["t"]))
     _garden(m, spec)
@@ -1230,6 +1280,9 @@ def to_local(m: Model, origin: Vec3) -> Model:
     out.collision = [
         (n, [(x - ox, y - oy, z - oz) for x, y, z in pts], tris) for n, pts, tris in m.collision
     ]
+    out.rooms = {r: {mat: [[(x - ox, y - oy, z - oz) for x, y, z in f] for f in fs]
+                     for mat, fs in faces.items()} for r, faces in m.rooms.items()}  # fmt: skip
+    out.inner = m.inner
     return out
 
 

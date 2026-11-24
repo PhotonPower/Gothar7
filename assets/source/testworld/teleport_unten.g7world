@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "name": "teleport_unten",
+  "nextVobId": 4,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_UNTEN","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"start","name":"START_SCHACHT","pos":[3.0,6.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":3,"type":"mesh","name":"BODEN","pos":[0.0,-1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[60.0,1.0,60.0],"mesh":"testworld/block.gltf","category":"gameplay"}
+  ]
+}

@@ -78,6 +78,7 @@ class Zone:
     wrinkles: float = 0.0  # fine skin creases
     relief: float = 1.0  # strength of the strands/creases in the normal map
     strata: float = 0.0  # sandstone: layered bands and chisel marks (plates)
+    cracks: float = 0.0  # weathered stone: thin dark cracks (colour and relief)
 
 
 @dataclass(frozen=True)
@@ -105,6 +106,10 @@ class Creature:
     tongue_colour: str = "#7a4440"
     eye_glow: float = 0.0  # emissive strength of the eyes (0..1; glowing in the dark)
     eye_glow_colour: str = "#b0d890"
+    plate_rough: float = 0.0  # m: plates hewn and chipped (uneven faces, broken edges)
+    plate_cuts: int = 1  # subdivisions of the plates before roughening
+    grime: float = 0.0  # moss and dirt in the cavities (by ambient occlusion), 0..1
+    grime_colour: str = "#4a5233"
     extra: dict = field(default_factory=dict)
 
     def bone(self, name: str) -> Bone:
@@ -342,6 +347,10 @@ def load_creature(path: Path) -> Creature:
         tongue_colour=str(data.get("tongue_colour", "#7a4440")),
         eye_glow=float(data.get("eye_glow", 0.0)),
         eye_glow_colour=str(data.get("eye_glow_colour", "#b0d890")),
+        plate_rough=float(data.get("plate_rough", 0.0)),
+        plate_cuts=int(data.get("plate_cuts", 1)),
+        grime=float(data.get("grime", 0.0)),
+        grime_colour=str(data.get("grime_colour", "#4a5233")),
     )
 
 
@@ -373,6 +382,34 @@ def shape_distance(s: Shape, p: np.ndarray) -> np.ndarray:
     t = np.clip(((p - a) @ ab) / max(ab @ ab, 1e-12), 0.0, 1.0)
     closest = a + t[:, None] * ab
     return np.linalg.norm(p - closest, axis=1) - (s.r + (s.r2 - s.r) * t)
+
+
+def plate_chips(c: Creature, p: np.ndarray, n: np.ndarray) -> np.ndarray:
+    """Depth (N,) in metres to push plate vertices p with normals n inwards: a hewn, uneven face
+    everywhere and chipped-off pieces along edges and corners (normal not along a plate axis)."""
+    plates = [s for s in c.shapes if s.kind in PLATES]
+    if not plates or c.plate_rough <= 0:
+        return np.zeros(len(p))
+    dist = np.stack([np.abs(shape_distance(s, p)) for s in plates], axis=1)
+    near = dist.argmin(axis=1)
+    edge = np.zeros(len(p))
+    limit = np.zeros(len(p))
+    for k, s in enumerate(plates):
+        sel = near == k
+        local = np.abs(n[sel] @ euler_matrix(s.rotate))  # normal in the plate frame
+        edge[sel] = np.clip((1.0 - local.max(axis=1)) / 0.3, 0.0, 1.0)
+        limit[sel] = 0.35 * min(s.size)  # thin plates (iron bands) stay whole
+    hewn = fractal3(p * 22.0, c.seed + 11, 2)
+    chip = np.clip((fractal3(p * 9.0, c.seed + 12, 2) - 0.42) * 4.0, 0.0, 1.0)
+    return np.minimum(c.plate_rough * (0.35 * hewn + edge * (0.3 + 1.2 * chip)), limit)
+
+
+def apply_grime(c: Creature, colour: np.ndarray, occlusion: np.ndarray) -> np.ndarray:
+    """Moss and dirt in cavities: colour (..., 3) towards grime_colour where occlusion is low."""
+    if c.grime <= 0:
+        return colour
+    amount = np.clip((1.0 - occlusion) * 2.2 * c.grime - 0.1, 0.0, 0.85)[..., None]
+    return colour + (srgb(c.grime_colour) - colour) * amount
 
 
 def _bone_distance(bones: list[Bone], name: str, p: np.ndarray) -> float:
@@ -486,6 +523,7 @@ def surface(c: Creature, p: np.ndarray, n: np.ndarray) -> tuple[np.ndarray, np.n
     )
     chisel = fractal3(p * np.array([140.0, 140.0, 35.0]), seed + 8, 2)
     grain = fractal3(p * 350.0, seed + 9, 1)
+    crack = np.clip(1 - np.abs(fractal3(p * 5.0, seed + 10, 3) - 0.5) / 0.012, 0, 1)
     out = np.zeros((len(p), 3))
     height = np.zeros(len(p))
     for k, name in enumerate(names):
@@ -510,8 +548,10 @@ def surface(c: Creature, p: np.ndarray, n: np.ndarray) -> tuple[np.ndarray, np.n
             col *= (1 - z.strata * (0.1 * layers + 0.1 * (1 - chisel) + 0.12 * (grain - 0.5)))[
                 :, None
             ]
+        if z.cracks:
+            col *= (1 - z.cracks * 0.55 * crack)[:, None]
         out += w[:, k : k + 1] * col
-        relief = z.strands * (strand - 0.5) * 2.0 - z.wrinkles * crease
+        relief = -z.cracks * 1.5 * crack + z.strands * (strand - 0.5) * 2.0 - z.wrinkles * crease
         relief = relief + z.strata * ((chisel - 0.5) * 1.2 + (grain - 0.5) * 0.8 - 0.3 * layers)
         height += w[:, k] * z.relief * relief
     return np.clip(out, 0, 1), height

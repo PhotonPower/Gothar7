@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "name": "doors",
+  "nextVobId": 6,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_TUEREN","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"mesh","name":"BODEN","pos":[0.0,-1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[40.0,1.0,40.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":3,"type":"mob","name":"TUER_SCHLUESSEL","pos":[4.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/door.glb","components":{"mob":{"definition":"mob_camp_door_locked","no_pick":true}}},
+    {"id":4,"type":"mob","name":"TUER_EINWEG","pos":[-4.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/door.glb","components":{"mob":{"definition":"door","one_way":"front"}}},
+    {"id":5,"type":"mob","name":"NISCHE","pos":[0.0,0.0,-4.0],"rot":[0.0,0.0,0.0,1.0],"scale":[0.6,0.6,0.4],"mesh":"testworld/block.gltf","components":{"mob":{"definition":"niche"}}}
+  ]
+}

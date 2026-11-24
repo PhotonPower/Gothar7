@@ -12,6 +12,9 @@ gravity = -0.8
 size = [0.5, 1.1]
 color_start = [0.35, 0.25, 0.5, 0.8]
 color_end = [0.1, 0.05, 0.2, 0.0]
+distort = 0.6             # Flimmern beim Beschwören und Verwandeln (M17 V)
+distort_shape = "haze"
+distort_size = 1.5
 [light]
 color = [0.6, 0.4, 1.0]
 range = 5

@@ -1,0 +1,442 @@
+# Creature "gatterbock" (F5, own work, dungeon 2026-11-23): stone warden of the builders - trunk
+# and limbs of hewn sandstone blocks held together by iron bands, iron fists and feet, curved iron
+# horns, an ember slit for eyes. 2.5 m, slow and heavy; stands like a statue beside a gate until it
+# is woken. Design: docs/design/monsters.md "Dungeon-Arten".
+# Humanoid monster rig (proposal with this PR): human reference names, but `neck_01` (§7.1
+# required bones), legs `thigh/calf/foot` as for bipeds (§7.1), no fingers (the fists are rigid).
+# Built by `gothar-chargen creature gatterbock` (blender/build_creature.py, creature.py).
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. The core is a
+# dark iron frame (merged body); the sandstone blocks and iron bands are rigid plates on their
+# bones, so the warden bends at its joints like a jointed statue. Sizes are half axes.
+
+art = "gatterbock"
+material = "fur"
+voxel = 0.012
+smooth = 4
+triangles = 1200       # lod0 core (mostly hidden); the hewn plates and the ember eyes add ~4.8 k
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 41
+ao = 0.7
+normal_size = 512
+normal_strength = 0.9
+eye_colour = "#3a1c08"
+eye_glow = 0.9
+eye_glow_colour = "#ffa040"           # ember
+plate_bevel = 0.02                    # chamfered edges
+plate_rough = 0.045                   # hewn faces, chipped edges and corners
+grime = 0.6                           # moss and dirt in the joints
+grime_colour = "#4d5530"
+
+[orientation]                # upright biped
+left = ["foot_r", "foot_l"]
+forward = ["foot_l", "ball_l"]
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.04 }     # front of the head (the ember slit)
+socket_hand_l = { parent = "hand_l", length = 0.06 }  # the fists: hit points
+socket_hand_r = { parent = "hand_r", length = 0.06 }
+
+# --- rig ---
+
+[[bone]]
+name = "pelvis"
+head = [0, 0, 1.05]
+tail = [0, 0, 1.22]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, 0, 1.22]
+tail = [0, 0, 1.45]
+
+[[bone]]
+name = "spine_02"
+parent = "spine_01"
+head = [0, 0, 1.45]
+tail = [0, 0, 1.92]
+
+[[bone]]
+name = "neck_01"
+parent = "spine_02"
+head = [0, -0.02, 1.95]
+tail = [0, -0.04, 2.06]
+
+[[bone]]
+name = "head"
+parent = "neck_01"
+head = [0, -0.04, 2.06]
+tail = [0, -0.05, 2.38]
+
+[[bone]]
+name = "clavicle_l"
+parent = "spine_02"
+mirror = true
+head = [0.08, 0, 1.86]
+tail = [0.40, 0, 1.94]
+
+[[bone]]
+name = "upperarm_l"
+parent = "clavicle_l"
+mirror = true
+head = [0.48, 0, 1.90]
+tail = [0.60, -0.02, 1.40]
+
+[[bone]]
+name = "lowerarm_l"
+parent = "upperarm_l"
+mirror = true
+head = [0.60, -0.02, 1.40]
+tail = [0.64, -0.08, 0.98]
+
+[[bone]]
+name = "hand_l"
+parent = "lowerarm_l"
+mirror = true
+head = [0.64, -0.08, 0.98]
+tail = [0.65, -0.11, 0.74]
+
+[[bone]]
+name = "thigh_l"
+parent = "pelvis"
+mirror = true
+head = [0.20, 0, 1.05]
+tail = [0.22, -0.02, 0.56]
+
+[[bone]]
+name = "calf_l"
+parent = "thigh_l"
+mirror = true
+head = [0.22, -0.02, 0.56]
+tail = [0.22, 0.02, 0.13]
+
+[[bone]]
+name = "foot_l"
+parent = "calf_l"
+mirror = true
+head = [0.22, 0.02, 0.13]
+tail = [0.22, -0.16, 0.05]
+
+[[bone]]
+name = "ball_l"              # front of the iron foot (rolls off when stepping)
+parent = "foot_l"
+mirror = true
+head = [0.22, -0.16, 0.05]
+tail = [0.22, -0.29, 0.04]
+
+# --- colour zones ---
+
+[zone.iron]                  # dark forged iron, rusty and worn
+colour = "#2e2d2c"
+colour2 = "#5a3a22"
+variation = 0.18
+spots = 0.7
+stripe_colour = "#7a4a26"     # rust
+
+[zone.stone]                 # hewn sandstone: layers, grain, chisel marks, a little lichen
+colour = "#ab8f6c"
+colour2 = "#927a5c"
+variation = 0.12
+strata = 1.0
+cracks = 0.8
+spots = 0.3
+stripe_colour = "#6f7a4a"
+
+# --- the iron frame (merged core, mostly hidden behind the blocks) ---
+
+[[shape]]
+kind = "capsule"
+zone = "iron"
+a = [0, 0, 1.05]
+b = [0, 0, 1.90]
+r = 0.20
+r2 = 0.26
+
+[[shape]]
+kind = "capsule"
+zone = "iron"
+a = [0, -0.02, 1.92]
+b = [0, -0.05, 2.30]
+r = 0.10
+r2 = 0.12
+
+[[shape]]
+kind = "capsule"
+zone = "iron"
+mirror = true
+a = [0.08, 0, 1.88]
+b = [0.48, 0, 1.92]
+r = 0.11
+
+[[shape]]
+kind = "capsule"
+zone = "iron"
+mirror = true
+a = [0.48, 0, 1.90]
+b = [0.60, -0.02, 1.40]
+r = 0.09
+
+[[shape]]
+kind = "capsule"
+zone = "iron"
+mirror = true
+a = [0.60, -0.02, 1.40]
+b = [0.64, -0.08, 0.98]
+r = 0.085
+
+[[shape]]
+kind = "capsule"
+zone = "iron"
+mirror = true
+a = [0.20, 0, 1.05]
+b = [0.22, -0.02, 0.56]
+r = 0.11
+
+[[shape]]
+kind = "capsule"
+zone = "iron"
+mirror = true
+a = [0.22, -0.02, 0.56]
+b = [0.22, 0.02, 0.13]
+r = 0.10
+
+[[shape]]
+kind = "box"                 # iron feet
+zone = "iron"
+mirror = true
+center = [0.22, -0.07, 0.06]
+size = [0.16, 0.22, 0.06]
+
+[[shape]]
+kind = "box"                 # iron fists
+zone = "iron"
+mirror = true
+center = [0.65, -0.10, 0.86]
+size = [0.15, 0.16, 0.15]
+rotate = [-6, 0, 0]
+
+[[shape]]
+kind = "cone"                # curved iron horns: base, bend and tip
+zone = "iron"
+mirror = true
+a = [0.12, -0.02, 2.33]
+b = [0.26, 0.10, 2.46]
+r = 0.055
+r2 = 0.04
+
+[[shape]]
+kind = "cone"
+zone = "iron"
+mirror = true
+a = [0.26, 0.10, 2.46]
+b = [0.33, -0.10, 2.38]
+r = 0.04
+r2 = 0.0
+
+# --- sandstone blocks of uneven size, hewn and weathered (rigid plates on their bones) ---
+
+[[shape]]
+kind = "plate"               # pelvis: two blocks
+zone = "stone"
+bone = "pelvis"
+center = [0.14, 0.0, 1.12]
+size = [0.16, 0.21, 0.12]
+rotate = [0, 2, -3]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "pelvis"
+center = [-0.155, 0.01, 1.13]
+size = [0.14, 0.20, 0.13]
+rotate = [2, -3, 2]
+
+[[shape]]
+kind = "plate"               # belly: a wide and a narrow block
+zone = "stone"
+bone = "spine_01"
+center = [0.05, 0.0, 1.34]
+size = [0.24, 0.19, 0.10]
+rotate = [0, -2, 2]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "spine_01"
+center = [-0.24, 0.0, 1.33]
+size = [0.07, 0.18, 0.09]
+rotate = [0, 4, -3]
+
+[[shape]]
+kind = "plate"               # chest, lower course: three blocks
+zone = "stone"
+bone = "spine_02"
+center = [0.27, -0.01, 1.57]
+size = [0.15, 0.25, 0.13]
+rotate = [0, 0, 2]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "spine_02"
+center = [-0.035, -0.02, 1.585]
+size = [0.145, 0.26, 0.115]
+rotate = [2, 0, -2]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "spine_02"
+center = [-0.31, 0.0, 1.575]
+size = [0.11, 0.24, 0.12]
+rotate = [-2, 3, 0]
+
+[[shape]]
+kind = "plate"               # chest, upper course: two blocks
+zone = "stone"
+bone = "spine_02"
+center = [0.22, -0.01, 1.825]
+size = [0.22, 0.27, 0.105]
+rotate = [0, -2, -1]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "spine_02"
+center = [-0.235, -0.01, 1.815]
+size = [0.215, 0.265, 0.115]
+rotate = [1, 2, 2]
+
+[[shape]]
+kind = "plate"               # iron bands round the chest
+zone = "iron"
+bone = "spine_02"
+center = [0, -0.01, 1.455]
+size = [0.43, 0.27, 0.025]
+
+[[shape]]
+kind = "plate"
+zone = "iron"
+bone = "spine_02"
+center = [0, -0.01, 1.70]
+size = [0.46, 0.28, 0.025]
+rotate = [0, 1, 0]
+
+[[shape]]
+kind = "plate"               # head block with the ember slit below the brow
+zone = "stone"
+bone = "head"
+center = [0, -0.04, 2.24]
+size = [0.15, 0.17, 0.10]
+rotate = [3, 0, -4]
+
+[[shape]]
+kind = "plate"               # jaw block
+zone = "stone"
+bone = "head"
+center = [0, -0.05, 2.09]
+size = [0.13, 0.15, 0.04]
+rotate = [0, 0, 3]
+
+[[shape]]
+kind = "eye"                 # the ember slit: two flat glowing embers under the brow
+mirror = true
+bone = "head"
+center = [0.05, -0.205, 2.155]
+size = [0.04, 0.012, 0.012]
+
+[[shape]]
+kind = "plate"               # shoulder blocks
+zone = "stone"
+bone = "clavicle_l"
+center = [0.42, 0.0, 1.97]
+size = [0.17, 0.20, 0.14]
+rotate = [0, -6, 3]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "clavicle_r"
+center = [-0.43, 0.01, 1.96]
+size = [0.16, 0.21, 0.15]
+rotate = [4, 5, -2]
+
+[[shape]]
+kind = "plate"               # upper arms
+zone = "stone"
+bone = "upperarm_l"
+center = [0.55, -0.01, 1.62]
+size = [0.13, 0.14, 0.22]
+rotate = [0, 10, 0]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "upperarm_r"
+center = [-0.555, -0.01, 1.64]
+size = [0.14, 0.135, 0.20]
+rotate = [3, -12, 2]
+
+[[shape]]
+kind = "plate"
+zone = "iron"
+bone = "upperarm_l"
+mirror = true
+center = [0.56, -0.01, 1.47]
+size = [0.14, 0.15, 0.02]
+rotate = [0, 10, 0]
+
+[[shape]]
+kind = "plate"               # forearms
+zone = "stone"
+bone = "lowerarm_l"
+center = [0.62, -0.05, 1.20]
+size = [0.135, 0.145, 0.19]
+rotate = [8, 4, 0]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "lowerarm_r"
+center = [-0.62, -0.05, 1.21]
+size = [0.14, 0.14, 0.18]
+rotate = [8, -6, 3]
+
+[[shape]]
+kind = "plate"               # thighs
+zone = "stone"
+bone = "thigh_l"
+center = [0.21, -0.01, 0.82]
+size = [0.14, 0.16, 0.21]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "thigh_r"
+center = [-0.215, 0.0, 0.83]
+size = [0.15, 0.155, 0.20]
+rotate = [0, 3, -2]
+
+[[shape]]
+kind = "plate"
+zone = "iron"
+bone = "thigh_l"
+mirror = true
+center = [0.21, -0.01, 0.62]
+size = [0.145, 0.165, 0.02]
+
+[[shape]]
+kind = "plate"               # shins
+zone = "stone"
+bone = "calf_l"
+center = [0.22, 0.0, 0.36]
+size = [0.13, 0.15, 0.19]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "calf_r"
+center = [-0.22, 0.01, 0.35]
+size = [0.135, 0.145, 0.18]
+rotate = [2, 0, 3]

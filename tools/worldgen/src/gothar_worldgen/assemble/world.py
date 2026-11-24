@@ -202,6 +202,8 @@ def assemble(
             name = f"HANDMADE_{item['key']}".upper()
             fresh[vid] = _vob(vid, "mesh", name, item["pos"], group, rot=item.get("rot"),
                               mesh=item["mesh"], category="gameplay")  # fmt: skip
+            if item.get("components"):  # the castle's rooms: wooden floors (W7 D1b)
+                fresh[vid]["components"] = item["components"]
 
     if water and water.get("entries"):
         # Rivers and lakes (water.json, carved beds): boxes whose top is the surface (world.md).
