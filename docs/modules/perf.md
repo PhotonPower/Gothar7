@@ -1,6 +1,6 @@
 # perf – Plan M17 (Profiling, Budgets, Job-System)
 
-Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). **Teil A umgesetzt:** Tracy 0.14 im Preset `profile` (ADR 0024 angenommen), Zonen je System (Spieler, Kreaturen, KI, Wahrnehmung, Wege, Animation, Kampf, Mobs, Skripte, Physik, Audio, UI, Culling, Schatten je Kaskade, Gelände, Figuren, Post, Welt laden), GPU-Zonen je Durchgang über `PassTimes`, Thread-Name der Asset-Arbeiter. Benutzen: `cmake --preset profile && cmake --build --preset profile`, `build/profile/game/gothar`, dann den Tracy-Viewer 0.14 (separat, nicht im Repo) verbinden; ohne Viewer misst Tracy nicht (on-demand). **Teil B umgesetzt:** `gothar --perf=<namen>|all` mit `assets/source/data/perf.toml` (markt, gasse, stube um 10:00 und 21:00; Stress `markt_voll` mit 60 NPCs mehr), Bericht `perf_<name>.json`, Ladephasen; erste Werte in `docs/perf/2026-11-07-erste-messung.md`. **Teil C: C1 Job-System umgesetzt (`core/Jobs.hpp`), C2 Animation folgt; Teil D: KI-LOD-Obergrenze nach Anzahl umgesetzt.**
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). **Teil A umgesetzt:** Tracy 0.14 im Preset `profile` (ADR 0024 angenommen), Zonen je System (Spieler, Kreaturen, KI, Wahrnehmung, Wege, Animation, Kampf, Mobs, Skripte, Physik, Audio, UI, Culling, Schatten je Kaskade, Gelände, Figuren, Post, Welt laden), GPU-Zonen je Durchgang über `PassTimes`, Thread-Name der Asset-Arbeiter. Benutzen: `cmake --preset profile && cmake --build --preset profile`, `build/profile/game/gothar`, dann den Tracy-Viewer 0.14 (separat, nicht im Repo) verbinden; ohne Viewer misst Tracy nicht (on-demand). **Teil B umgesetzt:** `gothar --perf=<namen>|all` mit `assets/source/data/perf.toml` (markt, gasse, stube um 10:00 und 21:00; Stress `markt_voll` mit 60 NPCs mehr), Bericht `perf_<name>.json`, Ladephasen; erste Werte in `docs/perf/2026-11-07-erste-messung.md`. **Teil C umgesetzt: C1 Job-System (`core/Jobs.hpp`), C2 Animation parallel (C3/C4 entfallen); Teil D: KI-LOD-Obergrenze nach Anzahl umgesetzt.**
 Ziel (Meilenstein D): Release-Build stabil ≥ 60 FPS in der größten Welt (Leonberg) auf Zielhardware. Erst messen, dann
 parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummeriert.
 
@@ -96,6 +96,26 @@ Budget reißt. Ebenso bleibt `.g7skin`/`.g7anim` nach Entscheidung 9 zurückgest
     Zufallszahlen müssen byte-gleich bleiben (heute: M9-, M11-, M15-Szenarien).
   - **Kein Schreiben in geteilte Daten** aus Jobs: jeder Job schreibt in sein eigenes Ergebnis-Feld, der Hauptthread
     verteilt.
+- **C2 umgesetzt – Animation parallel** (`EngineCreatures.cpp`; Messung `docs/perf/2026-11-26-jobs-animation.md`:
+  markt_voll Kreaturen 2,1 → 1,1 ms je Schritt, Pose/Palette 0,49 → 0,19 ms je Bild, zusammen etwa −1,3 ms je Bild):
+  - `fixedUpdateCreatures` in drei Phasen: **1. seriell** je Kreatur KI, Befehle, Wege, Bewegungsabsicht und die
+    Parameter des Animators (Lua, Physik); **2. parallel** je Figur `Animator::update` (Abtasten, Blenden), Pose,
+    Look-At, Gesicht – nur in die eigenen Felder der Figur, die Clip-Events in `Creature::pendingEvents`;
+    **3. seriell** in Kreatur-Reihenfolge die gesammelten Clip-Events (`creatureClipEvent`: Hand, Klang, Fußschritt,
+    Zauber, Kampf, Skript) und danach die Root-Motion (mit Bodenstrahl).
+  - **Geänderte Reihenfolge:** Clip-Events einer Kreatur kommen jetzt nach der KI *aller* Kreaturen dieses Schritts
+    (vorher direkt nach ihrer eigenen); Look-At zielt von der Position vor der Root-Motion (nur bei Figuren ohne
+    Kapsel ein Unterschied). Kein bestehender Szenario-Test hing daran.
+  - **Pose je Bild:** `prepareCreaturePoses` vor den Schattenkaskaden – für jede Figur in der Hauptsicht oder in
+    Schattenreichweite (eine Obermenge dessen, was `drawCreatures` zeichnet) parallel `computeFigurePose` (Pose
+    zwischen den Schritten, Model-Space, Skinning-Palette), danach seriell die Morph-Gewichte an die GPU. Andere
+    Figuren (Geist des Editors) holen ihre Pose wie bisher beim ersten Zeichnen.
+  - **Der Held** (Spielfigur) bleibt ganz seriell.
+  - Keine Zufallszahlen der Engine im parallelen Teil; das Gesicht blinzelt mit seinem eigenen Zufallsgenerator je
+    Figur (xorshift, kein geteilter Zustand).
+  - **Determinismus:** `tests/runtime/test_engine_jobs.cpp` – Lager mit Bewohnern, Kampf, Wolfsrudel und
+    nur animierten Tieren, mit 1 und 4 Threads; `Engine::creatureDigest()` (Position, Drehung, Animationszustand,
+    Posen, Gesicht, Kampf, LP, letzte Clip-Events) alle 30 Schritte byte-gleich.
 - **Erste Kandidaten** (nach der Messung in Teil B, das Budget entscheidet):
   1. **Animation:** Abtasten und Blenden je Figur (Animator, Look-At, Gesicht) parallel. Clip-Events werden
      gesammelt und nach der Parallel-Phase in ID-Reihenfolge ausgelöst.
@@ -107,7 +127,7 @@ Budget reißt. Ebenso bleibt `.g7skin`/`.g7anim` nach Entscheidung 9 zurückgest
   seriell für die Fehlersuche).
 - **Tests:** `tests/core/test_jobs.cpp` (jeder Index genau einmal, Stückgrenzen, Ergebnisse in Index-Reihenfolge,
   1 Thread = seriell auf dem Aufrufer, verschachtelt, Ausnahmen, Gruppen, Belastung), `tests/runtime/test_engine.cpp`
-  (`[jobs] threads`). Mit C2: ein Laufzeit-Szenario mit 1 und mit 4 Threads muss byte-gleich enden.
+  (`[jobs] threads`), `tests/runtime/test_engine_jobs.cpp` (C2: 1 und 4 Threads byte-gleich).
 
 ## Teil D – Optimieren nach Messung
 **Umgesetzt:** KI-LOD mit Obergrenze nach Anzahl (`[ai] max_simulated`, 32; die nächsten zum Spieler bzw. zur Kamera,

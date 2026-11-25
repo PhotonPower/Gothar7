@@ -791,6 +791,10 @@ public:
     [[nodiscard]] usize creatureCount() const noexcept;
     /// Creatures the AI LOD simulates this step (walked and animated; M17 perf).
     [[nodiscard]] usize simulatedCreatureCount() const noexcept;
+    /// A digest of every creature's simulated state (position, yaw, animation state and pose, face, fight,
+    /// the last clip events): the same run with 1 and with several job threads must give the same value (M17
+    /// perf C2, tests).
+    [[nodiscard]] u32 creatureDigest() const;
     [[nodiscard]] std::string_view creatureState(u32 id) const noexcept;
     [[nodiscard]] std::optional<Vec3> creaturePosition(u32 id) const;
     [[nodiscard]] f32 creatureYaw(u32 id) const noexcept;
@@ -1124,6 +1128,12 @@ private:
     static void applyGlowBones(AnimatedFigure& figure, render::FigureGlow& glow);
     // Animals (EngineCreatures.cpp)
     void fixedUpdateCreatures(f32 seconds);
+    /// One clip event of creature `c` (fired after the parallel animation, in creature order; M17 perf C2).
+    void creatureClipEvent(Creature& c, std::string_view clip, std::string_view event);
+    /// Before drawing: the poses and skinning palettes of the creatures that may be drawn this frame (in
+    /// view, or within the shadow distance when `shadows`), in parallel; the morph weights then go to the
+    /// GPU.
+    void prepareCreaturePoses(bool shadows);
     void drawCreatures(bool shadow, u32 cascade);
     /// Whether shadow cascade `i` is drawn this frame (m_cascades holds the fresh fit).
     [[nodiscard]] bool shadowRedraw(u32 i) const;
@@ -2182,9 +2192,11 @@ private:
     std::string m_weaponDrawn; // Item instance of the melee weapon being drawn
     bool m_drawWeaponRequested = false;
     f32 m_runNoiseTimer = 0.0f;
-    u64 m_routineMinute = ~0ull;      // the game minute routines were last checked
-    f32 m_simulationDistance = 80.0f; // [ai] simulation_distance: AI LOD
-    u32 m_simulationLimit = 32;       // [ai] max_simulated: the nearest this many (0: no limit)
+    u64 m_routineMinute = ~0ull;            // the game minute routines were last checked
+    f32 m_simulationDistance = 80.0f;       // [ai] simulation_distance: AI LOD
+    u32 m_simulationLimit = 32;             // [ai] max_simulated: the nearest this many (0: no limit)
+    std::vector<usize> m_animatedCreatures; // this step's creatures to animate (indices into m_creatures)
+    std::vector<Creature*> m_poseCreatures; // this frame's figures whose pose prepareCreaturePoses computes
     // Dialogue (M10 part A)
     struct DialogLine
     {

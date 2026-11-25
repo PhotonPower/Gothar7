@@ -571,14 +571,9 @@ void Engine::preparePlayerPose(f32 alpha)
     prepareFigurePose(*m_figure, alpha);
 }
 
-void Engine::prepareFigurePose(AnimatedFigure& f, f32 alpha)
+void computeFigurePose(AnimatedFigure& f, f32 alpha, u64 frame)
 {
-    // Once per frame (the shadow cascades and the main pass share it): the pose between the last two steps.
-    if (f.drawnFrame == m_frameCount)
-    {
-        return;
-    }
-    f.drawnFrame = m_frameCount;
+    f.drawnFrame = frame;
     f.poseDrawn = f.posePrevious;
     animation::blendPose(f.poseDrawn, f.poseNow, std::clamp(alpha, 0.0f, 1.0f));
     f.skeleton.modelSpace(f.poseDrawn, f.modelSpace);
@@ -586,6 +581,17 @@ void Engine::prepareFigurePose(AnimatedFigure& f, f32 alpha)
     {
         f.bones[i] = f.modelSpace[i] * f.inverseBind[i];
     }
+}
+
+void Engine::prepareFigurePose(AnimatedFigure& f, f32 alpha)
+{
+    // Once per frame (the shadow cascades and the main pass share it): the pose between the last two steps.
+    // The creatures in view have theirs already (prepareCreaturePoses, in parallel).
+    if (f.drawnFrame == m_frameCount)
+    {
+        return;
+    }
+    computeFigurePose(f, alpha, m_frameCount);
     if (f.uploaded)
     {
         f.mesh.setMorphWeights(f.face.weights()); // uploads only when a weight changed
