@@ -65,6 +65,11 @@ parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummerie
   Anlauf). Die Welt kommt aus `--world` (Standard Leonberg), nicht aus perf.toml.
 
 ## Teil C – Job-System (Animation, KI, Culling)
+**Wieder aufgenommen** (Projektinhaber 2026-11-25). Basis-Messung C0: `docs/perf/2026-11-26-jobs-basis.md`. Danach
+kommen nur **C1** (Job-System) und **C2** (Animation: Abtasten je Schritt und Pose/Skinning-Palette je Bild). C3
+(Culling, zusammen 0,2 ms) und C4 (Wahrnehmung, 0,035 ms je Schritt) entfallen, weil sich das Verteilen nicht lohnt.
+Neu bewertet wird bei deutlich größerer Welt.
+
 **Zurückgestellt** (Koordinator nach der ersten Messung, 2026-11-07): Alle Szenarien liegen weit im Budget (Markt p99
 6,5 ms, Stress p99 10 ms bei 16,7 ms), das Job-System ist im Moment nicht nötig. Es kommt erst, wenn ein Szenario das
 Budget reißt. Ebenso bleibt `.g7skin`/`.g7anim` nach Entscheidung 9 zurückgestellt (3,85 s Ladezeit sind in Ordnung).
