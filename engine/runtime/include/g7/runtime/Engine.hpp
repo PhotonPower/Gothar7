@@ -1594,6 +1594,10 @@ private:
     void fixedUpdateHeroHold(gameplay::MoveInput& input, f32 seconds);
     /// Creatures.<species>.splinter: a blunt blow knocks a crystal off (into its inventory, the loot).
     void splinterOnHit(Combatant& target, const gameplay::DamageByType& weapon);
+    /// Creatures.<species>.weak (Kellermutter): while open, a hit coming from `from` behind it counts
+    /// `factor` times; a heavy one makes it stagger (`staggered`).
+    [[nodiscard]] i32 weakSpotDamage(const Combatant& target, i32 damage, const Vec3& from,
+                                     bool& staggered) const;
     /// Creatures.<species>.curl (Mauerkriecher): the damage through the shell while rolled up - in full when
     /// it comes from `from` within belly_degrees of the front (the soft belly), else damage_factor of it.
     [[nodiscard]] i32 curledDamage(const Combatant& target, i32 damage, std::optional<Vec3> from) const;
@@ -2282,6 +2286,13 @@ private:
         f32 seconds = 0.0f; ///< left at most
     };
     std::optional<HeroHold> m_heroHeld; // held fast by a pincer: the hero cannot walk (not saved)
+    struct WeakSpot
+    {
+        f32 degrees = 60.0f;      ///< around straight behind it
+        f32 factor = 2.0f;        ///< damage there while open
+        f32 staggerShare = 0.05f; ///< a hit there of this share of hp_max or more: t_stagger
+    };
+    std::map<std::string, WeakSpot, std::less<>> m_weakSpots; // Creatures.<species>.weak (Kellermutter)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline
