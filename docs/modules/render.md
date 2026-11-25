@@ -631,7 +631,7 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   mit dem Wind, der Fuß nicht; ohne Wind und unmarkiert steht alles still; Mehrfach-Zeichnen und Tiefen-Pass
   biegen gleich), `test_engine_render.cpp` (Wind folgt der Lage, aus in den Einstellungen).
 
-### Spiegelnde Fenster (M17 Fenster, Teil F1 umgesetzt; Plan unten) – `Glass.hpp`, `common/glass.glsl`
+### Spiegelnde Fenster (M17 Fenster, Teile F1 und F1b umgesetzt; Plan unten) – `Glass.hpp`, `common/glass.glsl`
 ```cpp
 enum class asset::GlassPattern { Bullseye, Diamond, Plain };  parseGlassPattern(text); glassPatternName(p);
 asset::MaterialInfo::glass, glassTint (Vorgabe kDefaultGlassTint), glassPattern   // aus glTF extras, .g7mesh v5
@@ -639,6 +639,8 @@ enum class WindowReflections { Off, Low, Medium, High };  parseWindowReflections
 f32 glassFresnel(cosTheta);                 // Schlick f0 0,04, höchstens 0,5 (= Shader)
 struct GlassLook { bool enabled; GlassPattern pattern; Vec3 tint; };  Material::glass
 Environment::skyZenith, windowReflections   // im Lighting-Block: vec4 skyZenith (w = Stufe 0..3)
+f32 windowsAwake(hours);  f32 windowGlowNight(sunHeight);   // F1b
+Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Block: vec4 glassGlow
 ```
 - **Markierung (Vertrag mit welt, freigegeben 2026-11-23):** glTF-Material mit `extras.glass = true` (Name frei,
   Vorschlag `window_glass`), optional `extras.glass_tint` [r, g, b] 0..1 (Vorgabe leicht grünlich 0,86/0,95/0,88,
@@ -662,10 +664,25 @@ Environment::skyZenith, windowReflections   // im Lighting-Block: vec4 skyZenith
   Der Menüeintrag kommt mit dem Abschluss-Teil.
 - **Batching:** Glas-Materialien haben Muster und Tönung im Gruppenschlüssel; andere Materialien bündeln wie bisher.
   Schatten und Tiefen-Vorpass behandeln Glas wie jedes undurchsichtige Material.
-- **Noch offen in F1:** der warme Schimmer bei Licht im Raum dahinter (Entscheidung 4) – kommt als eigener Schritt.
+- **Warmer Schimmer nachts (F1b, Entscheidung 4):** Hinter der Scheibe brennt Licht, warm (Kerze, Herd), durch die
+  Scheibe gestreut (jede Butze anders, wo sie sich zum Auge wölbt am hellsten), unten im Raum etwas heller, mit
+  leichtem Flackern; der Spiegel liegt darüber wie am Tag. Zwei Quellen:
+  - **Räume der Welt** (Innenzonen nahe der Kamera, dieselben 32 wie fürs Umgebungslicht): Liegt 40 cm hinter der
+    Scheibe ein Raum, leuchtet sie nach dessen Punktlichtern hinter der Scheibe (die Lichter des Objekts, höchstens
+    8); ohne brennendes Licht bleibt sie dunkel. Ein Licht vor dem Fenster (Straße) zählt nicht.
+  - **Alle übrigen Häuser:** zufällig je **Fensterreihe** (Haus = Ursprung des Modells, Geschoss je 2,8 m, Seite
+    nach der Normalen), leuchtend, wenn ihre Zahl unter dem Anteil der noch Wachen liegt (`windowsAwake`: abends um
+    19 Uhr 55 %, um Mitternacht 8 %, gegen 3 Uhr 4–5 %, vor Sonnenaufgang wieder 25–30 %); die Helligkeit
+    schwankt etwas je Reihe.
+  - **Sichtbar nach der Dunkelheit** (`windowGlowNight` aus der Sonnenhöhe: ab 0,12 über dem Horizont einblendend,
+    voll ab −0,08); am Tag keiner. Welten mit eigener Umgebung (Dungeon) haben keinen.
+  - Grenze: Ein begehbares Haus außerhalb der 32 nächsten Räume gilt als „übriges Haus“; kommt man näher, entscheiden
+    seine Lichter (die Reihe kann dabei umspringen).
 - **Tests:** `tests/render/test_glass.cpp` (Stufen, Fresnel, Lighting-Block), `tests/asset/test_material.cpp`
   (Extras, Fehler → Vorgabe), `test_mesh_file.cpp` (Version 5, Version 4 ohne Glas, falsches Muster), GPU
   `test_glass.cpp` (frontal schwach, schräg stark, Muster zeichnen, `off` bytegleich, Mehrfach-Zeichnen gleich).
+  F1b: CPU Anteil der Wachen über den Tag, Nachtfaktor, Lighting-Block; GPU nachts warm, wenn die Reihe wach ist,
+  dunkel sonst und am Tag; im Raum nach seinem Licht dahinter, nicht nach einem Licht davor.
 
 ### Gras (M17 Teile G1–G3, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
 - **Büschel auf der GPU:** Jedes Büschel ist ein Eintrag von 16 Byte (Fuß als drei Floats, gepackte Bits: Drehung,

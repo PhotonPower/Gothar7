@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cmath>
 #include <filesystem>
 #include <format>
 #include <numeric>
@@ -2117,6 +2118,10 @@ void Engine::updateEnvironment()
     m_sky = sample.sky;
     m_environment.skyZenith = m_sky.zenith; // M17 windows F1: glass mirrors the sky
     m_environment.windowReflections = m_windowReflections;
+    // M17 windows F1b: lit windows at night (rooms by their lights, other houses by chance and the hour).
+    m_environment.windowsAwake = render::windowsAwake(m_gameTime.hourOfDay());
+    m_environment.windowGlowNight = ownEnvironment ? 0.0f : render::windowGlowNight(m_sky.sunDirection.y);
+    m_environment.glassTime = static_cast<f32>(std::fmod(m_waterTime, 3600.0));
     updateGrading(sample.grading);
     m_waterTime += m_frameSeconds;
 }
