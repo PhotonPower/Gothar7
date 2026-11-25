@@ -382,6 +382,18 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   am **weichen Bauch**: Nahkampf und Geschosse von vorn (bis `belly_degrees` = 45° neben seiner Blickrichtung) gehen
   voll durch, Zauber treffen immer den Panzer; Lua-Ereignis `npc_curled(npc)`. Werte vom Projektinhaber bestätigt
   (2026-11-24, Bauch-Variante 2026-11-25); dass Fäuste den flachen Kriecher nicht treffen (der Schwung geht über ihn hinweg), ist gewollt.
+- **Kristallkrebs** (figuren #463): Graph wie der Mauerkriecher, Erwachen = `t_wake`, läuft seitwärts (`move_axis` "x",
+  Körper quer), Instanz `mon_kristallkrebs` (Beute `it_kristall`, noch ohne Modell). Mechanik in C++, Werte in
+  `Creatures.kristallkrebs`:
+  - `grab = { chance, seconds, reach }`: Dieser Anteil seiner Angriffe ist ein Griff (`t_grab`, Aktion 7; das
+    Trefferfenster kneift). Steht der Held beim Clip-Event `grab` bis `reach` m vor ihm (±70°), hält ihn die Schere:
+    Er kann zuschlagen, aber nicht gehen, bis `release`, der Krebs `t_grab` verlässt (Treffer, Tod) oder `seconds`
+    um sind. Lua: Ereignis `hero_grabbed(npc)`, Abfrage `hero_held()`. Nicht gespeichert.
+  - `reflect = { share }`: Ein Zauber des Helden trifft ihn nur zu (1 − share), ohne Taumeln; er spielt `t_reflect`
+    (Aktion 8), beim Event `reflect` trifft der Rest den Helden.
+  - `splinter = { item, max }`: Jeder Nahkampftreffer mit stumpfem Schaden schlägt ein `item` ab (in sein Inventar,
+    also Beute), höchstens `max`.
+  - Noch offen: Leuchten am `socket_glow`, Klänge `kristallkrebs_*`.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am

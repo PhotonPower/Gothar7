@@ -45,6 +45,7 @@
 #include <g7/render/PassTimes.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/Rain.hpp>
+#include <g7/render/ReflectionProbes.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/SpellFx.hpp>
 #include <g7/render/Ssao.hpp>
@@ -888,6 +889,14 @@ public:
     [[nodiscard]] render::GrassQuality grassQuality() const noexcept { return m_grassQuality; }
     [[nodiscard]] const render::GrassRing& grassRing() const noexcept { return m_grassRing; }
     [[nodiscard]] const render::GrassStats& grassStats() const noexcept { return m_grass.stats(); }
+    /// M17 windows F2: the reflection probes of the world (empty: none placed or window reflections below
+    /// medium), their schedule (slots, finished ones) and how many faces the last frame drew.
+    [[nodiscard]] std::span<const render::ReflectionProbe> reflectionProbes() const noexcept
+    {
+        return m_probes.schedule().probes();
+    }
+    [[nodiscard]] const render::ProbeSchedule& probeSchedule() const noexcept { return m_probes.schedule(); }
+    [[nodiscard]] u32 probeFacesLastFrame() const noexcept { return m_probeFacesDrawn; }
     /// Figures and lying items the grass makes way for this frame (decisions 4, 5): x, y, z, radius.
     [[nodiscard]] std::span<const Vec4> grassBenders() const noexcept { return m_grassBenders; }
     [[nodiscard]] std::span<const Vec4> grassShorteners() const noexcept { return m_grassShorteners; }
@@ -1575,6 +1584,15 @@ private:
     [[nodiscard]] f32 reachOf(const Combatant& c) const;           ///< m beyond the bodies
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
+    /// Creatures.<species>.grab (Kristallkrebs): at the clip event "grab" the pincer holds the hero if he
+    /// stands within reach in front of it; "release" (or the holder leaving t_grab, dying, the time) lets go.
+    void creatureGrab(Creature& c);
+    void releaseHero(std::string_view why);
+    /// Creatures.<species>.reflect: at the clip event "reflect" the share kept back hits the hero.
+    void throwSpellBack(Creature& c);
+    void fixedUpdateHeroHold(gameplay::MoveInput& input, f32 seconds);
+    /// Creatures.<species>.splinter: a blunt blow knocks a crystal off (into its inventory, the loot).
+    void splinterOnHit(Combatant& target, const gameplay::DamageByType& weapon);
     /// Creatures.<species>.curl (Mauerkriecher): the damage through the shell while rolled up - in full when
     /// it comes from `from` within belly_degrees of the front (the soft belly), else damage_factor of it.
     [[nodiscard]] i32 curledDamage(const Combatant& target, i32 damage, std::optional<Vec3> from) const;
@@ -1756,6 +1774,13 @@ private:
     void resetGrassWorld(); ///< layers and paths of the loaded world
     void updateGrass();     ///< the ring around the camera, uploads (before the passes)
     void drawGrass();
+    /// M17 windows F2: places the probes when the world changed (after its collision), draws the due faces
+    /// (one a frame; at a new world the nearest probes at once) and hands the finished ones to the lighting.
+    void updateReflectionProbes(const render::ShadowFrame* shadows);
+    void placeReflectionProbes();
+    void drawProbeFace(const render::ProbeFace& face);
+    /// The sky (background pass) for `camera` into the bound target.
+    void drawBackground(const render::Camera& camera);
     void drawGrassShadow(const render::Cascade& cascade);
     [[nodiscard]] render::GrassFrame grassFrame() const;
     void drawRain(u32 width, u32 height);
@@ -1970,8 +1995,17 @@ private:
     world::Scene m_scene;       // world vobs (--world, --scene); render instances are built from it
     world::GameTime m_gameTime; // global: runs across level changes (save game: save.md)
     world::DayCycle m_dayCycle = world::DayCycle::fallback();
-    world::Weather m_weather = world::Weather::fallback();           // M17 E1: data/weather.toml
-    render::RainRenderer m_rain;                                     // M17 R
+    world::Weather m_weather = world::Weather::fallback(); // M17 E1: data/weather.toml
+    render::RainRenderer m_rain;                           // M17 R
+    render::ReflectionProbes m_probes;                     // M17 windows F2 (medium, high)
+    bool m_probesDirty = true;                             // place them anew (world loaded or changed)
+    bool m_probesFresh = false;                            // just placed: the nearest are drawn at once
+    bool m_probeGlass = false;                             // the world has window glass (else no probes)
+    f32 m_probeHour = -1.0f;                     // game hour of the last full redraw (every 10 minutes anew)
+    Vec4 m_probeSky{0.0f};                       // sky and sun of the last full redraw (weather changes)
+    u32 m_probeFacesDrawn = 0;                   // faces drawn the last frame
+    std::vector<render::ProbeFace> m_probeFaces; // per frame, reused
+    render::LightList m_probeLights;             // none: the faces get sun and sky only
     std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
     f32 m_fogStart = 30.0f; ///< [render] fog_start (or the debug panel) for worlds with sky
@@ -2224,6 +2258,26 @@ private:
     };
     std::map<std::string, CurlRule, std::less<>> m_curlRules; // Creatures.<species>.curl (dungeon D6)
     std::set<std::string, std::less<>> m_sidewaysSpecies; // Creatures.<species>.move_axis = "x" (dungeon D6)
+    struct GrabRule
+    {
+        f32 chance = 0.0f;  ///< share of its attacks that are a grab (t_grab)
+        f32 seconds = 2.5f; ///< it holds at most this long
+        f32 reach = 2.0f;   ///< metres from its middle to the hero at the event "grab"
+    };
+    std::map<std::string, GrabRule, std::less<>> m_grabRules; // Creatures.<species>.grab (Kristallkrebs)
+    std::map<std::string, f32, std::less<>> m_reflectShares;  // Creatures.<species>.reflect.share
+    struct SplinterRule
+    {
+        std::string item; ///< the loot a blunt blow knocks off
+        i32 max = 3;
+    };
+    std::map<std::string, SplinterRule, std::less<>> m_splinterRules; // Creatures.<species>.splinter
+    struct HeroHold
+    {
+        u32 by = 0;         ///< the creature holding the hero
+        f32 seconds = 0.0f; ///< left at most
+    };
+    std::optional<HeroHold> m_heroHeld; // held fast by a pincer: the hero cannot walk (not saved)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline

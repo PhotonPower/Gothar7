@@ -1022,6 +1022,7 @@ void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool s
     }
     m_instances.push_back({&model, transform, bounds, sizeCullable, vob});
     m_cullGridDirty = true;
+    m_probesDirty = true;                // M17 windows F2: placed anew (after the collision)
     m_instanceRoomsGeneration = ~u64{0}; // find the rooms holding it (swinging doors and reloads keep them)
     m_rain.invalidateMap();              // M17 R: the occluders changed
     m_physicsDirty = true;
@@ -1269,6 +1270,7 @@ Result<void> Engine::refreshScene()
                   [&](const SceneInstance& instance) { return instance.model != m_groundModel.get(); });
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)};
     m_cullGridDirty = true;
+    m_probesDirty = true;
     m_rain.invalidateMap(); // M17 R: the occluders changed
     m_physicsDirty = true;
     return instantiateScene();
@@ -1522,6 +1524,7 @@ void Engine::unloadWorld()
     m_heightfield = {};
     m_hasTerrain = false;
     resetGrassWorld();
+    m_probesDirty = true;
     m_groundModel.reset();
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)}; // empty
     m_triggers.reset();
@@ -2355,6 +2358,9 @@ void Engine::drawScene(u32 width, u32 height)
     {
         updateRainMap();
     }
+    updateReflectionProbes(shadowFrame.map
+                               ? &shadowFrame
+                               : nullptr); // M17 windows F2: due faces, the finished probes for the glass
 
     m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
     m_device->setViewport(0, 0, width, height);
@@ -2396,28 +2402,7 @@ void Engine::drawScene(u32 width, u32 height)
             m_meshRenderer.setAmbientOcclusion(m_ssao.result());
         }
     }
-    m_backgroundProgram->setUniform("uInverseViewProjection", glm::inverse(m_camera.viewProjection()));
-    m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
-    m_backgroundProgram->setUniform("uHorizonColor", m_environment.fogColor);
-    m_backgroundProgram->setUniform("uZenithColor", m_sky.zenith);
-    m_backgroundProgram->setUniform("uSunDirection", m_sky.sunDirection);
-    m_backgroundProgram->setUniform("uSunColor", m_sky.sunColor);
-    m_backgroundProgram->setUniform("uMoonDirection", m_sky.moonDirection);
-    m_backgroundProgram->setUniform("uMoon", m_sky.moon);
-    m_backgroundProgram->setUniform("uStars", m_sky.stars);
-    // M17 G: the bolt of a near or middle flash (decision 8: rarely seen), in its direction above the
-    // horizon.
-    Vec4 bolt(0.0f);
-    if (m_flash && m_weatherVisible && m_flash->distance < kBoltDistance)
-    {
-        const f32 brightness =
-            world::lightningBrightness(static_cast<f32>(m_stormClock - m_flash->start), m_flash->flickers);
-        bolt = Vec4(m_flash->azimuth, brightness, static_cast<f32>(m_flashCount % 97u),
-                    0.3f + 0.35f * (1.0f - m_flash->distance / kBoltDistance)); // nearer: taller
-    }
-    m_backgroundProgram->setUniform("uBolt", bolt);
-    m_device->bindPipeline(m_backgroundPipeline);
-    m_device->draw(3); // fullscreen triangle from gl_VertexID
+    drawBackground(m_camera);
     if (m_instances.empty() && !m_hasTerrain)
     {
         return;
@@ -2463,6 +2448,32 @@ void Engine::drawScene(u32 width, u32 height)
     m_passTimes.end(*m_device);
     m_passTimes.begin(*m_device, "effects");
     drawEffects(); // particles over the opaque scene, depth-tested (M12)
+}
+
+void Engine::drawBackground(const render::Camera& camera)
+{
+    m_backgroundProgram->setUniform("uInverseViewProjection", glm::inverse(camera.viewProjection()));
+    m_backgroundProgram->setUniform("uCameraPosition", camera.transform.position);
+    m_backgroundProgram->setUniform("uHorizonColor", m_environment.fogColor);
+    m_backgroundProgram->setUniform("uZenithColor", m_sky.zenith);
+    m_backgroundProgram->setUniform("uSunDirection", m_sky.sunDirection);
+    m_backgroundProgram->setUniform("uSunColor", m_sky.sunColor);
+    m_backgroundProgram->setUniform("uMoonDirection", m_sky.moonDirection);
+    m_backgroundProgram->setUniform("uMoon", m_sky.moon);
+    m_backgroundProgram->setUniform("uStars", m_sky.stars);
+    // M17 G: the bolt of a near or middle flash (decision 8: rarely seen), in its direction above the
+    // horizon.
+    Vec4 bolt(0.0f);
+    if (m_flash && m_weatherVisible && m_flash->distance < kBoltDistance)
+    {
+        const f32 brightness =
+            world::lightningBrightness(static_cast<f32>(m_stormClock - m_flash->start), m_flash->flickers);
+        bolt = Vec4(m_flash->azimuth, brightness, static_cast<f32>(m_flashCount % 97u),
+                    0.3f + 0.35f * (1.0f - m_flash->distance / kBoltDistance)); // nearer: taller
+    }
+    m_backgroundProgram->setUniform("uBolt", bolt);
+    m_device->bindPipeline(m_backgroundPipeline);
+    m_device->draw(3); // fullscreen triangle from gl_VertexID
 }
 
 void Engine::cullInstances(const Frustum& view)
@@ -2988,6 +2999,7 @@ void Engine::shutdown()
     m_groundModel.reset();
     m_waterRenderer = {};
     m_ssao = {};
+    m_probes = {};
     m_worldItems.clear();
     m_itemModels.clear();
     m_scriptModels.clear();
