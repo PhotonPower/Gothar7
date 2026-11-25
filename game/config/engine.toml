@@ -63,7 +63,7 @@ wind = true
 # Gras (M17 G1): Büschel auf den Wiesen bis 20/35/50 m (low/medium/high, high mit Schatten); auto = medium, auf Intel-GPUs low.
 grass = "auto"
 # Spiegelnde Fenster (M17): Glasscheiben spiegeln Himmel und Sonne (low), dazu Reflexions-Proben (medium) und
-# Bildraum-Spiegelung (high; Proben und Bildraum folgen in eigenen Teilen); off = dunkle Scheiben wie früher.
+# Bildraum-Spiegelung (high; der Bildraum folgt als eigener Teil); off = dunkle Scheiben wie früher.
 window_reflections = "medium"
 # Zauber-Verzerrung (M17 V): Hitzeflimmern, Druckwellen und Wirbel der Zauber und großer Feuer; aus = Bild ohne Verzerrung.
 spell_distortion = true

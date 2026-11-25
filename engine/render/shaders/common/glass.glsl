@@ -1,7 +1,8 @@
 // Window glass (M17 windows part F1, render.md "Spiegelnde Fenster"): a dark pane that mirrors the sky by
 // Fresnel (Schlick, f0 0.04, at most 0.5 at grazing views), the sun's glint, and the panes of the time around
 // 1700: bullseye panes (one bulge per small round pane) or diamond panes in lead, slightly green and wavy.
-// Stage A of render::WindowReflections; probes (B) and SSR (C) come later. Needs common/lighting.glsl.
+// Stage A of render::WindowReflections; with medium and high the reflection probes (B, render::ReflectionProbes)
+// show the streets and houses around instead of the sky alone; SSR (C) comes later. Needs common/lighting.glsl.
 
 const float kGlassF0 = 0.04;
 const float kGlassMaxFresnel = 0.5;
@@ -30,6 +31,101 @@ vec3 glassSky(vec3 r)
         return horizon * mix(0.6, 0.25, smoothstep(0.0, 0.5, -r.y));
     }
     return mix(horizon, uLighting.skyZenith.rgb, smoothstep(0.0, 0.6, r.y));
+}
+
+// M17 windows F2: the reflection probes' cube faces as tiles in one atlas (render::ReflectionProbes); face f
+// looks along kProbeFaceForward[f] with kProbeFaceUp[f] up, its x axis is cross(forward, up) - the same tables as
+// render::kProbeFaceForward / kProbeFaceUp.
+layout(binding = 10) uniform sampler2D uProbeAtlas;
+const vec3 kProbeFaceForward[6] = vec3[6](vec3(1.0, 0.0, 0.0), vec3(-1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0),
+                                          vec3(0.0, -1.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.0, 0.0, -1.0));
+const vec3 kProbeFaceUp[6] = vec3[6](vec3(0.0, 1.0, 0.0), vec3(0.0, 1.0, 0.0), vec3(0.0, 0.0, -1.0),
+                                     vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0), vec3(0.0, 1.0, 0.0));
+const float kProbeFadeStart = 25.0; // m from the nearest probe: its image fades into the sky alone
+const float kProbeFadeEnd = 45.0;
+
+// What probe `slot` sees in direction d.
+vec3 probeSample(int slot, vec3 d)
+{
+    const vec3 a = abs(d);
+    int face;
+    if (a.x >= a.y && a.x >= a.z)
+    {
+        face = d.x > 0.0 ? 0 : 1;
+    }
+    else if (a.y >= a.z)
+    {
+        face = d.y > 0.0 ? 2 : 3;
+    }
+    else
+    {
+        face = d.z > 0.0 ? 4 : 5;
+    }
+    const vec3 forward = kProbeFaceForward[face];
+    const vec3 up = kProbeFaceUp[face];
+    const vec3 right = cross(forward, up);
+    const float f = max(dot(d, forward), 1e-4);
+    const float size = uLighting.probeParams.z;
+    vec2 uv = 0.5 + 0.5 * vec2(dot(d, right), dot(d, up)) / f;
+    uv = clamp(uv, vec2(0.5 / size), vec2(1.0 - 0.5 / size)); // stay inside the tile
+    const int perRow = int(uLighting.probeParams.y + 0.5);
+    const vec2 tile = vec2(float((slot % perRow) * 6 + face), float(slot / perRow));
+    return textureLod(uProbeAtlas, (tile + uv) * size / vec2(textureSize(uProbeAtlas, 0)), 0.0).rgb;
+}
+
+// Parallax correction: where the ray from p along r leaves the probe's box, seen from the probe's centre.
+vec3 probeDirection(int i, vec3 p, vec3 r)
+{
+    const vec3 lo = uLighting.probeBoxMin[i].xyz;
+    const vec3 hi = uLighting.probeBoxMax[i].xyz;
+    const vec3 safe = vec3(abs(r.x) < 1e-5 ? 1e-5 : r.x, abs(r.y) < 1e-5 ? 1e-5 : r.y, abs(r.z) < 1e-5 ? 1e-5 : r.z);
+    const vec3 t = max((lo - p) / safe, (hi - p) / safe);
+    const float exitDistance = max(min(min(t.x, t.y), t.z), 0.0);
+    return normalize(p + r * exitDistance - uLighting.probeCenter[i].xyz);
+}
+
+// The world mirrored in direction r at p from the two nearest probes (blended by distance); `weight` how much it
+// counts against the sky alone (0: no probe near).
+vec3 probeReflection(vec3 p, vec3 r, out float weight)
+{
+    weight = 0.0;
+    const int count = int(uLighting.probeParams.x + 0.5);
+    if (count == 0)
+    {
+        return vec3(0.0);
+    }
+    int first = 0;
+    int second = -1;
+    float d1 = 1e30;
+    float d2 = 1e30;
+    for (int i = 0; i < count; ++i)
+    {
+        const vec3 d = uLighting.probeCenter[i].xyz - p;
+        const float d2i = dot(d, d);
+        if (d2i < d1)
+        {
+            second = first;
+            d2 = d1;
+            first = i;
+            d1 = d2i;
+        }
+        else if (d2i < d2)
+        {
+            second = i;
+            d2 = d2i;
+        }
+    }
+    d1 = sqrt(d1);
+    vec3 color = probeSample(int(uLighting.probeCenter[first].w + 0.5), probeDirection(first, p, r));
+    if (second >= 0 && second != first)
+    {
+        d2 = sqrt(d2);
+        const vec3 other = probeSample(int(uLighting.probeCenter[second].w + 0.5), probeDirection(second, p, r));
+        // Half and half where both are equally near, the nearer alone from 60 % of the other's distance.
+        color = mix(color, other, 0.5 * smoothstep(0.6, 1.0, d1 / max(d2, 1e-3)));
+    }
+    weight = 1.0 - smoothstep(kProbeFadeStart, kProbeFadeEnd, d1);
+    return color;
 }
 
 // The pane's surface: the perturbed normal and how much of it is lead (0 glass .. 1 lead).
@@ -143,7 +239,15 @@ vec3 glassColor(vec3 worldPosition, vec3 cameraPosition, vec3 n, vec3 albedo, ve
     const vec3 glint = uLighting.sunColor.rgb * sun * (1.5 + 2.0 * wet) * sunShadow(worldPosition, n);
     // At night a light behind shines through the glass (F1b), the mirror on top as by day.
     const vec3 glow = glassGlow(worldPosition, n, pane, origin) * tint;
-    const vec3 glass = mix(behind + glow, glassSky(r) * tint, fresnel) + glint * fresnel;
+    // Stage B (medium, high): the probes show the street and the houses opposite, the sky where they are far.
+    vec3 mirrored = glassSky(r);
+    if (uLighting.skyZenith.w > 1.5)
+    {
+        float weight;
+        const vec3 probe = probeReflection(worldPosition, r, weight);
+        mirrored = mix(mirrored, probe, weight);
+    }
+    const vec3 glass = mix(behind + glow, mirrored * tint, fresnel) + glint * fresnel;
     const vec3 came = albedo * 0.5 * incomingLight(worldPosition, n); // lead: dull and dark
     return mix(glass, came, lead);
 }
