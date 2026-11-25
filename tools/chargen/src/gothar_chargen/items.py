@@ -1112,6 +1112,159 @@ def lantern(seg: int) -> list[Mesh]:
     return [iron, glass]
 
 
+# --- loot of the dungeon species (F6, 2026-11-25; IDs agreed with engine) ----------------------
+
+
+def _upright(meshes: list[Mesh]) -> list[Mesh]:
+    """Turns items built along X by 90 degrees about Z so that they are longest along +Y."""
+    for mesh in meshes:
+        mesh.positions = [np.stack([-p[:, 1], p[:, 0], p[:, 2]], axis=1) for p in mesh.positions]
+    return meshes
+
+
+def _shard(mesh: Mesh, base: ArrayLike, axis: ArrayLike, length: float, radius: float) -> None:
+    """A six-sided crystal from `base` along `axis`: prism with a pointed tip and a blunt foot."""
+    base, axis = np.asarray(base, dtype=np.float64), np.asarray(axis, dtype=np.float64)
+    axis = axis / np.linalg.norm(axis)
+    ts = np.array([0.0, 0.08, 0.72, 1.0])
+    radii = [radius * 0.7, radius, radius, 1e-6]
+    path = base[None, :] + axis[None, :] * (length * ts)[:, None]
+    ref = (1.0, 0.0, 0.0) if abs(axis[0]) < 0.9 else (0.0, 0.0, 1.0)
+    loft(mesh, path, [circle(r, 6) for r in radii], ref=ref, fit_uv=True)
+
+
+def crystal(seg: int) -> list[Mesh]:
+    """Leuchtkristall of the Kristallkrebs (it_kristall): a pale blue glowing shard, 12 cm, with
+    two small side crystals grown on its foot (emissive)."""
+    glass = Mesh("crystal_glow_blue")
+    _shard(glass, (0.0, 0.0, 0.0), (0.0, 1.0, 0.0), 0.12, 0.02)
+    _shard(glass, (0.01, 0.004, 0.004), (0.8, 1.0, 0.3), 0.07, 0.012)
+    _shard(glass, (-0.01, 0.003, -0.005), (-0.7, 1.0, -0.4), 0.06, 0.011)
+    return [glass]
+
+
+def newt_skin(seg: int) -> list[Mesh]:
+    """Molchhaut of the Brunnenmolch (it_newt_skin): a rolled-up piece of pale skin, 30 cm, along
+    +Y (built along X, then turned), tied with two cords, one end hanging loose as a flap."""
+    skin, cord = Mesh("newt_skin"), Mesh("linen")
+    xs = np.linspace(-0.15, 0.13, 8)
+    path = np.stack([xs, np.zeros_like(xs), np.zeros_like(xs)], axis=1)
+    radii = 0.04 + 0.006 * np.sin(np.linspace(0, np.pi, len(xs)))
+    loft(skin, path, [circle(r, seg, ry=0.85) for r in radii], ref=(0.0, 1.0, 0.0), tile=0.12)
+    flap = np.array([[-0.13, 0.0, 0.04], [-0.13, -0.02, 0.07], [-0.13, -0.045, 0.085]])
+    loft(skin, flap, [circle(0.05, 6, rx=1.0, ry=0.06)] * 3, ref=(1.0, 0.0, 0.0), tile=0.12)
+    t = np.linspace(0.0, 2 * np.pi, 9)
+    for x in (-0.07, 0.07):  # cords round the roll
+        ring = np.stack([x + 0 * t, 0.036 * np.sin(t), 0.0475 * np.cos(t)], axis=1)
+        loft(cord, ring, [circle(0.003, 4)] * len(t), ref=(1.0, 0.0, 0.0), tile=0.05)
+    return _upright([skin, cord])
+
+
+def newt_gills(seg: int) -> list[Mesh]:
+    """Molchkiemen of the Brunnenmolch (it_newt_gills): one tuft of three red gill stalks, 12 cm,
+    from a pale skin root along +Y, each stalk feathered with fine filaments."""
+    gill, root = Mesh("gill_red"), Mesh("newt_skin")
+    lathe(root, [(0.0, -0.012), (0.014, -0.008), (0.016, 0.004), (0.01, 0.012), (0.0, 0.014)],
+          8, tile=0.05)  # fmt: skip
+    for k, lean in enumerate((-0.45, 0.0, 0.45)):
+        ts = np.linspace(0.0, 1.0, 5)
+        pts = np.stack([lean * 0.11 * ts, 0.01 + 0.11 * ts, 0.02 * np.sin(np.pi * ts)], axis=1)
+        radii = 0.0055 * (1.0 - 0.7 * ts) + 0.001
+        loft(gill, pts, [circle(r, 5) for r in radii], ref=(0.0, 0.0, 1.0), tile=0.05)
+        for i in range(1, 7):  # filaments: thin cones to both sides
+            p = pts[0] + (pts[-1] - pts[0]) * (i / 7.0)
+            for side in (-1.0, 1.0):
+                tip = p + np.array([side * 0.016, 0.006, 0.004 * (k - 1)])
+                loft(gill, np.array([p, tip]), [circle(0.0022, 4), circle(1e-6, 4)],
+                     ref=(0.0, 0.0, 1.0), tile=0.05)  # fmt: skip
+    return [gill, root]
+
+
+def crawler_plate(seg: int) -> list[Mesh]:
+    """Kriecherplatte of the Mauerkriecher (it_crawler_plate): one arched ring plate of its armour,
+    15 cm across, 6 cm deep; dark chitin with a pale rim."""
+    chitin = Mesh("chitin")
+    a = np.linspace(-0.85, 0.85, 9)
+    path = np.stack([0.085 * np.sin(a), 0.085 * (np.cos(a) - 1.0), 0 * a], axis=1)
+    thick = 0.006 * (1.0 - 0.5 * (a / 0.85) ** 2) + 0.002
+    loft(chitin, path, [circle(0.03, 8, rx=t / 0.03, ry=1.0) for t in thick],
+         ref=(0.0, 0.0, 1.0), fit_uv=True)  # fmt: skip
+    return _upright([chitin])
+
+
+def ember_eye(seg: int) -> list[Mesh]:
+    """Glutauge of the Gatterbock (it_ember_eye): a 5 cm stone from its face that still glows
+    orange inside a cracked dark rind (emissive core, the rind open on the front)."""
+    core, rind = Mesh("ember_glow"), Mesh("stone")
+    lathe(core, [(0.0, -0.027), (0.015, -0.02), (0.02, 0.0), (0.015, 0.02), (0.0, 0.027)],
+          max(8, seg), tile=0.05, squash=0.9)  # fmt: skip
+    for k in range(5):  # rind: flat shards round the back half
+        ang = -0.9 + 0.45 * k
+        n = np.array([np.sin(ang), 0.15 * (k % 2), -np.cos(ang)])
+        n /= np.linalg.norm(n)
+        c = n * 0.019
+        loft(rind, np.array([c, c + n * 0.004]), [circle(0.012, 5, ry=0.8)] * 2,
+             ref=(0.0, 1.0, 0.0), tile=0.05)  # fmt: skip
+    return [core, rind]
+
+
+def bat_ear(seg: int) -> list[Mesh]:
+    """Schlupferohr of the Mauerschlupfer (it_bat_ear): a big bat-like ear, 10 cm, along +Y; a
+    thin pale membrane with three ribs and a fleshy base."""
+    skin = Mesh("bat_skin")
+    lathe(skin, [(0.0, -0.012), (0.013, -0.006), (0.012, 0.006), (0.0, 0.012)], 8, tile=0.05)
+    for lean in (-0.25, 0.0, 0.25):  # the membrane in three lobes, cupped a little forward
+        _leaf(skin, (0.0, 0.004, 0.0), (lean, 1.0, 0.18 * (1 - abs(lean) * 2)), (1.0, -lean, 0.0),
+              0.1 - 0.02 * abs(lean) * 4, 0.05, n=6)  # fmt: skip
+    for lean in (-0.3, 0.0, 0.3):  # ribs
+        tip = (lean * 0.06, 0.085 if lean == 0.0 else 0.075, 0.012)
+        _stem(skin, [(0.0, 0.004, 0.0), (lean * 0.04, 0.045, 0.007), tip], 0.0022, seg=4)
+    return [skin]
+
+
+def shroud_rag(seg: int) -> list[Mesh]:
+    """Grabtuchfetzen of the Beinhauswart (it_shroud_rag): a torn piece of his grey shroud, folded
+    to a 25 x 15 cm bundle, the frayed end hanging over."""
+    cloth = Mesh("shroud")
+    xs = np.linspace(-0.125, 0.125, 7)
+    path = np.stack([xs, 0.004 * np.sin(xs * 40), 0 * xs], axis=1)
+    sections = [circle(0.075, 8, rx=1.0, ry=0.25 + 0.04 * np.sin(i)) for i in range(len(xs))]
+    loft(cloth, path, sections, ref=(0.0, 1.0, 0.0), tile=0.1)
+    for k in range(4):  # frayed strips over the end
+        z = -0.05 + 0.033 * k
+        _leaf(cloth, (0.12, 0.012, z), (0.25, -1.0, 0.05 * (k - 1.5)), (0.0, 0.0, 1.0),
+              0.05 + 0.01 * (k % 2), 0.028, n=3)  # fmt: skip
+    return _upright([cloth])
+
+
+def scythe_claw(seg: int) -> list[Mesh]:
+    """Sensenklaue of the Kellermutter (it_scythe_claw): the last segment of a scythe arm, 60 cm -
+    a curved chitin blade along +Y from a knobbed joint, flat and sharp on the inner edge."""
+    chitin, joint = Mesh("chitin_dark"), Mesh("chitin")
+    ts = np.linspace(0.0, 1.0, 10)
+    path = np.stack([0.11 * ts**2, 0.6 * ts, 0 * ts], axis=1)
+    width = 0.045 * (1.0 - ts**1.5) + 0.002
+    lens = [circle(1.0, 8, rx=w, ry=max(0.25 * w, 0.0015)) for w in width]
+    loft(chitin, path, lens, ref=(0.0, 0.0, 1.0), fit_uv=True)
+    lathe(joint, [(0.0, -0.05), (0.03, -0.045), (0.036, -0.02), (0.028, 0.0), (0.0, 0.01)],
+          max(8, seg), tile=0.1)  # fmt: skip
+    return [chitin, joint]
+
+
+def brood_gland(seg: int) -> list[Mesh]:
+    """Brutdrüse of the Kellermutter (it_brood_gland): the glowing weak spot of its brood sac,
+    15 cm - a swollen orange glowing gland (emissive) held in a cup of dark chitin ribs."""
+    gland, ribs = Mesh("gland_glow_orange"), Mesh("chitin_dark")
+    lathe(gland, [(0.0, 0.0), (0.045, 0.012), (0.06, 0.05), (0.052, 0.095), (0.03, 0.125),
+                  (0.0, 0.135)], max(10, seg), tile=0.1, squash=0.85)  # fmt: skip
+    for k in range(5):  # ribs from the base up the sides
+        a = 2 * np.pi * k / 5
+        d = np.array([np.cos(a), 0.0, np.sin(a)])
+        pts = [d * 0.02 + (0, -0.004, 0), d * 0.062 + (0, 0.04, 0), d * 0.05 + (0, 0.085, 0)]
+        _stem(ribs, pts, 0.006, seg=5)
+    return [gland, ribs]
+
+
 RUNES = ("firebolt", "heal", "sleep", "transform_wolf", "summon_wolf", "telekinesis")  # it_rune_<x>
 
 ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
@@ -1163,6 +1316,15 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_gulden": (gulden, 14),
     "it_blank_hot": (blank_hot, 8),
     "it_lantern_beinhaus": (lantern, 4),
+    "it_kristall": (crystal, 6),
+    "it_newt_skin": (newt_skin, 10),
+    "it_newt_gills": (newt_gills, 6),
+    "it_crawler_plate": (crawler_plate, 8),
+    "it_ember_eye": (ember_eye, 10),
+    "it_bat_ear": (bat_ear, 6),
+    "it_shroud_rag": (shroud_rag, 8),
+    "it_scythe_claw": (scythe_claw, 10),
+    "it_brood_gland": (brood_gland, 12),
     **{f"it_rune_{spell}": ((lambda sp: lambda s: rune(s, sp))(spell), 12) for spell in RUNES},
 }
 
@@ -1180,12 +1342,17 @@ PROCEDURAL = (
     "ham", "bone", "sausage", "cheese", "clay", "glass_green", "glass_amber", "linen",
     "root", "leaf_sage", "leaf_green", "leaf_dry", "flower_white", "flower_yellow",
     "gold", "silver", "iron_hot", "glass_glow_green",
+    "crystal_glow_blue", "newt_skin", "gill_red", "chitin", "chitin_dark", "ember_glow",
+    "bat_skin", "shroud", "gland_glow_orange",
 )  # fmt: skip
 
 
 EMISSIVE = {
     "iron_hot": (1.0, 1.0, 1.0),
     "glass_glow_green": (1.0, 1.0, 1.0),
+    "crystal_glow_blue": (1.0, 1.0, 1.0),
+    "ember_glow": (1.0, 1.0, 1.0),
+    "gland_glow_orange": (1.0, 1.0, 1.0),
 }  # material -> glTF emissiveFactor (with its texture)
 
 
@@ -1313,6 +1480,35 @@ def procedural_texture(name: str, size: int = 256) -> np.ndarray:
         band = 0.5 + 0.5 * np.sin(np.linspace(0, 6 * np.pi, size))[None, :]
         c = np.array([0.55, 0.3, 0.05])[None, None] * (0.8 + 0.4 * band[..., None] * n1[..., None])
         return np.clip(c, 0, 1)
+    if name == "crystal_glow_blue":  # the Kristallkrebs' crystal: pale blue, brighter inside
+        u = np.linspace(0, 1, size)[None, :]
+        glow = 0.7 + 0.3 * np.sin(np.pi * u) * (0.6 + 0.4 * n1)
+        return np.clip(np.array([0.45, 0.78, 1.0])[None, None] * glow[..., None], 0, 1)
+    if name == "ember_glow":  # the Gatterbock's eye: orange embers with darker veins
+        c = np.array([1.0, 0.45, 0.08])[None, None] * (0.7 + 0.3 * n1[..., None])
+        return np.clip(c * (1.0 - 0.35 * (n2[..., None] > 0.68)), 0, 1)
+    if name == "gland_glow_orange":  # the Kellermutter's brood gland: orange, veined
+        c = np.array([1.0, 0.55, 0.15])[None, None] * (0.75 + 0.25 * n1[..., None])
+        return np.clip(c - 0.25 * (np.abs(n2[..., None] - 0.5) < 0.03), 0, 1)
+    if name in ("newt_skin", "bat_skin"):  # pale pink skin, faintly mottled
+        base = (0.85, 0.74, 0.69) if name == "newt_skin" else (0.72, 0.62, 0.6)
+        c = np.array(base)[None, None] * (0.85 + 0.15 * n1[..., None])
+        return np.clip(c - 0.08 * (n2[..., None] > 0.72), 0, 1)
+    if name == "gill_red":  # blood-red gill filaments
+        c = np.array([0.66, 0.16, 0.19])[None, None] * (0.8 + 0.35 * n1[..., None])
+        return np.clip(c, 0, 1)
+    if name in ("chitin", "chitin_dark"):  # grey-brown chitin with pale streaks along u
+        base = (0.3, 0.27, 0.23) if name == "chitin" else (0.17, 0.15, 0.14)
+        streak = 0.5 + 0.5 * np.sin(np.linspace(0, 8 * np.pi, size))[None, :]
+        c = np.array(base)[None, None] * (0.8 + 0.25 * n1[..., None] + 0.15 * streak[..., None])
+        return np.clip(c, 0, 1)
+    if name == "shroud":  # grey, stained grave cloth: coarse weave
+        y, x = np.mgrid[0:size, 0:size]
+        weave = 0.5 + 0.5 * np.sign(np.sin(x * np.pi / 2) * np.sin(y * np.pi / 2))
+        c = np.array([0.46, 0.45, 0.42])[None, None] * (
+            0.8 + 0.08 * weave[..., None] + 0.2 * n1[..., None]
+        )
+        return np.clip(c - 0.1 * (n2[..., None] > 0.7), 0, 1)
     if name == "linen":  # undyed linen weave: fine checker of threads
         y, x = np.mgrid[0:size, 0:size]
         weave = 0.5 + 0.5 * np.sign(np.sin(x * np.pi / 3) * np.sin(y * np.pi / 3))

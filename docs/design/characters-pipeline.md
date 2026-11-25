@@ -654,6 +654,15 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_gulden` (Gulden, 2026-11-01: fünf Goldmünzen gestapelt, zwei daneben, eine an den Stapel gelehnt; Ursprung Mitte unter dem Stapel, +Y oben; `AXIS_FREE`) | 2,6 cm Ø | Gold (prozedural); 1176 Dreiecke |
   | `it_blank_hot` (glühender Schwert-Rohling vom Amboss, 2026-11-01: flacher, grob geschmiedeter Stab mit Angel; Ursprung = Angel (Zange), +Y entlang des Stabs, +Z spätere Schneide; Material `iron_hot` leuchtet: `emissiveTexture` = Farbtextur, `emissiveFactor` 1, zur Spitze heißer; Angel Schmiedeeisen) | 0,76 m | prozedural; 248 Dreiecke |
   | `it_lantern_beinhaus` (eiserne Laterne des Beinhauswarts, 2026-11-24: quadratischer Rahmen mit Dach, Boden und Eckstreben um ein blassgrün leuchtendes Glas (`glass_glow_green`, `emissiveTexture` = Farbtextur, `emissiveFactor` 1); Ursprung = Oberkante des Bügels (Faust), +Y oben, der Körper hängt entlang −Y; leerer Knoten `socket_light` in der Glasmitte (0, −0,17, 0) für das grüne Licht der engine; hängt per `npc_hold` an `socket_lantern`, fällt in der Rasend-Phase) | 29 cm | Schmiedeeisen, Glas (prozedural); 250 Dreiecke |
+  | `it_kristall` (Leuchtkristall des Kristallkrebses, Beute, 2026-11-25: sechseckiger Splitter mit zwei kleinen Nebenkristallen am Fuß, blassblau leuchtend (`crystal_glow_blue`, emissiv); +Y zur Spitze; ID von engine) | 12 cm | prozedural |
+  | `it_newt_skin` (Molchhaut des Brunnenmolchs, Beute: gerollte blasse Haut mit zwei Schnüren und losem Lappen; +Y entlang der Rolle) | 29 cm | prozedural (`newt_skin`, `linen`) |
+  | `it_newt_gills` (Molchkiemen des Brunnenmolchs, Beute/Alchemie: drei rote, gefiederte Kiemenstiele auf einem Hautansatz; +Y nach oben) | 12 cm | prozedural (`gill_red`) |
+  | `it_crawler_plate` (Kriecherplatte des Mauerkriechers, Beute: gewölbte Ringplatte aus Chitin; +Y entlang des Bogens) | 13 × 6 cm | prozedural (`chitin`) |
+  | `it_ember_eye` (Glutauge des Gatterbocks, Beute: orange glühender Stein (`ember_glow`, emissiv) mit dunklen Rindenscherben hinten; +Y oben) | 5 cm | prozedural |
+  | `it_bat_ear` (Schlupferohr des Mauerschlupfers, Beute: blasse Ohrmembran mit drei Rippen und fleischigem Ansatz; +Y zur Spitze) | 10 cm | prozedural (`bat_skin`) |
+  | `it_shroud_rag` (Grabtuchfetzen des Beinhauswarts, Beute: gefaltetes graues Tuch mit ausgefransten Streifen; +Y entlang des Bündels) | 26 × 15 cm | prozedural (`shroud`) |
+  | `it_scythe_claw` (Sensenklaue der Kellermutter, Beute/Trophäe: gebogene Chitinklinge vom Gelenkknopf (Ursprung) entlang +Y) | 65 cm | prozedural (`chitin_dark`, `chitin`) |
+  | `it_brood_gland` (Brutdrüse der Kellermutter, Beute/Alchemie: orange leuchtende Drüse (`gland_glow_orange`, emissiv) in fünf dunklen Chitinrippen; +Y oben) | 14 cm | prozedural |
 
   Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade
   legt engine an.

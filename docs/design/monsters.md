@@ -117,6 +117,12 @@ Reihenfolge des Baus (figuren):
 
 Je Art ein PR.
 
+Beute (Item-Modelle von figuren, Lua-Items von engine mit denselben IDs, Werte in Lua; 2026-11-25): Kristallkrebs
+`it_kristall` (Leuchtkristall), Brunnenmolch `it_newt_skin` (Molchhaut) und `it_newt_gills` (Molchkiemen),
+Mauerkriecher `it_crawler_plate` (Kriecherplatte), Gatterbock `it_ember_eye` (Glutauge), Mauerschlupfer `it_bat_ear`
+(Schlupferohr), Beinhauswart `it_shroud_rag` (Grabtuchfetzen; dazu die Laterne `it_lantern_beinhaus`), Kellermutter
+`it_scythe_claw` (Sensenklaue) und `it_brood_gland` (Brutdrüse). Alle in der Inventar-Kategorie `misc`.
+
 ### Gatterbock (gebaut 2026-11-23)
 Steinwächter der Erbauer, 2,5 m: Rumpf und Glieder aus ungleichen, verwitterten Sandsteinquadern auf einem dunklen Eisengerüst, von
 Eisenbändern gehalten, Fäuste und Füße aus Eisen, gebogene Eisenhörner, zwei Glutaugen unter der Stirn.
