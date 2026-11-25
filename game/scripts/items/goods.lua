@@ -86,6 +86,42 @@ Item "it_shears" {
     weight = 0.4,
 }
 
+-- Beute der Dungeon-Monster (IDs mit figuren abgestimmt 2026-11-25; Modelle folgen, bis dahin ohne mesh).
+Item "it_crawler_plate" { -- Mauerkriecher
+    name = "Kriecherplatte",
+    category = "misc",
+    value = 6,
+    weight = 0.3,
+}
+
+Item "it_ember_eye" { -- Gatterbock
+    name = "Glutauge",
+    category = "misc",
+    value = 40,
+    weight = 0.2,
+}
+
+Item "it_bat_ear" { -- Mauerschlupfer
+    name = "Schlupferohr",
+    category = "misc",
+    value = 8,
+    weight = 0.05,
+}
+
+Item "it_newt_skin" { -- Brunnenmolch
+    name = "Molchhaut",
+    category = "misc",
+    value = 20,
+    weight = 0.8,
+}
+
+Item "it_newt_gills" { -- Brunnenmolch
+    name = "Molchkiemen",
+    category = "misc",
+    value = 15,
+    weight = 0.2,
+}
+
 Item "it_lute" { -- der Musiker spielt sie (zs_play_lute); Wert und Gewicht Platzhalter
     name = "Laute",
     mesh = "items/it_lute.glb",
