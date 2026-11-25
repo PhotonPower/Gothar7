@@ -14,6 +14,16 @@ Npc "mon_gatterbock" {
     senses = { angle = 140 },
 }
 
+Npc "mon_mauerkriecher" { -- Brut der Kellermutter, kommt zu 3-6 aus den Ritzen (spawn count, monsters.md)
+    name = "Mauerkriecher",
+    guild = "mauerkriecher",
+    level = 3,
+    species = "mauerkriecher",
+    attributes = { str = 10, dex = 20, hp = 30 },
+    damage = { edge = 5 }, -- Zangenbiss
+    protection = { edge = 15, point = 25, blunt = 0, fire = 0, magic = 0, fall = 0 }, -- Panzer gegen Klingen
+}
+
 Npc "mon_mauerschlupfer" {
     name = "Mauerschlupfer",
     guild = "mauerschlupfer",

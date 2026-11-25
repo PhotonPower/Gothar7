@@ -30,3 +30,9 @@ radius = 0.25 # die Höhe muss den doppelten Radius übersteigen
 height = 0.6
 step_height = 0.3
 max_slope_degrees = 55.0
+
+[mauerkriecher] # Dungeon (figuren #440): 1,0 m lang, 0,3 m hoch; liegende Kapsel r 0,21 / l 0,99
+radius = 0.21 # die Höhe muss den doppelten Radius übersteigen
+height = 0.5
+step_height = 0.25
+max_slope_degrees = 60.0

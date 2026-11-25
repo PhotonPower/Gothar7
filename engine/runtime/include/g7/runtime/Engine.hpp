@@ -1575,6 +1575,12 @@ private:
     [[nodiscard]] f32 reachOf(const Combatant& c) const;           ///< m beyond the bodies
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
+    /// Creatures.<species>.curl (Mauerkriecher): the damage through the shell while rolled up - in full when
+    /// it comes from `from` within belly_degrees of the front (the soft belly), else damage_factor of it.
+    [[nodiscard]] i32 curledDamage(const Combatant& target, i32 damage, std::optional<Vec3> from) const;
+    /// After a hit `target` survived: true when it is rolled up (no stagger) - already, or now by a heavy
+    /// hit.
+    bool curlOnHit(Combatant& target, i32 damage);
     void stopForFight(Creature& c);
     /// A save game puts an NPC back knocked out (for `seconds`) or dead (M15).
     void knockOutRestored(Creature& c, f32 seconds);
@@ -2207,6 +2213,14 @@ private:
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
     std::map<std::string, gameplay::BodyShape, std::less<>> m_animalBodies; // by species (M11)
+    struct CurlRule
+    {
+        f32 share = 0.25f;        ///< a hit of this share of hp_max or more rolls it up
+        f32 seconds = 4.0f;       ///< it stays rolled up this long
+        f32 damageFactor = 0.25f; ///< damage through the shell meanwhile
+        f32 bellyDegrees = 0.0f;  ///< hits from within this angle of its front reach the soft belly (full)
+    };
+    std::map<std::string, CurlRule, std::less<>> m_curlRules; // Creatures.<species>.curl (dungeon D6)
     std::set<std::string, std::less<>> m_sidewaysSpecies; // Creatures.<species>.move_axis = "x" (dungeon D6)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
