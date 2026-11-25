@@ -1,0 +1,315 @@
+# Set "kellermutter" (boss of the dungeon, mother of the Mauerkriecher; arthropod plan,
+# characters-pipeline.md §7.5) -> monsters/kellermutter/anims/kellermutter.glb
+# Own creature (gothar-chargen creature kellermutter, 2026-11-23): the clip source only holds the
+# still action "rest". Walk and run are own gait cycles on the four spread legs (splay); the brood
+# sac drags behind and pulses (sac, abdomen_03). Everything else is keyframed.
+# Dungeon (#422): s_dormant crouched over the hoard (`zs_dormant`), t_wake; §7.5: t_scythe_l/r
+# (hit points socket_claw_l/r), t_call (event spawn_brood: a wave of Mauerkriecher), t_rage
+# (phase change like the Bergleu), s_guard (over the treasure), t_stagger. The weak spot on the sac
+# is socket_weak (engine checks hits by distance and angle).
+#
+# Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches a bone
+# pointing forwards down - the scythes strike with +X, -X raises them back; Y swings a leg pointing
+# sideways up (-) or down (+) on the left, +Z turns left) and move root/pelvis.
+
+set = "kellermutter"
+rig = "kellermutter"
+
+[sources.src]
+file = "kellermutter_clips.blend"
+mapping = "identity"
+
+[[clip]]
+name = "kellermutter/s_rest"
+from = "src:rest"
+helper = true
+
+[[clip]]
+name = "kellermutter/s_idle"       # breathing sac, scythes twitching, the crowned head sways
+keyframe = "keyposes"
+[clip.params]
+base = "kellermutter/s_rest"
+keys = [[0, "rest"], [30, "breathe_l"], [60, "rest"], [90, "breathe_r"], [120, "rest"]]
+[clip.params.poses.breathe_l]
+rotate = { head = [["Z", 8]], sac = [["X", -4]], abdomen_03 = [["X", -2.0]], arm_upper_l = [["X", -6]], mandible_l = [["Z", 10]], mandible_r = [["Z", -10]] }
+move = { pelvis = [0, 0, 0.02] }
+[clip.params.poses.breathe_r]
+rotate = { head = [["Z", -8]], sac = [["X", -4]], abdomen_03 = [["X", -2.0]], arm_upper_r = [["X", -6]] }
+move = { pelvis = [0, 0, 0.02] }
+
+# --- locomotion (root moves forward: contract §7) ---
+
+[[clip]]
+name = "kellermutter/s_walk"       # heavy crawl on four legs, the sac dragging behind
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 0.6
+period = 30
+duty = 0.6
+lift = 0.15
+bob = 0.03
+splay = true
+pose = { arm_upper_l = [["X", -5]], arm_upper_r = [["X", -5]], arm_lower_l = [["X", 0]], arm_lower_r = [["X", 0]], claw_l = [["X", 0]], claw_r = [["X", 0]] }
+legs = [
+    { upper = "leg_1_upper_l", lower = "leg_1_lower_l", foot = "leg_1_foot_l", phase = 0.0 },
+    { upper = "leg_1_upper_r", lower = "leg_1_lower_r", foot = "leg_1_foot_r", phase = 0.5 },
+    { upper = "leg_2_upper_l", lower = "leg_2_lower_l", foot = "leg_2_foot_l", phase = 0.5 },
+    { upper = "leg_2_upper_r", lower = "leg_2_lower_r", foot = "leg_2_foot_r", phase = 0.0 },
+]
+
+[[clip]]
+name = "kellermutter/s_run"        # lunging rush, scythes raised
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 1.5
+period = 20
+duty = 0.5
+lift = 0.22
+bob = 0.05
+splay = true
+pose = { arm_upper_l = [["X", -20]], arm_upper_r = [["X", -20]], arm_lower_l = [["X", -15]], arm_lower_r = [["X", -15]], claw_l = [["X", -10]], claw_r = [["X", -10]], head = [["X", 6]] }
+legs = [
+    { upper = "leg_1_upper_l", lower = "leg_1_lower_l", foot = "leg_1_foot_l", phase = 0.0 },
+    { upper = "leg_1_upper_r", lower = "leg_1_lower_r", foot = "leg_1_foot_r", phase = 0.5 },
+    { upper = "leg_2_upper_l", lower = "leg_2_lower_l", foot = "leg_2_foot_l", phase = 0.5 },
+    { upper = "leg_2_upper_r", lower = "leg_2_lower_r", foot = "leg_2_foot_r", phase = 0.0 },
+]
+
+[[clip]]
+name = "kellermutter/s_step_inplace" # base of the turns
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 30
+duty = 0.6
+lift = 0.12
+splay = true
+legs = [
+    { upper = "leg_1_upper_l", lower = "leg_1_lower_l", foot = "leg_1_foot_l", phase = 0.0 },
+    { upper = "leg_1_upper_r", lower = "leg_1_lower_r", foot = "leg_1_foot_r", phase = 0.5 },
+    { upper = "leg_2_upper_l", lower = "leg_2_lower_l", foot = "leg_2_foot_l", phase = 0.5 },
+    { upper = "leg_2_upper_r", lower = "leg_2_lower_r", foot = "leg_2_foot_r", phase = 0.0 },
+]
+
+[[clip]]
+name = "kellermutter/t_turn_l"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "kellermutter/s_step_inplace"
+keys = [[0, "rest"], [60, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", 90]] }
+
+[[clip]]
+name = "kellermutter/t_turn_r"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "kellermutter/s_step_inplace"
+keys = [[0, "rest"], [60, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", -90]] }
+
+# --- combat ---
+
+[[clip]]
+name = "kellermutter/t_attack_1"   # both scythes raised high and hacked down in front
+keyframe = "keyposes"
+markers = { hit_start = 18, hit_end = 23, "sound:kellermutter_attack" = 12 }
+[clip.params]
+base = "kellermutter/s_idle"
+keys = [[0, "rest"], [14, "raise"], [18, "raise"], [22, "hack"], [28, "hack"], [46, "rest"]]
+[clip.params.poses.raise]
+move = { pelvis = [0, 0.08, 0.10] }
+rotate = { pelvis = [["X", -8]], arm_upper_l = [["X", -45]], arm_upper_r = [["X", -45]], arm_lower_l = [["X", -30]], arm_lower_r = [["X", -30]], claw_l = [["X", -20]], claw_r = [["X", -20]], head = [["X", -10]] }
+[clip.params.poses.hack]
+move = { pelvis = [0, -0.12, -0.08] }
+rotate = { pelvis = [["X", 6]], arm_upper_l = [["X", 40]], arm_upper_r = [["X", 40]], arm_lower_l = [["X", 20]], arm_lower_r = [["X", 20]], claw_l = [["X", 15]], claw_r = [["X", 15]], head = [["X", 8]] }
+
+[[clip]]
+name = "kellermutter/t_attack_2"   # the head lunges forward, the pincers snap
+keyframe = "keyposes"
+markers = { hit_start = 12, hit_end = 16, "sound:kellermutter_attack" = 8 }
+[clip.params]
+base = "kellermutter/s_idle"
+keys = [[0, "rest"], [8, "draw"], [13, "bite"], [16, "bite"], [32, "rest"]]
+[clip.params.poses.draw]
+move = { pelvis = [0, 0.10, 0.04] }
+rotate = { neck_01 = [["X", -10]], head = [["X", -12]], mandible_l = [["Z", 25]], mandible_r = [["Z", -25]], arm_upper_l = [["X", -10], ["Z", 15]], arm_upper_r = [["X", -10], ["Z", -15]], arm_lower_l = [["X", 0]], arm_lower_r = [["X", 0]], claw_l = [["X", 0]], claw_r = [["X", 0]] }
+[clip.params.poses.bite]
+move = { pelvis = [0, -0.30, -0.06] }
+rotate = { neck_01 = [["X", 12]], head = [["X", 10]], mandible_l = [["Z", -15]], mandible_r = [["Z", 15]], arm_upper_l = [["X", -10], ["Z", 15]], arm_upper_r = [["X", -10], ["Z", -15]], arm_lower_l = [["X", 0]], arm_lower_r = [["X", 0]], claw_l = [["X", 0]], claw_r = [["X", 0]] }
+
+[[clip]]
+name = "kellermutter/t_scythe_l"   # the left scythe sweeps in from the side
+keyframe = "keyposes"
+markers = { hit_start = 14, hit_end = 19, "sound:kellermutter_attack" = 9 }
+[clip.params]
+base = "kellermutter/s_idle"
+keys = [[0, "rest"], [12, "wind"], [17, "sweep"], [21, "through"], [38, "rest"]]
+[clip.params.poses.wind]
+rotate = { pelvis = [["Z", -8]], arm_upper_l = [["X", -20], ["Z", 40]], arm_lower_l = [["X", -20]] }
+[clip.params.poses.sweep]
+rotate = { pelvis = [["Z", 0]], arm_upper_l = [["X", 15], ["Z", 0]], arm_lower_l = [["X", 10]], claw_l = [["X", 10]] }
+[clip.params.poses.through]
+rotate = { pelvis = [["Z", 8]], arm_upper_l = [["X", 20], ["Z", -35]], arm_lower_l = [["X", 10]], claw_l = [["X", 10]] }
+
+[[clip]]
+name = "kellermutter/t_scythe_r"   # the right scythe sweeps in from the side
+keyframe = "keyposes"
+markers = { hit_start = 14, hit_end = 19, "sound:kellermutter_attack" = 9 }
+[clip.params]
+base = "kellermutter/s_idle"
+keys = [[0, "rest"], [12, "wind"], [17, "sweep"], [21, "through"], [38, "rest"]]
+[clip.params.poses.wind]
+rotate = { pelvis = [["Z", 8]], arm_upper_r = [["X", -20], ["Z", -40]], arm_lower_r = [["X", -20]] }
+[clip.params.poses.sweep]
+rotate = { pelvis = [["Z", 0]], arm_upper_r = [["X", 15], ["Z", 0]], arm_lower_r = [["X", 10]], claw_r = [["X", 10]] }
+[clip.params.poses.through]
+rotate = { pelvis = [["Z", -8]], arm_upper_r = [["X", 20], ["Z", 35]], arm_lower_r = [["X", 10]], claw_r = [["X", 10]] }
+
+[[clip]]
+name = "kellermutter/t_hit"
+keyframe = "keyposes"
+markers = { "sound:kellermutter_hit" = 1 }
+[clip.params]
+base = "kellermutter/s_idle"
+keys = [[0, "rest"], [5, "flinch"], [20, "rest"]]
+[clip.params.poses.flinch]
+move = { pelvis = [0, 0.10, 0.03] }
+rotate = { pelvis = [["X", -6]], head = [["X", -12]], arm_upper_l = [["X", -15]], arm_upper_r = [["X", -15]], arm_lower_l = [["X", -10]], arm_lower_r = [["X", -10]], claw_l = [["X", 0]], claw_r = [["X", 0]], sac = [["X", 6]], abdomen_03 = [["X", 3.0]] }
+
+[[clip]]
+name = "kellermutter/t_stagger"    # heavy hit on the weak spot: the forebody buckles, the sac shudders
+keyframe = "keyposes"
+markers = { "sound:kellermutter_hit" = 1 }
+[clip.params]
+base = "kellermutter/s_idle"
+keys = [[0, "rest"], [6, "buckle"], [14, "shudder"], [22, "buckle"], [40, "rest"]]
+[clip.params.poses.buckle]
+move = { pelvis = [0, 0.05, -0.30] }
+rotate = { pelvis = [["X", 8], ["Y", 6]], head = [["X", 20]], arm_upper_l = [["X", 30], ["Z", -10]], arm_upper_r = [["X", 30], ["Z", 10]], arm_lower_l = [["X", 30]], arm_lower_r = [["X", 30]], claw_l = [["X", 20]], claw_r = [["X", 20]], leg_1_upper_l = [["Y", -15]], leg_1_upper_r = [["Y", 15]], leg_2_upper_l = [["Y", -15]], leg_2_upper_r = [["Y", 15]], sac = [["X", -8]], abdomen_03 = [["X", -4.0]] }
+[clip.params.poses.shudder]
+move = { pelvis = [0, 0.05, -0.25] }
+rotate = { pelvis = [["X", 6], ["Y", -5]], head = [["X", 15]], arm_upper_l = [["X", 25], ["Z", -10]], arm_upper_r = [["X", 25], ["Z", 10]], arm_lower_l = [["X", 30]], arm_lower_r = [["X", 30]], claw_l = [["X", 20]], claw_r = [["X", 20]], leg_1_upper_l = [["Y", -12]], leg_1_upper_r = [["Y", 12]], leg_2_upper_l = [["Y", -12]], leg_2_upper_r = [["Y", 12]], sac = [["X", 8]], abdomen_03 = [["X", 4.0]] }
+
+[[clip]]
+name = "kellermutter/t_die"        # collapses forwards, the scythes fall, the glow goes out (engine)
+keyframe = "keyposes"
+markers = { "sound:kellermutter_die" = 2 }
+[clip.params]
+keys = [[0, "rest"], [14, "sag"], [34, "down"], [50, "down"]]
+[clip.params.poses.sag]
+move = { pelvis = [0, 0, -0.35] }
+rotate = { pelvis = [["X", 8]], head = [["X", 20]], arm_upper_l = [["X", 30], ["Z", 15]], arm_upper_r = [["X", 30], ["Z", -15]], arm_lower_l = [["X", 30]], arm_lower_r = [["X", 30]], claw_l = [["X", 20]], claw_r = [["X", 20]], leg_1_upper_l = [["Y", -15]], leg_1_upper_r = [["Y", 15]], leg_2_upper_l = [["Y", -15]], leg_2_upper_r = [["Y", 15]] }
+[clip.params.poses.down]
+move = { pelvis = [0, 0, -0.85] }
+rotate = { pelvis = [["X", 12], ["Y", 8]], head = [["X", 30]], arm_upper_l = [["X", 50], ["Z", 30]], arm_upper_r = [["X", 50], ["Z", -30]], arm_lower_l = [["X", 40]], arm_lower_r = [["X", 40]], claw_l = [["X", 30]], claw_r = [["X", 30]], leg_1_upper_l = [["Y", -40]], leg_1_upper_r = [["Y", 40]], leg_2_upper_l = [["Y", -40]], leg_2_upper_r = [["Y", 40]], leg_1_lower_l = [["Y", 50]], leg_1_lower_r = [["Y", -50]], leg_2_lower_l = [["Y", 50]], leg_2_lower_r = [["Y", -50]], sac = [["X", -6]], abdomen_03 = [["X", -3.0]] }
+
+# --- behaviour ---
+
+[[clip]]
+name = "kellermutter/s_eat"        # tears at something on the ground with the pincers (loop)
+keyframe = "keyposes"
+[clip.params]
+base = "kellermutter/s_rest"
+keys = [[0, "down"], [15, "tear"], [30, "down"], [45, "tear"], [60, "down"]]
+[clip.params.poses.down]
+move = { pelvis = [0, 0, -0.20] }
+rotate = { pelvis = [["X", 10]], head = [["X", 25]], mandible_l = [["Z", 20]], mandible_r = [["Z", -20]], arm_upper_l = [["X", 20], ["Z", -10]], arm_upper_r = [["X", 20], ["Z", 10]], arm_lower_l = [["X", 20]], arm_lower_r = [["X", 20]], claw_l = [["X", 10]], claw_r = [["X", 10]] }
+[clip.params.poses.tear]
+move = { pelvis = [0, 0.06, -0.18] }
+rotate = { pelvis = [["X", 8]], head = [["X", 15], ["Z", 8]], mandible_l = [["Z", -10]], mandible_r = [["Z", 10]], arm_upper_l = [["X", 10], ["Z", -10]], arm_upper_r = [["X", 10], ["Z", 10]], arm_lower_l = [["X", 20]], arm_lower_r = [["X", 20]], claw_l = [["X", 10]], claw_r = [["X", 10]] }
+
+[[clip]]
+name = "kellermutter/s_dormant"    # crouched over the hoard (zs_dormant), scythes folded, head bowed
+keyframe = "keyposes"
+[clip.params]
+base = "kellermutter/s_rest"
+keys = [[0, "crouch"], [60, "crouch"]]
+[clip.params.poses.crouch]
+rotate = { arm_upper_l = [["X", 35], ["Z", -10]], arm_upper_r = [["X", 35], ["Z", 10]], arm_lower_l = [["X", 40]], arm_lower_r = [["X", 40]], claw_l = [["X", 30]], claw_r = [["X", 30]], head = [["X", 18]], leg_1_upper_l = [["Y", -22]], leg_1_upper_r = [["Y", 22]], leg_2_upper_l = [["Y", -22]], leg_2_upper_r = [["Y", 22]], leg_1_lower_l = [["Y", 12]], leg_1_lower_r = [["Y", -12]], leg_2_lower_l = [["Y", 12]], leg_2_lower_r = [["Y", -12]], sac = [["X", 3]], abdomen_03 = [["X", 1.5]] }
+move = { pelvis = [0, 0, -0.55] }
+
+[[clip]]
+name = "kellermutter/s_sleep"      # the same pose (minimum set)
+keyframe = "keyposes"
+[clip.params]
+base = "kellermutter/s_rest"
+keys = [[0, "crouch"], [60, "crouch"]]
+[clip.params.poses.crouch]
+rotate = { arm_upper_l = [["X", 35], ["Z", -10]], arm_upper_r = [["X", 35], ["Z", 10]], arm_lower_l = [["X", 40]], arm_lower_r = [["X", 40]], claw_l = [["X", 30]], claw_r = [["X", 30]], head = [["X", 18]], leg_1_upper_l = [["Y", -22]], leg_1_upper_r = [["Y", 22]], leg_2_upper_l = [["Y", -22]], leg_2_upper_r = [["Y", 22]], leg_1_lower_l = [["Y", 12]], leg_1_lower_r = [["Y", -12]], leg_2_lower_l = [["Y", 12]], leg_2_lower_r = [["Y", -12]], sac = [["X", 3]], abdomen_03 = [["X", 1.5]] }
+move = { pelvis = [0, 0, -0.55] }
+
+[[clip]]
+name = "kellermutter/t_wake"       # rises, unfolds the scythes, the crown lifts
+keyframe = "keyposes"
+markers = { "sound:kellermutter_threaten" = 14 }
+[clip.params]
+base = "kellermutter/s_rest"
+keys = [[0, "crouch"], [16, "half"], [34, "rest"]]
+[clip.params.poses.crouch]
+rotate = { arm_upper_l = [["X", 35], ["Z", -10]], arm_upper_r = [["X", 35], ["Z", 10]], arm_lower_l = [["X", 40]], arm_lower_r = [["X", 40]], claw_l = [["X", 30]], claw_r = [["X", 30]], head = [["X", 18]], leg_1_upper_l = [["Y", -22]], leg_1_upper_r = [["Y", 22]], leg_2_upper_l = [["Y", -22]], leg_2_upper_r = [["Y", 22]], leg_1_lower_l = [["Y", 12]], leg_1_lower_r = [["Y", -12]], leg_2_lower_l = [["Y", 12]], leg_2_lower_r = [["Y", -12]], sac = [["X", 3]], abdomen_03 = [["X", 1.5]] }
+move = { pelvis = [0, 0, -0.55] }
+[clip.params.poses.half]
+move = { pelvis = [0, 0, -0.25] }
+rotate = { arm_upper_l = [["X", -10]], arm_upper_r = [["X", -10]], arm_lower_l = [["X", 10]], arm_lower_r = [["X", 10]], claw_l = [["X", 10]], claw_r = [["X", 10]], head = [["X", -6]], leg_1_upper_l = [["Y", -10]], leg_1_upper_r = [["Y", 10]], leg_2_upper_l = [["Y", -10]], leg_2_upper_r = [["Y", 10]] }
+
+[[clip]]
+name = "kellermutter/t_threaten"   # rears up, scythes spread wide, shrieks
+keyframe = "keyposes"
+markers = { "sound:kellermutter_threaten" = 10 }
+[clip.params]
+base = "kellermutter/s_idle"
+keys = [[0, "rest"], [12, "rear"], [30, "rear"], [44, "rest"]]
+[clip.params.poses.rear]
+move = { pelvis = [0, 0.15, 0.25] }
+rotate = { pelvis = [["X", -16]], head = [["X", -15]], mandible_l = [["Z", 30]], mandible_r = [["Z", -30]], arm_upper_l = [["X", -40], ["Z", 25]], arm_upper_r = [["X", -40], ["Z", -25]], arm_lower_l = [["X", -30]], arm_lower_r = [["X", -30]], claw_l = [["X", -20]], claw_r = [["X", -20]], sac = [["X", -6]], abdomen_03 = [["X", -3.0]] }
+
+[[clip]]
+name = "kellermutter/t_call"       # throws the head back and calls the brood out of the walls (spawn_brood)
+keyframe = "keyposes"
+markers = { spawn_brood = 20, "sound:kellermutter_call" = 16 }
+[clip.params]
+base = "kellermutter/s_idle"
+keys = [[0, "rest"], [12, "draw"], [20, "call"], [36, "call"], [50, "rest"]]
+[clip.params.poses.draw]
+move = { pelvis = [0, 0.05, -0.10] }
+rotate = { head = [["X", 15]], arm_upper_l = [["X", 15], ["Z", -10]], arm_upper_r = [["X", 15], ["Z", 10]], arm_lower_l = [["X", 20]], arm_lower_r = [["X", 20]], claw_l = [["X", 10]], claw_r = [["X", 10]], sac = [["X", 4]], abdomen_03 = [["X", 2.0]] }
+[clip.params.poses.call]
+move = { pelvis = [0, 0.05, 0.15] }
+rotate = { pelvis = [["X", -10]], neck_01 = [["X", -15]], head = [["X", -25]], mandible_l = [["Z", 35]], mandible_r = [["Z", -35]], arm_upper_l = [["X", -30], ["Z", 30]], arm_upper_r = [["X", -30], ["Z", -30]], arm_lower_l = [["X", -20]], arm_lower_r = [["X", -20]], claw_l = [["X", -10]], claw_r = [["X", -10]], sac = [["X", -10]], abdomen_03 = [["X", -5.0]] }
+
+[[clip]]
+name = "kellermutter/t_rage"       # phase change: thrashes, scythes clash, the sac heaves
+keyframe = "keyposes"
+markers = { "sound:kellermutter_threaten" = 4, "sound:kellermutter_call" = 24 }
+[clip.params]
+base = "kellermutter/s_idle"
+keys = [[0, "rest"], [8, "thrash_l"], [16, "thrash_r"], [24, "clash"], [32, "thrash_l"], [48, "rest"]]
+[clip.params.poses.thrash_l]
+move = { pelvis = [0, 0.05, 0.10] }
+rotate = { pelvis = [["X", -10], ["Z", 12]], head = [["X", -10], ["Z", 15]], arm_upper_l = [["X", -35], ["Z", 30]], arm_upper_r = [["X", -35], ["Z", -30]], arm_lower_l = [["X", -20]], arm_lower_r = [["X", -20]], claw_l = [["X", -10]], claw_r = [["X", -10]], sac = [["X", -10]], abdomen_03 = [["X", -5.0]] }
+[clip.params.poses.thrash_r]
+move = { pelvis = [0, 0.05, 0.10] }
+rotate = { pelvis = [["X", -10], ["Z", -12]], head = [["X", -10], ["Z", -15]], arm_upper_l = [["X", -35], ["Z", 30]], arm_upper_r = [["X", -35], ["Z", -30]], arm_lower_l = [["X", -20]], arm_lower_r = [["X", -20]], claw_l = [["X", -10]], claw_r = [["X", -10]], sac = [["X", 10]], abdomen_03 = [["X", 5.0]] }
+[clip.params.poses.clash]
+move = { pelvis = [0, 0.05, 0.15] }
+rotate = { pelvis = [["X", -14]], head = [["X", -20]], arm_upper_l = [["X", -25], ["Z", -15]], arm_upper_r = [["X", -25], ["Z", 15]], arm_lower_l = [["X", -10]], arm_lower_r = [["X", -10]], claw_l = [["X", 0]], claw_r = [["X", 0]], sac = [["X", -12]], abdomen_03 = [["X", -6.0]] }
+
+[[clip]]
+name = "kellermutter/s_guard"      # over the treasure: low, scythes ready, head turning (loop)
+keyframe = "keyposes"
+[clip.params]
+base = "kellermutter/s_rest"
+keys = [[0, "guard_l"], [40, "guard_r"], [80, "guard_l"]]
+[clip.params.poses.guard_l]
+move = { pelvis = [0, 0, -0.20] }
+rotate = { head = [["Z", 12]], arm_upper_l = [["X", -25], ["Z", 10]], arm_upper_r = [["X", -25], ["Z", -10]], arm_lower_l = [["X", -10]], arm_lower_r = [["X", -10]], claw_l = [["X", -5]], claw_r = [["X", -5]], sac = [["X", -4]], abdomen_03 = [["X", -2.0]] }
+[clip.params.poses.guard_r]
+move = { pelvis = [0, 0, -0.20] }
+rotate = { head = [["Z", -12]], arm_upper_l = [["X", -25], ["Z", 10]], arm_upper_r = [["X", -25], ["Z", -10]], arm_lower_l = [["X", -10]], arm_lower_r = [["X", -10]], claw_l = [["X", -5]], claw_r = [["X", -5]], sac = [["X", 4]], abdomen_03 = [["X", 2.0]] }

@@ -144,8 +144,16 @@ struct GltfMarker
 {
     std::string name;
     Mat4 world{1.0f};
+    /// The node's `extras` as JSON text (Blender's custom properties, dungeon D7: `targets`, `action` ...);
+    /// empty if it has none.
+    std::string extras;
 };
 /// The nodes without a mesh whose name starts with `prefix`, in scene order (self-contained data only).
 [[nodiscard]] Result<std::vector<GltfMarker>>
 loadGltfMarkers(std::span<const u8> bytes, std::string_view prefix, std::string_view debugName = "<memory>");
+/// The nodes with a mesh whose `extras` hold the key `extrasKey` (dungeon D7: `mover` on a gate's mesh), in
+/// scene order, with their extras.
+[[nodiscard]] Result<std::vector<GltfMarker>> loadGltfMeshExtras(std::span<const u8> bytes,
+                                                                 std::string_view extrasKey,
+                                                                 std::string_view debugName = "<memory>");
 } // namespace g7::asset

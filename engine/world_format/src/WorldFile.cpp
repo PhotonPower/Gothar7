@@ -1230,7 +1230,7 @@ Result<std::vector<Zone>> readZones(const Reader& r, const Json& z)
         {
             zone.value = e["value"].get<std::string>();
         }
-        if (zone.type != "indoor" && zone.type != "music" && zone.type != "ambient")
+        if (zone.type != "indoor" && zone.type != "music" && zone.type != "ambient" && zone.type != "fog")
         {
             zone.json = e.dump();
             zones.push_back(std::move(zone));
@@ -1242,6 +1242,7 @@ Result<std::vector<Zone>> readZones(const Reader& r, const Json& z)
                                               zone.type == "indoor" ? "n" : "", zone.type,
                                               zone.type == "indoor"  ? "the room"
                                               : zone.type == "music" ? "the music theme"
+                                              : zone.type == "fog"   ? "a name"
                                                                      : "the ambience"));
         }
         if (!e.contains("box") || !e["box"].is_object())
@@ -1267,6 +1268,31 @@ Result<std::vector<Zone>> readZones(const Reader& r, const Json& z)
             return r.error(at + ".halfExtents", "must be positive");
         }
         zone.box = ZoneBox{center.value(), half.value(), yaw.value()};
+        if (zone.type == "fog")
+        {
+            // Dungeon D7b: the fog of the zone.
+            ZoneFog fog;
+            if (!e.contains("color"))
+            {
+                return r.error(where, "a fog zone needs 'color' (sRGB 0..1)");
+            }
+            auto color = r.vec3(e, "color", where, fog.color);
+            auto distance = r.number(e, "distance", where, fog.distance);
+            auto start = r.number(e, "start", where, fog.start);
+            auto fade = r.number(e, "fade", where, fog.fade);
+            if (!color || !distance || !start || !fade)
+            {
+                return !color      ? color.error()
+                       : !distance ? distance.error()
+                       : !start    ? start.error()
+                                   : fade.error();
+            }
+            if (!(distance.value() > start.value()) || start.value() < 0.0f || fade.value() < 0.0f)
+            {
+                return r.error(where, "fog needs 0 <= 'start' < 'distance' and 'fade' >= 0");
+            }
+            zone.fog = ZoneFog{color.value(), distance.value(), start.value(), fade.value()};
+        }
         if (e.contains("daylight"))
         {
             if (zone.type != "indoor")
@@ -1479,6 +1505,53 @@ Result<WorldFile> parseWorldFile(std::string_view text, std::string_view source)
         }
         world.zones = std::move(zones).value();
     }
+    if (root.contains("environment"))
+    {
+        // Dungeon D7b: a world without sky, with its own light and fog.
+        const Json& e = root["environment"];
+        if (!e.is_object())
+        {
+            return r.error("environment", "must be an object");
+        }
+        if (e.contains("sky") && (!e["sky"].is_boolean() || e["sky"].get<bool>()))
+        {
+            return r.error("environment.sky", "must be false (a world with sky leaves the block out)");
+        }
+        if (!e.contains("ambient"))
+        {
+            return r.error("environment", "needs 'ambient' (sRGB 0..1)");
+        }
+        WorldEnvironment env;
+        auto ambient = r.vec3(e, "ambient", "environment", env.ambient);
+        auto fogColor = r.vec3(e, "fog_color", "environment", env.fogColor);
+        auto fogStart = r.number(e, "fog_start", "environment", env.fogStart);
+        auto fogDistance = r.number(e, "fog_distance", "environment", env.fogDistance);
+        if (!ambient || !fogColor || !fogStart || !fogDistance)
+        {
+            return !ambient    ? ambient.error()
+                   : !fogColor ? fogColor.error()
+                   : !fogStart ? fogStart.error()
+                               : fogDistance.error();
+        }
+        if (!(fogDistance.value() > fogStart.value()) || fogStart.value() < 0.0f)
+        {
+            return r.error("environment", "needs 0 <= 'fog_start' < 'fog_distance'");
+        }
+        env.ambient = ambient.value();
+        env.fogColor = fogColor.value();
+        env.fogStart = fogStart.value();
+        env.fogDistance = fogDistance.value();
+        if (e.contains("ambient_ground"))
+        {
+            auto ground = r.vec3(e, "ambient_ground", "environment", Vec3(0.0f));
+            if (!ground)
+            {
+                return ground.error();
+            }
+            env.ambientGround = ground.value();
+        }
+        world.environment = env;
+    }
     if (root.contains("generator"))
     {
         // A hint for the editor only (world.md): kept as it is, and a broken or stale entry never fails
@@ -1523,6 +1596,41 @@ bool zoneContains(const ZoneBox& box, const Vec3& point) noexcept
     const Vec3 local(d.x * c - d.z * s, d.y, d.x * s + d.z * c);
     return std::abs(local.x) <= box.halfExtents.x && std::abs(local.y) <= box.halfExtents.y &&
            std::abs(local.z) <= box.halfExtents.z;
+}
+
+f32 zoneDistance(const ZoneBox& box, const Vec3& point) noexcept
+{
+    const Vec3 d = point - box.center;
+    const f32 yaw = glm::radians(box.yawDegrees);
+    const f32 c = std::cos(yaw);
+    const f32 s = std::sin(yaw);
+    const Vec3 local(d.x * c - d.z * s, d.y, d.x * s + d.z * c);
+    return glm::length(glm::max(glm::abs(local) - box.halfExtents, Vec3(0.0f)));
+}
+
+const Zone* fogZoneAt(std::span<const Zone> zones, const Vec3& point, f32& weight) noexcept
+{
+    weight = 0.0f;
+    if (const Zone* inside = smallestZone(zones, "fog", point); inside != nullptr && inside->fog)
+    {
+        weight = 1.0f;
+        return inside;
+    }
+    const Zone* best = nullptr;
+    for (const Zone& z : zones)
+    {
+        if (z.type != "fog" || !z.box || !z.fog || !(z.fog->fade > 0.0f))
+        {
+            continue;
+        }
+        const f32 w = 1.0f - zoneDistance(*z.box, point) / z.fog->fade;
+        if (w > weight)
+        {
+            weight = w;
+            best = &z;
+        }
+    }
+    return best;
 }
 
 const Zone* smallestZone(std::span<const Zone> zones, std::string_view type, const Vec3& point,
@@ -1592,9 +1700,14 @@ Result<void> checkZone(const Zone& zone, std::string_view where)
     {
         return Error{std::format("{}: needs 'type'", where)};
     }
-    if (zone.type != "indoor" && zone.type != "music" && zone.type != "ambient")
+    if (zone.type != "indoor" && zone.type != "music" && zone.type != "ambient" && zone.type != "fog")
     {
         return {}; // kept as it is
+    }
+    if (zone.type == "fog" && (!zone.fog || !(zone.fog->distance > zone.fog->start) ||
+                               zone.fog->start < 0.0f || zone.fog->fade < 0.0f))
+    {
+        return Error{std::format("{}: a fog zone needs its fog (0 <= start < distance, fade >= 0)", where)};
     }
     if (zone.value.empty())
     {
@@ -1888,6 +2001,21 @@ std::string writeWorldFile(const WorldFile& world)
         root["generator"] = Json::parse(world.generatorJson, nullptr, false);
     }
     root["staticMeshes"] = world.staticMeshes;
+    if (world.environment)
+    {
+        const WorldEnvironment& e = *world.environment;
+        Json env = Json::object();
+        env["sky"] = false;
+        env["ambient"] = numbers({e.ambient.x, e.ambient.y, e.ambient.z});
+        if (e.ambientGround)
+        {
+            env["ambient_ground"] = numbers({e.ambientGround->x, e.ambientGround->y, e.ambientGround->z});
+        }
+        env["fog_color"] = numbers({e.fogColor.x, e.fogColor.y, e.fogColor.z});
+        env["fog_start"] = tidy(e.fogStart);
+        env["fog_distance"] = tidy(e.fogDistance);
+        root["environment"] = std::move(env);
+    }
     if (world.terrain)
     {
         const TerrainRef& t = *world.terrain;
@@ -2035,6 +2163,14 @@ std::string writeWorldFile(const WorldFile& world)
                        ",\"box\":{\"center\":" + dumpJson(box["center"]) +
                        ",\"halfExtents\":" + dumpJson(box["halfExtents"]) +
                        ",\"yaw\":" + dumpJson(box["yaw"]) + "}";
+                if (z.fog)
+                {
+                    const ZoneFog& f = *z.fog;
+                    line += ",\"color\":" + dumpJson(numbers({f.color.x, f.color.y, f.color.z})) +
+                            ",\"distance\":" + dumpJson(Json(tidy(f.distance))) +
+                            ",\"start\":" + dumpJson(Json(tidy(f.start))) +
+                            ",\"fade\":" + dumpJson(Json(tidy(f.fade)));
+                }
                 if (z.daylight)
                 {
                     line += ",\"daylight\":" +

@@ -124,6 +124,10 @@ world::Zone newZone(std::string type, std::string value, const Vec3& centre)
     z.type = std::move(type);
     z.value = std::move(value);
     z.box = world::ZoneBox{centre, half, 0.0f};
+    if (z.type == "fog")
+    {
+        z.fog = world::ZoneFog{Vec3(0.55f, 0.57f, 0.6f), 15.0f, 0.0f, 3.0f}; // dungeon D7b: a grey haze
+    }
     return z;
 }
 
