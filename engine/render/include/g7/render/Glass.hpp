@@ -39,4 +39,15 @@ struct GlassLook
     asset::GlassPattern pattern = asset::GlassPattern::Bullseye;
     Vec3 tint = asset::kDefaultGlassTint;
 };
+
+/// M17 windows F1b (decision 4): at night the panes glow warm where a light burns behind them. In the rooms
+/// of the world (indoor zones near the camera) that is their own lights (candle, hearth); every other window
+/// row (house, storey and side) is lit by chance, by the share of people still awake at that hour. The glow
+/// shows by how dark it is outside.
+/// Share of the window rows still lit at `hours` (0..24, wraps): most in the evening, few after midnight,
+/// some again before sunrise, none to speak of by day (then the night factor hides it anyway).
+[[nodiscard]] f32 windowsAwake(f32 hours) noexcept;
+/// How dark it is outside for the glow, 0 by day .. 1 at night, from the height of the sun (the y of the
+/// direction towards it): fading in from a little above the horizon to a little below.
+[[nodiscard]] f32 windowGlowNight(f32 sunHeight) noexcept;
 } // namespace g7::render

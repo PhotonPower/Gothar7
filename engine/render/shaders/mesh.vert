@@ -22,6 +22,7 @@ out vec3 vWorldPosition;
 out vec3 vNormal;
 out vec4 vTangent;
 out vec2 vUv;
+flat out vec3 vOrigin; // the model's origin in the world (M17 windows F1b: which house a pane belongs to)
 #ifdef SKINNED
 // M17 part G: the bones whose weights count as the glowing hand (bit j of word j / 32; render::FigureGlow).
 uniform int uGlowBones[4];
@@ -65,6 +66,7 @@ void main()
     vNormal = worldNormal;
     vTangent = vec4(worldTangent, aTangent.w);
     vUv = aUv;
+    vOrigin = model[3].xyz;
     vWorldPosition = world;
     gl_Position = uViewProjection * vec4(world, 1.0);
 }

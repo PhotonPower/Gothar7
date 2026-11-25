@@ -69,6 +69,12 @@ struct Environment
     /// glass, and the stage of window reflections (off: glass drawn like any material).
     Vec3 skyZenith{0.04f, 0.03f, 0.05f};
     WindowReflections windowReflections = WindowReflections::Off;
+    /// M17 windows F1b: the warm glow of the panes at night - the share of window rows lit by chance
+    /// (render::windowsAwake), how dark it is outside (render::windowGlowNight; 0: no glow) and a running
+    /// time in seconds for the flames' flicker.
+    f32 windowsAwake = 0.0f;
+    f32 windowGlowNight = 0.0f;
+    f32 glassTime = 0.0f;
 };
 
 inline constexpr u32 kMaxIndoorVolumes = 32;
@@ -166,13 +172,14 @@ struct GpuLighting
     Mat4 rainMapViewProjection; ///< M17 N: world -> rain map (depth 0 top .. 1)
     Vec4 wetParams;             ///< x wetness, y has rain map, z puddles
     Vec4 skyZenith; ///< M17 windows F1: rgb the zenith colour, w window reflections (0 off .. 3 high)
+    Vec4 glassGlow; ///< M17 windows F1b: x windows awake, y night (0 no glow), z time (s)
     std::array<Vec4, 2 * kMaxIndoorVolumes>
         indoorBoxes; ///< per room: centre + cos yaw, half extents + sin yaw
     std::array<Vec4, kMaxIndoorVolumes / 4> indoorAmbient; ///< per room its ambient factor, four to a vec4
     std::array<Vec4, LightList::kMaxPerFrame> pointPositionRadius;
     std::array<Vec4, LightList::kMaxPerFrame> pointColor; ///< rgb * intensity
 };
-static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64 + 2 * 16 +
+static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64 + 3 * 16 +
                                          2 * 16 * kMaxIndoorVolumes + 4 * kMaxIndoorVolumes +
                                          2 * 16 * LightList::kMaxPerFrame,
               "must match std140 (common/lighting.glsl)");
