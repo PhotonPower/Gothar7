@@ -799,8 +799,11 @@ eigenen Aufnahmen.
     - Die Prüfung (`check`) meldet Dinge außerhalb des Raums, Überschneidungen, Möbel auf der Laufbahn
       (`doorT` ± 1,2 m) oder den Wegen zu Portal und Turm, Hohes vor Fenstern, Plätze auf Möbeln, zu viele Lichter;
       `assemble` bricht dann ab.
-  - **Licht:** je Raum Tageslicht am ersten Fenster (Hofseite zuerst), Herdfeuer, Kerzen auf den Tischen, Laternen
-    bzw. im Keller Fackeln; höchstens 4 je Raum, im Festsaal 6; eine Laterne an jedem Absatz des Turms.
+  - **Licht:** Tageslicht an den Fenstern etwa alle `windowLightEveryM` (4,5 m) entlang des Raums, abwechselnd Hof- und
+    Gartenseite, am jeweils nächsten Fenster (Koordinator 2026-11-25); Herdfeuer, Kerzen auf den Tischen, Laternen bzw.
+    im Keller Fackeln (der Keller hat keine Fenster und bleibt dunkel); höchstens `roomLights` 8 je Raum (die Engine
+    beleuchtet ein Modell mit höchstens 8 Lichtern), die Fensterlichter füllen das Budget nur auf; eine Laterne an jedem
+    Absatz des Turms.
   - **Riesenfass** im Weinkeller an der Trennwand zum Verlies: Front `WALL_SCHLOSS_FASS` (`mesh` mit `mover`,
     `secret_wall`, schwenkt um das Scharnier: `offset` 0, `axis` +Y, `angle` −95°, 2,5 s, geschlossen) und
     daneben der schiefe Fackelhalter `LEVER_SCHLOSS_FASS` (Mob `lever`, `targets` [`WALL_SCHLOSS_FASS`], `toggle`,
@@ -820,7 +823,7 @@ eigenen Aufnahmen.
     `schloss_kueche` – die Klänge dazu legt engine in `ambient.toml` an. Musik: das Schloss liegt in `STADT`.
   - **Innenlicht:** `castle_inside.json` `daylight` (Raum → 0..1) setzt `daylight` an der Innenzone, wo die Ableitung
     der Engine aus den Fensterlichtern nicht passt (world.md „Zonen“): Schreibstube 0,35, Wachstube (Schießscharten)
-    0,15. Fensterlichter der Häuser liegen immer in einer Box ihrer Innenzone (sonst 0,1 m hinein geklemmt, z. B. an
+    0,15, die Räume des OG 0,5 (Fenster nur zum Hof). Fensterlichter der Häuser liegen immer in einer Box ihrer Innenzone (sonst 0,1 m hinein geklemmt, z. B. an
     schrägen Wänden; `WINDOW_LIGHT_IN_M` bleibt).
 - **Texturen (W7):** wie die Häuser (`textures/models.py`): `gothar-worldgen schloss` liest die Modelle aus Blender
   nach, gibt jedem Eckpunkt Texturkoordinaten in Metern (Wände entlang und hoch, flache Flächen entlang des Hauptbaus,
@@ -832,6 +835,7 @@ eigenen Aufnahmen.
 - **Balkendecken (W7, Koordinator 2026-11-25):** EG und OG haben Putzdecken mit Holzbalken quer zum Flügel wie in den
   Häusern (`interior.beams` in `schloss.json`: 0,24 × 0,26 m, gleichmäßig etwa alle 1,1 m je Raum, `timber_dark`,
   ohne Kollision über Kopfhöhe); so bleiben die Decken zwischen den Wandlaternen lesbar. Räume zusammen 2312 Dreiecke.
+  Der OG-Boden ist helles Dielenholz (`timber_floor`, neuer Palettenwert 0,28/0,18/0,10, Textur `boards`).
 
 ### W-E4 Marktbrunnen (`gothar-worldgen marktbrunnen <ort>`, W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Das Modell, das der Projektinhaber selbst aus

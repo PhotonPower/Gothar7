@@ -176,7 +176,12 @@ def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
 
 
 ROOM_PREFIX = "schloss_"  # the rooms' items: ``schloss_<storey>_<room>`` and ``schloss_turm``
-WOOD_FLOORS = ("timber_dark", "oak", "pine")  # floor materials one walks on as on wood
+WOOD_FLOORS = (
+    "timber_dark",
+    "timber_floor",
+    "oak",
+    "pine",
+)  # floor materials one walks on as on wood
 
 
 def schloss_room_items(spec: dict[str, Any], mesh: str) -> list[dict[str, Any]]:
