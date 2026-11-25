@@ -7,6 +7,7 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <format>
@@ -101,9 +102,8 @@ TEST_CASE(
     CHECK(distanceTo(engine, "npc_leo_castle_guard_night", "FP_STAND_LEO_SCHLOSS_HALLE_01") < 1.5f);
 }
 
-TEST_CASE(
-    "Leonberg castle: in the morning the scribe sits in the writing room, the cook stands at the hearth "
-    "(with the generated town)")
+TEST_CASE("Leonberg castle: in the morning the scribe sits in the writing room, the cook stirs at the hearth "
+          "(with the generated town)")
 {
     if (!std::filesystem::exists(kGenerated))
     {
@@ -116,6 +116,28 @@ TEST_CASE(
     CHECK(run(engine, "npc_state('npc_leo_castle_scribe').mob").asString() == "table"); // zs_sit_table
     CHECK(distanceTo(engine, "npc_leo_castle_scribe", "WP_LEO_SCHLOSS_SCHREIBSTUBE") < 6.0f);
     CHECK(distanceTo(engine, "npc_leo_castle_cook", "FP_COOK_LEO_SCHLOSS_KUECHE_01") < 1.5f);
+    CHECK(run(engine, "npc_state('npc_leo_castle_cook').state").asString() == "zs_cook");
+    MESSAGE("cook: ", std::string(run(engine, "npc_state('npc_leo_castle_cook').animation").asString()));
+    CHECK(run(engine, "npc_state('npc_leo_castle_cook').animation").asString().starts_with("amb_cook"));
     CHECK(distanceTo(engine, "npc_leo_castle_guard_day", "FP_STAND_LEO_SCHLOSS_HALLE_01") < 1.5f);
+    CHECK(engine.scripts()->callErrors() == 0);
+}
+
+TEST_CASE("Leonberg castle: in the afternoon the scribe reads at a lectern in the library (with the "
+          "generated town)")
+{
+    if (!std::filesystem::exists(kGenerated))
+    {
+        MESSAGE("skipped: Leonberg's generated files are not here");
+        return;
+    }
+    Engine engine(castleConfig("14:30"));
+    REQUIRE(engine.init().ok());
+    playCastle(engine, 30.0f);
+    CHECK(run(engine, "npc_state('npc_leo_castle_scribe').state").asString() == "zs_read");
+    MESSAGE("scribe: ", std::string(run(engine, "npc_state('npc_leo_castle_scribe').animation").asString()));
+    CHECK(run(engine, "npc_state('npc_leo_castle_scribe').animation").asString().starts_with("amb_read"));
+    CHECK(std::min(distanceTo(engine, "npc_leo_castle_scribe", "FP_READ_LEO_SCHLOSS_BIBLIOTHEK_01"),
+                   distanceTo(engine, "npc_leo_castle_scribe", "FP_READ_LEO_SCHLOSS_BIBLIOTHEK_02")) < 1.5f);
     CHECK(engine.scripts()->callErrors() == 0);
 }

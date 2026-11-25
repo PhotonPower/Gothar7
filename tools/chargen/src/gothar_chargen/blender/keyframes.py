@@ -580,6 +580,9 @@ def _gait_body(rig: RigInfo, g: Gait, frame: int, dz: float = 0.0, phi: float = 
         for i, bone in enumerate(g.tail.bones):
             angle = g.tail.degrees * math.sin(cycle - 2 * math.pi * g.tail.phase * (i + 1))
             rig.rotate(pose, bone, [("X", angle)])
+    if g.sway is not None:  # lizards (§7.6): body and tail wave about the vertical
+        for i, bone in enumerate(g.sway.bones):
+            rig.rotate(pose, bone, [("Z", g.sway.angle(i, cycle))])
     return pose
 
 
@@ -607,10 +610,22 @@ def _splay_gait(rig: RigInfo, g: Gait) -> Curves:
         low = rig.tail[leg.lower] - rig.world(rest, leg.lower).translation
         plane[leg.upper] = (h, h.cross(up), (u.dot(h), u.z), (low.dot(h), low.z), foot)
 
-    def bend(bone: str, axis: Vector, radians: float, yaw: float = 0.0) -> Quaternion:
+    def bend(
+        bone: str, axis: Vector, radians: float, yaw: float = 0.0, parent: Quaternion | None = None
+    ) -> Quaternion:
+        """Pose channel for a world rotation; ``parent``: the parent's world turn (sway), undone
+        so the leg is placed in the world and not dragged along by the swaying body."""
         r = rig.rest[bone]
         world = Quaternion(up, yaw) @ Quaternion(axis, radians)
+        if parent is not None:
+            world = parent.inverted() @ world
         return r.inverted() @ world @ r
+
+    def turned(pose: Pose, bone: str) -> Quaternion | None:
+        name = rig.parent[bone]
+        if name is None:
+            return None
+        return rig.world(pose, name).to_quaternion() @ rig.rest[name].inverted()
 
     worst = 1.0
     poses = []
@@ -630,7 +645,7 @@ def _splay_gait(rig: RigInfo, g: Gait) -> Curves:
                 worst = min(worst, reached)
             swing = ((frame / g.period - leg.phase - g.duty) % 1.0) / (1.0 - g.duty)
             curl = 0.0 if planted else math.radians(leg.curl) * math.sin(math.pi * swing)
-            pose[leg.upper] = (bend(leg.upper, axis, alpha, -yaw), None)
+            pose[leg.upper] = (bend(leg.upper, axis, alpha, -yaw, turned(pose, leg.upper)), None)
             pose[leg.lower] = (bend(leg.lower, axis, beta), None)
             pose[leg.foot] = (bend(leg.foot, axis, curl - alpha - beta), None)
         poses.append(pose)

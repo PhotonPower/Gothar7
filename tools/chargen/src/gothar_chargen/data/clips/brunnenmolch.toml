@@ -1,0 +1,303 @@
+# Set "brunnenmolch" (blind giant cave newt of the dungeon; lizard plan, characters-pipeline.md §7.6)
+# -> monsters/brunnenmolch/anims/brunnenmolch.glb
+# Own creature (gothar-chargen creature brunnenmolch, 2026-11-24): the clip source only holds the
+# still action "rest". Walk and run are own gait cycles with splayed legs and the body and tail
+# waving sideways (`sway`: rotation about the vertical only, the root motion stays straight along
+# +Z); everything else is keyframed. He does not swim (owner 2026-11-24): s_dormant lies flat, half
+# under water in the shallows or at the bank (`zs_dormant`), t_wake surfaces (event splash),
+# t_snap_up snaps up at the hero on the jetty in place (the pelvis rises in the clip, no root
+# motion; hit at socket_mouth) and t_submerge sinks back into s_dormant. Blind: t_listen.
+#
+# Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches the head
+# down, opens the jaw and lifts the tail; Y swings a leg pointing sideways up or down (-Y lifts the
+# left leg); +Z turns left and swings a left leg backwards) and move root/pelvis.
+
+set = "brunnenmolch"
+rig = "brunnenmolch"
+
+[sources.src]
+file = "brunnenmolch_clips.blend"
+mapping = "identity"
+
+[[clip]]
+name = "brunnenmolch/s_rest"
+from = "src:rest"
+helper = true
+
+[[clip]]
+name = "brunnenmolch/s_idle"          # breathing, gills waving, the head turns slowly as it listens
+keyframe = "keyposes"
+[clip.params]
+base = "brunnenmolch/s_rest"
+keys = [[0, "rest"], [15, "a"], [30, "rest"], [45, "b"], [60, "rest"]]
+[clip.params.poses.a]
+move = { pelvis = [0, 0, 0.004] }
+rotate = { gill_l = [["Z", 14]], gill_r = [["Z", -14]], neck_01 = [["Z", 4]], head = [["Z", 3], ["X", -2]], jaw = [["X", 2]], tail_03 = [["Z", 4]], tail_05 = [["Z", 5]] }
+[clip.params.poses.b]
+rotate = { gill_l = [["Z", -12]], gill_r = [["Z", 12]], neck_01 = [["Z", -4]], head = [["Z", -3]], tail_03 = [["Z", -4]], tail_05 = [["Z", -5]] }
+
+# --- locomotion (root moves forward along +Z: contract §7.1) ---
+
+[[clip]]
+name = "brunnenmolch/s_walk"         # slow sprawling walk, body and tail wave from side to side
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 0.6
+period = 24                          # phases and duty on whole frames
+duty = 0.75
+lift = 0.06
+splay = true
+sway = { bones = ["pelvis", "spine_01", "spine_02", "spine_03", "tail_01", "tail_02", "tail_03", "tail_04", "tail_05", "tail_06"], degrees = [5, -3, -2, -2, 3, 3, 3, 3, 4, 4], lag = 0.06 }
+pose = { gill_l = [["Z", -6]], gill_r = [["Z", 6]] }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 20 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = 20 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 20 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = 20 },
+]
+
+[[clip]]
+name = "brunnenmolch/s_run"          # hurried trot (diagonal pairs), strong waves
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 1.8
+period = 12
+duty = 0.5
+lift = 0.08
+splay = true
+bob = 0.006
+sway = { bones = ["pelvis", "spine_01", "spine_02", "spine_03", "tail_01", "tail_02", "tail_03", "tail_04", "tail_05", "tail_06"], degrees = [8, -5, -3, -3, 5, 5, 5, 5, 6, 6], lag = 0.06 }
+pose = { gill_l = [["Z", -15]], gill_r = [["Z", 15]], neck_01 = [["X", -3]] }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 20 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.5, curl = 20 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 20 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.0, curl = 20 },
+]
+
+[[clip]]
+name = "brunnenmolch/s_step_inplace" # base of the turns
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 24
+duty = 0.75
+lift = 0.05
+splay = true
+sway = { bones = ["pelvis", "spine_01", "spine_02", "spine_03", "tail_01", "tail_02", "tail_03", "tail_04", "tail_05", "tail_06"], degrees = [3, -2, -1, -1, 2, 2, 2, 2, 2, 2], lag = 0.06 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 20 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = 20 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 20 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = 20 },
+]
+
+[[clip]]
+name = "brunnenmolch/t_turn_l"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "brunnenmolch/s_step_inplace"
+keys = [[0, "rest"], [36, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", 90]] }
+
+[[clip]]
+name = "brunnenmolch/t_turn_r"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "brunnenmolch/s_step_inplace"
+keys = [[0, "rest"], [36, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", -90]] }
+
+# --- combat ---
+
+[[clip]]
+name = "brunnenmolch/t_attack_1"      # lunges forward and snaps the wide mouth shut
+keyframe = "keyposes"
+markers = { hit_start = 12, hit_end = 16, "sound:brunnenmolch_attack" = 6 }
+[clip.params]
+base = "brunnenmolch/s_idle"
+keys = [[0, "rest"], [8, "gape"], [13, "lunge"], [16, "snap"], [30, "rest"]]
+[clip.params.poses.gape]
+move = { pelvis = [0, 0.06, -0.01] }
+rotate = { gill_l = [["Z", -12]], gill_r = [["Z", 12]], spine_03 = [["X", -4]], neck_01 = [["X", -8]], head = [["X", -10]], jaw = [["X", 30]], tail_02 = [["Z", 8]] }
+[clip.params.poses.lunge]
+move = { pelvis = [0, -0.22, 0.02] }
+rotate = { gill_l = [["Z", -12]], gill_r = [["Z", 12]], spine_03 = [["X", 2]], neck_01 = [["X", 2]], head = [["X", -6]], jaw = [["X", 38]], front_upper_l = [["Y", -15]], front_upper_r = [["Y", 15]] }
+[clip.params.poses.snap]
+move = { pelvis = [0, -0.2, 0] }
+rotate = { gill_l = [["Z", -12]], gill_r = [["Z", 12]], neck_01 = [["X", 4]], head = [["X", 6]], jaw = [["X", 0]] }
+
+[[clip]]
+name = "brunnenmolch/t_attack_2"      # swings the head round and bites sideways, the tail swings the other way
+keyframe = "keyposes"
+markers = { hit_start = 13, hit_end = 19, "sound:brunnenmolch_attack" = 7 }
+[clip.params]
+base = "brunnenmolch/s_idle"
+keys = [[0, "rest"], [8, "wind"], [15, "sweep"], [19, "bite"], [34, "rest"]]
+[clip.params.poses.wind]
+rotate = { spine_02 = [["Z", 8]], spine_03 = [["Z", 10]], neck_01 = [["Z", 18]], head = [["Z", 10]], jaw = [["X", 30]], tail_01 = [["Z", -10]], tail_02 = [["Z", -10]], tail_03 = [["Z", -10]] }
+[clip.params.poses.sweep]
+move = { pelvis = [0, -0.08, 0] }
+rotate = { spine_02 = [["Z", -6]], spine_03 = [["Z", -8]], neck_01 = [["Z", -16]], head = [["Z", -10]], jaw = [["X", 34]], tail_01 = [["Z", 12]], tail_02 = [["Z", 12]], tail_03 = [["Z", 10]] }
+[clip.params.poses.bite]
+move = { pelvis = [0, -0.08, 0] }
+rotate = { spine_02 = [["Z", -8]], spine_03 = [["Z", -10]], neck_01 = [["Z", -20]], head = [["Z", -12], ["X", 4]], jaw = [["X", 0]], tail_01 = [["Z", 12]], tail_02 = [["Z", 14]], tail_03 = [["Z", 12]] }
+
+[[clip]]
+name = "brunnenmolch/t_hit"           # flinches, head jerks back, tail lashes
+keyframe = "keyposes"
+markers = { "sound:brunnenmolch_hit" = 1 }
+[clip.params]
+base = "brunnenmolch/s_idle"
+keys = [[0, "rest"], [4, "flinch"], [18, "rest"]]
+[clip.params.poses.flinch]
+move = { pelvis = [0, 0.06, 0.01] }
+rotate = { spine_03 = [["X", -6], ["Z", 6]], neck_01 = [["X", -12]], head = [["X", -10], ["Z", 8]], jaw = [["X", 20]], gill_l = [["Z", -25]], gill_r = [["Z", 25]], tail_02 = [["Z", 15]], tail_04 = [["Z", 15]] }
+
+[[clip]]
+name = "brunnenmolch/t_die"           # writhes, collapses flat and rolls half onto its side
+keyframe = "keyposes"
+markers = { "sound:brunnenmolch_die" = 2 }
+[clip.params]
+keys = [[0, "rest"], [8, "writhe"], [20, "fall"], [36, "dead"]]
+[clip.params.poses.writhe]
+move = { pelvis = [0, 0, 0.02] }
+rotate = { spine_02 = [["Z", -14]], neck_01 = [["X", -20], ["Z", -10]], head = [["X", -10]], jaw = [["X", 30]], tail_02 = [["Z", 25]], tail_04 = [["Z", 20]] }
+[clip.params.poses.fall]
+move = { pelvis = [0, 0, -0.06] }
+rotate = { pelvis = [["Y", 8]], spine_02 = [["Z", 10]], neck_01 = [["Z", 14], ["X", 6]], head = [["X", 6]], jaw = [["X", 18]], front_upper_l = [["Y", -25], ["Z", 20]], front_upper_r = [["Y", 10], ["Z", -30]], back_upper_l = [["Y", -25], ["Z", -20]], back_upper_r = [["Y", 10], ["Z", 20]], gill_l = [["Z", 20]], gill_r = [["Z", -20]], tail_02 = [["Z", -12]], tail_03 = [["Z", -14]], tail_04 = [["Z", -10]], tail_05 = [["Z", -8]] }
+[clip.params.poses.dead]
+move = { pelvis = [0, 0, -0.04] }
+rotate = { pelvis = [["Y", 18]], spine_02 = [["Z", 10]], neck_01 = [["Z", 14], ["X", 6]], head = [["X", 6]], jaw = [["X", 18]], front_upper_l = [["Y", -25], ["Z", 20]], front_upper_r = [["Y", 10], ["Z", -30]], back_upper_l = [["Y", -25], ["Z", -20]], back_upper_r = [["Y", 10], ["Z", 20]], gill_l = [["Z", 20]], gill_r = [["Z", -20]], tail_02 = [["Z", -12]], tail_03 = [["Z", -14]], tail_04 = [["Z", -10]], tail_05 = [["Z", -8]] }
+
+# --- behaviour ---
+
+[[clip]]
+name = "brunnenmolch/s_eat"           # head down at its prey, biting and gulping (loop)
+keyframe = "keyposes"
+[clip.params]
+base = "brunnenmolch/s_idle"
+keys = [[0, "bite"], [12, "gulp"], [24, "bite"], [40, "chew"], [60, "bite"]]
+[clip.params.poses.bite]
+move = { pelvis = [0, -0.03, -0.02] }
+rotate = { spine_03 = [["X", 4]], neck_01 = [["X", 14]], head = [["X", 10]], jaw = [["X", 24]] }
+[clip.params.poses.gulp]
+move = { pelvis = [0, 0.02, -0.01] }
+rotate = { gill_l = [["Z", 14]], gill_r = [["Z", -14]], spine_03 = [["X", 2]], neck_01 = [["X", 4]], head = [["X", -8]], jaw = [["X", 2]] }
+[clip.params.poses.chew]
+move = { pelvis = [0, 0, -0.015] }
+rotate = { gill_l = [["Z", -12]], gill_r = [["Z", 12]], spine_03 = [["X", 3]], neck_01 = [["X", 8]], head = [["X", 2], ["Z", 4]], jaw = [["X", 8]] }
+
+[[clip]]
+name = "brunnenmolch/s_sleep"         # lies flat on its belly, legs tucked back, slow breathing
+keyframe = "keyposes"
+[clip.params]
+base = "brunnenmolch/s_rest"
+keys = [[0, "flat"], [30, "breathe"], [60, "flat"]]
+[clip.params.poses.flat]
+move = { pelvis = [0, 0, -0.09] }
+rotate = { front_upper_l = [["Z", 55], ["Y", -20]], front_upper_r = [["Z", -55], ["Y", 20]], front_lower_l = [["Y", -30]], front_lower_r = [["Y", 30]], back_upper_l = [["Z", 50], ["Y", -20]], back_upper_r = [["Z", -50], ["Y", 20]], back_lower_l = [["Y", -30]], back_lower_r = [["Y", 30]], neck_01 = [["X", 4]], head = [["X", 3]], tail_01 = [["X", 3]], tail_02 = [["Z", 3]], tail_03 = [["Z", 3]], tail_04 = [["Z", 2]] }
+[clip.params.poses.breathe]
+move = { pelvis = [0, 0, -0.085] }
+rotate = { front_upper_l = [["Z", 55], ["Y", -20]], front_upper_r = [["Z", -55], ["Y", 20]], front_lower_l = [["Y", -30]], front_lower_r = [["Y", 30]], back_upper_l = [["Z", 50], ["Y", -20]], back_upper_r = [["Z", -50], ["Y", 20]], back_lower_l = [["Y", -30]], back_lower_r = [["Y", 30]], neck_01 = [["X", 4]], head = [["X", 3]], tail_01 = [["X", 3]], tail_02 = [["Z", 3]], tail_03 = [["Z", 3]], tail_04 = [["Z", 2]], gill_l = [["Z", 6]], gill_r = [["Z", -6]] }
+
+[[clip]]
+name = "brunnenmolch/s_dormant"       # lurks flat, half under water in the shallows: only the top of the head and the back above it, gills waving (zs_dormant)
+keyframe = "keyposes"
+[clip.params]
+base = "brunnenmolch/s_rest"
+keys = [[0, "flat"], [20, "gill_f"], [40, "gill_b"], [60, "flat"]]
+[clip.params.poses.flat]
+move = { pelvis = [0, 0, -0.09] }
+rotate = { front_upper_l = [["Z", 55], ["Y", -20]], front_upper_r = [["Z", -55], ["Y", 20]], front_lower_l = [["Y", -30]], front_lower_r = [["Y", 30]], back_upper_l = [["Z", 50], ["Y", -20]], back_upper_r = [["Z", -50], ["Y", 20]], back_lower_l = [["Y", -30]], back_lower_r = [["Y", 30]], neck_01 = [["X", 4]], head = [["X", 3]], tail_01 = [["X", 3]], tail_02 = [["Z", 3]], tail_03 = [["Z", 3]], tail_04 = [["Z", 2]] }
+[clip.params.poses.gill_f]
+move = { pelvis = [0, 0, -0.09] }
+rotate = { front_upper_l = [["Z", 55], ["Y", -20]], front_upper_r = [["Z", -55], ["Y", 20]], front_lower_l = [["Y", -30]], front_lower_r = [["Y", 30]], back_upper_l = [["Z", 50], ["Y", -20]], back_upper_r = [["Z", -50], ["Y", 20]], back_lower_l = [["Y", -30]], back_lower_r = [["Y", 30]], neck_01 = [["X", 4]], head = [["X", 3]], tail_01 = [["X", 3]], tail_02 = [["Z", 3]], tail_03 = [["Z", 3]], tail_04 = [["Z", 2]], gill_l = [["Z", 14]], gill_r = [["Z", -14]], tail_05 = [["Z", 6]] }
+[clip.params.poses.gill_b]
+move = { pelvis = [0, 0, -0.09] }
+rotate = { front_upper_l = [["Z", 55], ["Y", -20]], front_upper_r = [["Z", -55], ["Y", 20]], front_lower_l = [["Y", -30]], front_lower_r = [["Y", 30]], back_upper_l = [["Z", 50], ["Y", -20]], back_upper_r = [["Z", -50], ["Y", 20]], back_lower_l = [["Y", -30]], back_lower_r = [["Y", 30]], neck_01 = [["X", 4]], head = [["X", 3]], tail_01 = [["X", 3]], tail_02 = [["Z", 3]], tail_03 = [["Z", 3]], tail_04 = [["Z", 2]], gill_l = [["Z", -12]], gill_r = [["Z", 12]], tail_05 = [["Z", -4]] }
+
+[[clip]]
+name = "brunnenmolch/t_wake"          # surfaces: head and forebody rise out of the water, legs come under the body
+keyframe = "keyposes"
+markers = { splash = 8 }
+[clip.params]
+base = "brunnenmolch/s_rest"
+keys = [[0, "flat"], [8, "lift"], [20, "rise"], [32, "rest"]]
+[clip.params.poses.flat]
+move = { pelvis = [0, 0, -0.09] }
+rotate = { front_upper_l = [["Z", 55], ["Y", -20]], front_upper_r = [["Z", -55], ["Y", 20]], front_lower_l = [["Y", -30]], front_lower_r = [["Y", 30]], back_upper_l = [["Z", 50], ["Y", -20]], back_upper_r = [["Z", -50], ["Y", 20]], back_lower_l = [["Y", -30]], back_lower_r = [["Y", 30]], neck_01 = [["X", 4]], head = [["X", 3]], tail_01 = [["X", 3]], tail_02 = [["Z", 3]], tail_03 = [["Z", 3]], tail_04 = [["Z", 2]] }
+[clip.params.poses.lift]
+move = { pelvis = [0, 0, -0.07] }
+rotate = { front_upper_l = [["Z", 30], ["Y", -10]], front_upper_r = [["Z", -30], ["Y", 10]], front_lower_l = [["Y", -30]], front_lower_r = [["Y", 30]], back_upper_l = [["Z", 50], ["Y", -20]], back_upper_r = [["Z", -50], ["Y", 20]], back_lower_l = [["Y", -30]], back_lower_r = [["Y", 30]], neck_01 = [["X", -12]], head = [["X", -6]], tail_01 = [["X", 3]], tail_02 = [["Z", 3]], tail_03 = [["Z", 3]], tail_04 = [["Z", 2]], spine_03 = [["X", -6]] }
+[clip.params.poses.rise]
+move = { pelvis = [0, 0, 0.01] }
+rotate = { gill_l = [["Z", 14]], gill_r = [["Z", -14]], spine_03 = [["X", -4]], neck_01 = [["X", -10]], head = [["X", -4]] }
+
+[[clip]]
+name = "brunnenmolch/t_snap_up"       # shoots up out of the water and snaps at the jetty above (in place, pelvis up to 0.5 m)
+keyframe = "keyposes"
+markers = { splash = 9, "sound:brunnenmolch_attack" = 8, hit_start = 14, hit_end = 18 }
+[clip.params]
+base = "brunnenmolch/s_rest"
+keys = [[0, "rest"], [7, "crouch"], [14, "rear"], [17, "snap"], [24, "hold"], [40, "rest"]]
+[clip.params.poses.crouch]
+move = { pelvis = [0, 0.04, -0.06] }
+rotate = { gill_l = [["Z", -12]], gill_r = [["Z", 12]], neck_01 = [["X", 6]], head = [["X", 4]], tail_01 = [["X", 4]] }
+[clip.params.poses.rear]
+move = { pelvis = [0, 0.1, 0.5] }
+rotate = { gill_l = [["Z", -12]], gill_r = [["Z", 12]], pelvis = [["X", -50]], spine_01 = [["X", -6]], spine_02 = [["X", -6]], neck_01 = [["X", 10]], head = [["X", 14]], jaw = [["X", 40]], tail_01 = [["X", 42]], tail_02 = [["X", 6]], front_upper_l = [["Y", -25], ["Z", -25]], front_upper_r = [["Y", 25], ["Z", 25]], back_upper_l = [["Y", 20]], back_upper_r = [["Y", -20]] }
+[clip.params.poses.snap]
+move = { pelvis = [0, 0.1, 0.52] }
+rotate = { gill_l = [["Z", -12]], gill_r = [["Z", 12]], pelvis = [["X", -52]], spine_01 = [["X", -6]], spine_02 = [["X", -4]], neck_01 = [["X", 16]], head = [["X", 22]], jaw = [["X", 0]], tail_01 = [["X", 44]], tail_02 = [["X", 6]], front_upper_l = [["Y", -25], ["Z", -25]], front_upper_r = [["Y", 25], ["Z", 25]], back_upper_l = [["Y", 20]], back_upper_r = [["Y", -20]] }
+[clip.params.poses.hold]
+move = { pelvis = [0, 0.06, 0.25] }
+rotate = { pelvis = [["X", -30]], spine_01 = [["X", -4]], neck_01 = [["X", 12]], head = [["X", 14]], jaw = [["X", 6]], tail_01 = [["X", 26]], front_upper_l = [["Y", -15], ["Z", -15]], front_upper_r = [["Y", 15], ["Z", 15]], back_upper_l = [["Y", 10]], back_upper_r = [["Y", -10]] }
+
+[[clip]]
+name = "brunnenmolch/t_submerge"      # sinks back flat into the water (ends in s_dormant)
+keyframe = "keyposes"
+markers = { splash = 20 }
+[clip.params]
+base = "brunnenmolch/s_rest"
+keys = [[0, "rest"], [12, "dip"], [24, "flat"], [36, "flat"]]
+[clip.params.poses.dip]
+move = { pelvis = [0, 0, -0.05] }
+rotate = { gill_l = [["Z", -12]], gill_r = [["Z", 12]], neck_01 = [["X", 8]], head = [["X", 6]], front_upper_l = [["Z", 25], ["Y", -10]], front_upper_r = [["Z", -25], ["Y", 10]] }
+[clip.params.poses.flat]
+move = { pelvis = [0, 0, -0.09] }
+rotate = { front_upper_l = [["Z", 55], ["Y", -20]], front_upper_r = [["Z", -55], ["Y", 20]], front_lower_l = [["Y", -30]], front_lower_r = [["Y", 30]], back_upper_l = [["Z", 50], ["Y", -20]], back_upper_r = [["Z", -50], ["Y", 20]], back_lower_l = [["Y", -30]], back_lower_r = [["Y", 30]], neck_01 = [["X", 4]], head = [["X", 3]], tail_01 = [["X", 3]], tail_02 = [["Z", 3]], tail_03 = [["Z", 3]], tail_04 = [["Z", 2]] }
+
+[[clip]]
+name = "brunnenmolch/t_threaten"      # rears the head, gapes wide, gills flared, hisses
+keyframe = "keyposes"
+markers = { "sound:brunnenmolch_threaten" = 10 }
+[clip.params]
+base = "brunnenmolch/s_idle"
+keys = [[0, "rest"], [10, "gape"], [26, "gape2"], [34, "gape"], [48, "rest"]]
+[clip.params.poses.gape]
+move = { pelvis = [0, 0.03, 0.03] }
+rotate = { gill_l = [["Z", -20], ["Y", -15]], gill_r = [["Z", 20], ["Y", 15]], spine_03 = [["X", -8]], neck_01 = [["X", -16]], head = [["X", -8]], jaw = [["X", 42]], tail_03 = [["Z", 12]], tail_05 = [["Z", 14]] }
+[clip.params.poses.gape2]
+move = { pelvis = [0, 0.03, 0.035] }
+rotate = { gill_l = [["Z", -24], ["Y", -18]], gill_r = [["Z", 24], ["Y", 18]], spine_03 = [["X", -9]], neck_01 = [["X", -18]], head = [["X", -8], ["Z", 4]], jaw = [["X", 46]], tail_03 = [["Z", -12]], tail_05 = [["Z", -14]] }
+
+[[clip]]
+name = "brunnenmolch/t_listen"        # blind: lifts the head and listens, turning it from side to side
+keyframe = "keyposes"
+[clip.params]
+base = "brunnenmolch/s_idle"
+keys = [[0, "rest"], [10, "up"], [22, "left"], [36, "right"], [46, "up"], [56, "rest"]]
+[clip.params.poses.up]
+rotate = { gill_l = [["Z", 14]], gill_r = [["Z", -14]], spine_03 = [["X", -5]], neck_01 = [["X", -14]], head = [["X", -4]] }
+[clip.params.poses.left]
+rotate = { gill_l = [["Z", 14]], gill_r = [["Z", -14]], spine_03 = [["X", -5]], neck_01 = [["X", -14], ["Z", 14]], head = [["X", -4], ["Y", -8]] }
+[clip.params.poses.right]
+rotate = { gill_l = [["Z", 10]], gill_r = [["Z", -10]], spine_03 = [["X", -5]], neck_01 = [["X", -14], ["Z", -14]], head = [["X", -4], ["Y", 8]] }

@@ -10,7 +10,7 @@
 
 namespace g7::asset
 {
-/// Cooked static mesh, ".g7mesh" version 4 (ADR 0016), little-endian:
+/// Cooked static mesh, ".g7mesh" version 5 (ADR 0016), little-endian:
 ///
 ///     Header  magic "G7MS", version u32, vertexCount u32, indexCount u32, submeshCount u32,
 ///             materialCount u32, imageCount u32, collisionCount u32, bounds min/max (6 x f32)
@@ -24,11 +24,13 @@ namespace g7::asset
 ///     Collision  kind u8 (0 hull, 1 mesh), pointCount u32, indexCount u32, points (3 x f32),
 ///                indices u32  (version 2; version 1 had "reserved = 0" there and no collision)
 ///     Wind       per material: kind u8 (asset::WindKind), strength f32, pivot 3 x f32 (version 4, M17 W)
+///     Glass      per material: glass u8 (0/1), pattern u8 (asset::GlassPattern), tint 3 x f32
+///                (version 5, M17 windows F1)
 ///
 /// In meshes written by g7-cook, image uris are VFS paths from the archive root (the cooker resolves
 /// "../textures/x.png" once, since the VFS rejects ".."), and encoded bytes are empty.
 inline constexpr char kMeshMagic[4] = {'G', '7', 'M', 'S'};
-inline constexpr u32 kMeshVersion = 4; // 3: LOD level per submesh; 4: wind per material
+inline constexpr u32 kMeshVersion = 5; // 3: LOD level per submesh; 4: wind per material; 5: glass
 /// Oldest version still read (no collision parts).
 inline constexpr u32 kMeshMinVersion = 1;
 

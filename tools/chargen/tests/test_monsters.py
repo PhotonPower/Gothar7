@@ -59,6 +59,7 @@ def test_packaged_wolf_rig(wolf_rig):
     assert packaged_species() == [
         "beinhauswart",
         "bergleu",
+        "brunnenmolch",
         "gatterbock",
         "glemsmahr",
         "keiler",
@@ -206,6 +207,7 @@ def test_invalid_monster_sets(data, message):
         ("mauerschlupfer", 28, 15),
         ("kellermutter", 35, 20),
         ("beinhauswart", 29, 14),
+        ("brunnenmolch", 29, 17),
     ],
 )
 def test_monster_files_pass(species, bones, clips):
@@ -344,6 +346,7 @@ def test_validate_command_picks_rig_per_file(capsys):
         ("mauerschlupfer", "capsule_lying"),
         ("kellermutter", "capsule_lying"),
         ("beinhauswart", "capsule_upright"),
+        ("brunnenmolch", "capsule_lying"),
     ],
 )
 def test_collision_matches_mesh(species, shape):
@@ -409,6 +412,7 @@ def test_sound_events_for_m13():
         "wolf", "keiler", "laufvogel", "schinder",
         "quaderbuckel", "glemsmahr", "bergleu", "gatterbock",
         "mauerkriecher", "kristallkrebs", "mauerschlupfer", "kellermutter", "beinhauswart",
+        "brunnenmolch",
     )  # fmt: skip
     for art in species:
         clips = {c.name: dict(c.markers) for c in load_set_spec(art).clips}
@@ -460,3 +464,36 @@ def test_crab_walks_sideways():
         keys = g.accessor(anim["samplers"][ch["sampler"]]["output"])
         moved = keys[-1] - keys[0]
         assert moved[0] > 0.2 and abs(moved[2]) < 0.01, anim["name"]
+
+
+def test_newt_lurks_and_sways():
+    """§7.6: the Brunnenmolch walks along +Z with the body waving sideways (rotation only), snaps up
+    and wakes in place (events splash), gills and splayed legs stay out of the capsule."""
+    rig = load_rig(species="brunnenmolch")
+    assert {"gill_l", "gill_r", "jaw", "tail_06", "spine_03"} <= set(rig.names)
+    assert rig.collision is not None and rig.collision.radius < 0.25
+    spec = {c.name: c for c in load_set_spec("brunnenmolch").clips}
+    for name in ("t_wake", "t_snap_up", "t_submerge"):
+        assert "splash" in dict(spec[f"brunnenmolch/{name}"].markers), name
+    assert "sway" in spec["brunnenmolch/s_walk"].param
+    g = Gltf.load(MONSTERS / "brunnenmolch/anims/brunnenmolch.glb")
+    nodes = g.list("nodes")
+    root = next(i for i, n in enumerate(nodes) if n.get("name") == "root")
+    for anim in g.list("animations"):
+        clip = anim["name"].split("|")[0]
+        ch = next(
+            (
+                c
+                for c in anim["channels"]
+                if c["target"].get("node") == root and c["target"]["path"] == "translation"
+            ),
+            None,
+        )
+        if ch is None:
+            continue
+        keys = g.accessor(anim["samplers"][ch["sampler"]]["output"])
+        moved = keys[-1] - keys[0]
+        if clip in ("brunnenmolch/s_walk", "brunnenmolch/s_run"):
+            assert moved[2] > 0.2 and abs(moved[0]) < 0.01, clip  # straight along +Z
+        else:
+            assert abs(moved).max() < 0.01, clip  # in place

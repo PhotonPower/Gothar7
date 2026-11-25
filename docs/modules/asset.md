@@ -136,6 +136,8 @@ Result<MeshData> deserializeMesh(std::span<const u8>, std::string_view debugName
   **Kollisionsteile** (Format im Header-Kommentar; die Anzahl steht im früher reservierten Header-Feld). Version 1
   (ohne Kollision) wird weiter gelesen. Gleiche Daten ergeben gleiche Bytes. Der Cooker (`kCookerVersion` 2) kocht
   dadurch einmal alles neu.
+- Version 3: Detailstufe je Submesh; Version 4 (M17 W): Wind je Material; **Version 5** (M17 Fenster F1): Glas je Material
+  (`glass` u8, Muster u8, Tönung 3 × f32; ältere Dateien: kein Glas). `kCookerVersion` 8 kocht dafür einmal alles neu.
 - Beim Lesen wird geprüft: Zähler passen in die Datei (vor dem Anlegen von Speicher), Indizes im Vertex-Bereich,
   Submeshes im Index-Bereich, Material- und Bildverweise gültig, Alpha-Modus bekannt, keine Rest-Bytes.
 - Bildverweise in gekochten Meshes sind VFS-Pfade ab der Wurzel (`textures/wood.png`), eingebettete Bytes leer.

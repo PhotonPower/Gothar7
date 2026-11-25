@@ -375,8 +375,13 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   in `data/creatures.lua`, Instanzen `mon_gatterbock`/`mon_mauerschlupfer` (`npcs/dungeon.lua`, Platzhalterwerte).
   Jede Art mit Graph kann jetzt eingesetzt werden (nicht mehr nur Wolf, Keiler, Laufvogel).
 - **Mauerkriecher** (figuren #440): Graph wie der Gatterbock, Erwachen = `t_emerge` (aus der Ritze), Rudel laufend
-  (`pack_gait`/`chase_gait` "run"), Instanz `mon_mauerkriecher` (für Spawn-Marker mit `count` 3–6). **Offen:** Einrollen bei
-  schweren Treffern (`t_curl` → `s_curled` → `t_uncurl`, Schutz von oben) braucht Kampf-Logik.
+  (`pack_gait`/`chase_gait` "run"), Instanz `mon_mauerkriecher` (für Spawn-Marker mit `count` 3–6). **Einrollen**
+  (2026-11-24): `Creatures.<art>.curl = { share, seconds, damage_factor, belly_degrees }` – ein Treffer
+  (Nahkampf, Geschoss, Zauber) ab `share` × `hp_max` (Kriecher 0,25) rollt ihn ein: Graph-Bool `curled` (`t_curl` → `s_curled` → `t_uncurl`),
+  `seconds` (4 s) still ohne KI, kein Taumeln/Rückstoß, Schaden × `damage_factor` (0,25) durch den Panzer – außer
+  am **weichen Bauch**: Nahkampf und Geschosse von vorn (bis `belly_degrees` = 45° neben seiner Blickrichtung) gehen
+  voll durch, Zauber treffen immer den Panzer; Lua-Ereignis `npc_curled(npc)`. Werte vom Projektinhaber bestätigt
+  (2026-11-24, Bauch-Variante 2026-11-25); dass Fäuste den flachen Kriecher nicht treffen (der Schwung geht über ihn hinweg), ist gewollt.
 - **Kellermutter** (Boss, figuren #471): Graph wie der Mauerkriecher (Erwachen `t_wake`; Aktionen 9 `t_call`,
   10 `t_rage`, 11 `t_stagger`; Bool `guard` für `s_guard`), Kapsel r 1,0 / h 2,4, Instanz `mon_kellermutter` (Beute
   `it_scythe_claw` ×2, `it_brood_gland`, noch ohne Modell). Ablauf in `ai/kellermutter.lua`, Werte in

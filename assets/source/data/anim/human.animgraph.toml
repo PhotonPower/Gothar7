@@ -28,6 +28,7 @@ sets = [
     "characters/anims/human/church.glb",
     "characters/anims/human/music.glb",
     "characters/anims/human/dungeon.glb",
+    "characters/anims/human/house.glb",
 ]
 start = "move"
 # Abspielrate = Parameter / Eigengeschwindigkeit der Clips (`speed` in <set>.events.toml), damit die Füße nicht
@@ -421,6 +422,32 @@ clip = "amb/s_play_lute_sit"
 [[state]]
 name = "amb_play_lute_sit_out"
 clip = "amb/t_play_lute_sit_out"
+
+# Hausarbeit (figuren house.glb): am Pult lesen (FP_READ, sound:page_turn), am Herd rühren (FP_COOK, it_ladle per
+# item_to_hand/item_from_hand, sound:cook_stir).
+[[state]]
+name = "amb_read_in"
+clip = "amb/t_read_in"
+
+[[state]]
+name = "amb_read"
+clip = "amb/s_read"
+
+[[state]]
+name = "amb_read_out"
+clip = "amb/t_read_out"
+
+[[state]]
+name = "amb_cook_in"
+clip = "amb/t_cook_in"
+
+[[state]]
+name = "amb_cook"
+clip = "amb/s_cook"
+
+[[state]]
+name = "amb_cook_out"
+clip = "amb/t_cook_out"
 
 # Kirche: kniend beten, stehend beten (Mönche), predigen (Event beat ohne Wirkung).
 [[state]]

@@ -190,3 +190,16 @@ mit grünem Licht. Lebendig, kein Untoter.
 - **Technik:** menschenähnliches Rig wie der Gatterbock (§7.1) mit den Trägern `spade` (Spaten als starre Platten)
   und `lantern` (ohne Geometrie, trägt nur `socket_lantern`); Leichentuch als Körperform; lod0 4712 Dreiecke;
   Beschreibung `data/monsters/beinhauswart.creature.toml`.
+
+### Brunnenmolch (gebaut 2026-11-24)
+Blinder Riesen-Höhlenmolch, 2,6 m von der Schnauze bis zur Schwanzspitze: blasse rosaweiße Haut mit Hautfalten an den
+Flanken, flacher breiter Kopf mit weitem Maul, rote, gefiederte Kiemenbüschel, kurze gespreizte Beine (vorn drei Finger,
+hinten zwei Zehen), flacher Ruderschwanz mit Flossensaum. Keine Augen, nur zwei dunkle Flecken unter der Haut.
+- **Verhalten (für engine):** schwimmt nicht (Projektinhaber 2026-11-24). Lauert flach, halb untergetaucht im flachen
+  Wasser der Zisterne bzw. am Ufer (`s_dormant`, `zs_dormant`) und taucht auf (`t_wake`, Event `splash`), wenn er den
+  Helden hört – Schleichen hilft (`t_listen` bei Geräuschen). Schnappt vom Wasser aus senkrecht nach dem Helden auf dem
+  Steg (`t_snap_up` am Ort, Treffer an `socket_mouth`) und sinkt zurück (`t_submerge`); an Land langsam und verletzlich
+  (0,6 / 1,8 m/s), Bisse vorn (`t_attack_1`) und zur Seite (`t_attack_2`). Beute: Molchhaut, Kiemen (Alchemie; Werte in
+  Lua).
+- **Technik:** Echsen-Bauplan (`characters-pipeline.md` §7.6), 29 Knochen; Gang mit gespreizten Beinen und
+  schlängelndem Rumpf und Schwanz (`sway`); lod0 7394 Dreiecke; Beschreibung `data/monsters/brunnenmolch.creature.toml`.

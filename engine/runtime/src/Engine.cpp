@@ -660,6 +660,7 @@ Result<void> Engine::initShaders()
     }
     applySetting("render.weather");
     applySetting("render.rain_quality");
+    applySetting("render.window_reflections");
     applySetting("render.wind");
     applySetting("render.spell_distortion");
     auto debugRenderer = render::DebugDrawRenderer::create(*m_device, *m_shaders);
@@ -2114,6 +2115,8 @@ void Engine::updateEnvironment()
         m_environment.sunIntensity = 0.0f;
     }
     m_sky = sample.sky;
+    m_environment.skyZenith = m_sky.zenith; // M17 windows F1: glass mirrors the sky
+    m_environment.windowReflections = m_windowReflections;
     updateGrading(sample.grading);
     m_waterTime += m_frameSeconds;
 }

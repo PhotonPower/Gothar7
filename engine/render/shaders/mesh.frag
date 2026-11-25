@@ -5,6 +5,7 @@
 #include "common/color.glsl"
 #include "common/lighting.glsl"
 #include "common/fog.glsl"
+#include "common/glass.glsl"
 
 layout(binding = 0) uniform sampler2D uBaseColorTexture; // sRGB; white if none
 layout(binding = 1) uniform sampler2D uNormalTexture;    // linear; flat (0.5, 0.5, 1) if none
@@ -16,6 +17,7 @@ uniform float uNormalScale;
 uniform int uNormalTwoChannel; // 1: BC5 normal map, only X and Y stored
 uniform float uAlphaCutoff;
 uniform vec3 uCameraPosition; // for the fog distance
+uniform vec4 uGlass; // M17 windows F1: x 0 no glass, else 1 + asset::GlassPattern; yzw the tint (linear)
 
 in vec3 vWorldPosition;
 in vec3 vNormal;
@@ -64,6 +66,17 @@ void main()
 #endif
     vec3 albedo = base.rgb;
     vec3 n = surfaceNormal();
+#ifndef SKINNED
+    if (uGlass.x > 0.5 && uLighting.skyZenith.w > 0.5)
+    {
+        // Window glass (render.md "Spiegelnde Fenster"); with window reflections off it is drawn like any material.
+        vec3 glass = glassColor(vWorldPosition, uCameraPosition, n, albedo, uGlass.yzw, int(uGlass.x + 0.5));
+        glass += uEmissive * texture(uEmissiveTexture, vUv).rgb;
+        glass *= shadowDebugTint(vWorldPosition);
+        fragColor = vec4(applyFog(glass, distance(vWorldPosition, uCameraPosition)), base.a);
+        return;
+    }
+#endif
     vec3 glint;
     const vec3 sky = wetSurface(vWorldPosition, albedo, n, glint); // M17 N: rain
     vec3 color = albedo * incomingLight(vWorldPosition, n);

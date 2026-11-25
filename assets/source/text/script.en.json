@@ -1172,6 +1172,12 @@
       "context": "items/tools.lua",
       "status": "entwurf"
     },
+    "it_ladle.name": {
+      "de": "Kelle",
+      "text": "Ladle",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
     "it_letter_council.name": {
       "de": "Versiegelter Brief an den Rat",
       "text": "Sealed Letter to the Council",
