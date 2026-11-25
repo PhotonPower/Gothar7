@@ -76,6 +76,8 @@ struct NpcState
     bool pickpocketed = false;
     bool summoned = false;
     f32 summonSeconds = 0.0f;
+    std::string spawn;    ///< dungeon D6: the spawn marker that put it in (JSON only when set)
+    bool dormant = false; ///< dungeon D6: still resting (JSON only when true)
     friend bool operator==(const NpcState&, const NpcState&) = default;
 };
 

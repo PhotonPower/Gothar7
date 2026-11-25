@@ -272,10 +272,32 @@ Result<AnimationSetData> deserializeAnim(bytes, debugName);
   - `VOB_LIGHT_<NAME>`: Licht. Die Reichweite ist die größte Skalierung des Empty × 5 m (Skalierung 1 → 5 m).
   - `VOB_START_<NAME>`: Startpunkt; die Drehung des Empty ist die Blickrichtung.
   - `VOB_TRIGGER_<NAME>`: Box-Trigger. Die Halbachsen sind die Skalierung des Empty (ein Würfel-Empty der Größe 1
-    hat Halbachsen 1 m). Funktionen und Levelwechsel setzt man danach im Inspektor.
+    hat Halbachsen 1 m). Funktionen und Levelwechsel setzt man danach im Inspektor oder über `extras`.
+  - Dungeon (D7, `dungeon.md`): `VOB_PLATE_<NAME>` (Box-Trigger mit `plate`), `VOB_TELEPORT_<NAME>` (Box-Trigger mit
+    `teleport`), `VOB_RELAY_<NAME>` (Relais), `VOB_SPAWN_<NAME>` (Monster-Marker).
   - Andere Typen meldet der Editor (`Editor::importWarnings`) und lässt sie weg.
+- **`extras` am Knoten** (Blenders benutzerdefinierte Eigenschaften, D7) füllen die Komponente; die Schlüssel heißen wie
+  in der `.g7world`:
+  | Typ | Schlüssel |
+  |---|---|
+  | `TRIGGER` | `onEnter`, `onLeave`, `filter`, `once`, `owner`, `targets`, `action`; Levelwechsel als `world`, `start`, `fall` |
+  | `PLATE` | `targets`, `action`, `once`, `filter`, `weight`, `release_action` |
+  | `TELEPORT` | `to` oder `world` + `start`, `filter`, `visible`, `active`, `yaw`; dazu `targets`, `action`, `once` |
+  | `RELAY` | `mode`, `count`, `delay`, `once`, `invert`, `targets`, `action` |
+  | `SPAWN` | `npc`, `count`, `respawn`, `dormant` |
+  | `LIGHT` | `color`, `range` (statt der Skalierung), `intensity`, `flicker`, `daylight` |
+  - Blender kennt keine Listen von Texten: `targets` darf ein Text `"A, B"` sein (Komma oder Semikolon). Schalter
+    dürfen 0/1 sein, ganze Zahlen auch 2.0.
+  - Unbekannte Schlüssel warnt der Editor und lässt sie weg (Schlüssel mit `_` am Anfang still). Ein falscher Wert
+    (z. B. eine unbekannte `action`) lässt den Vob mit einer Warnung weg; die Prüfungen sind die des Ladens.
+  - `START` nimmt keine `extras`.
+- **Bewegte Teile:** Ein **Mesh-Knoten** mit `extras.mover` macht das platzierte Modell zum bewegten Teil
+  (`components.mover`): entweder nur die Art als Text (`"gate"`, `"secret_wall"`, `"trapdoor"`) oder ein Objekt mit
+  `kind`, `open`, `seconds`, `offset`, `axis`, `angle`, `crush`, `sound_move`, `sound_stop`. Es bewegt sich das ganze
+  Modell; ein Gatter ist also eine eigene `.glb`. Mehrere solche Knoten: der erste gilt, mit Warnung.
 - Lage und Drehung kommen aus dem Knoten im Modellraum (Eltern-Knoten eingerechnet), die Skalierung bemisst nur Reichweite
-  bzw. Volumen. Lesen: `asset::loadGltfMarkers` (nur `.glb`; gekochte `.g7mesh` haben keine leeren Knoten).
+  bzw. Volumen. Lesen: `asset::loadGltfMarkers` (mit `GltfMarker::extras` als JSON-Text) und
+  `asset::loadGltfMeshExtras(bytes, key)` (nur `.glb`; gekochte `.g7mesh` haben keine leeren Knoten und keine `extras`).
 
 ### `TextureData.hpp` – Texturen für den Upload (ADR 0016)
 ```cpp

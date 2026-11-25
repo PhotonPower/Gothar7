@@ -612,8 +612,11 @@ Result<MeshData> loadGltf(std::span<const u8> bytes, const fs::Path& baseDirecto
     return parse(data.get(), bytes, baseDirectory, debugName);
 }
 
-Result<std::vector<GltfMarker>> loadGltfMarkers(std::span<const u8> bytes, std::string_view prefix,
-                                                std::string_view debugName)
+namespace
+{
+/// The nodes of the default scene that `keep` (node, its extras) accepts, with world transforms and extras.
+template <typename Keep>
+Result<std::vector<GltfMarker>> sceneNodes(std::span<const u8> bytes, std::string_view debugName, Keep keep)
 {
     auto data =
         fastgltf::GltfDataBuffer::FromBytes(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
@@ -631,17 +634,39 @@ Result<std::vector<GltfMarker>> loadGltfMarkers(std::span<const u8> bytes, std::
     {
         return markers;
     }
-    // Empty nodes (Blender "Empty", ADR 0023): no mesh, the name says what they are.
-    fastgltf::iterateSceneNodes(asset.value(), asset.value().defaultScene.value_or(0),
-                                fastgltf::math::fmat4x4(),
+    const std::vector<std::string> extras = readNodeExtras(bytes);
+    fastgltf::Asset& a = asset.value();
+    fastgltf::iterateSceneNodes(a, a.defaultScene.value_or(0), fastgltf::math::fmat4x4(),
                                 [&](fastgltf::Node& node, const auto& matrix)
                                 {
+                                    const auto index = static_cast<usize>(&node - a.nodes.data());
+                                    const std::string& nodeExtras =
+                                        index < extras.size() ? extras[index] : std::string();
                                     const std::string_view name(node.name.data(), node.name.size());
-                                    if (!node.meshIndex && name.starts_with(prefix))
+                                    if (keep(node, name, nodeExtras))
                                     {
-                                        markers.push_back({std::string(name), toGlm(matrix)});
+                                        markers.push_back({std::string(name), toGlm(matrix), nodeExtras});
                                     }
                                 });
     return markers;
+}
+} // namespace
+
+Result<std::vector<GltfMarker>> loadGltfMarkers(std::span<const u8> bytes, std::string_view prefix,
+                                                std::string_view debugName)
+{
+    // Empty nodes (Blender "Empty", ADR 0023): no mesh, the name says what they are.
+    return sceneNodes(bytes, debugName,
+                      [&](const fastgltf::Node& node, std::string_view name, const std::string&)
+                      { return !node.meshIndex && name.starts_with(prefix); });
+}
+
+Result<std::vector<GltfMarker>> loadGltfMeshExtras(std::span<const u8> bytes, std::string_view extrasKey,
+                                                   std::string_view debugName)
+{
+    const std::string quoted = "\"" + std::string(extrasKey) + "\"";
+    return sceneNodes(bytes, debugName,
+                      [&](const fastgltf::Node& node, std::string_view, const std::string& extras)
+                      { return node.meshIndex.has_value() && extras.find(quoted) != std::string::npos; });
 }
 } // namespace g7::asset

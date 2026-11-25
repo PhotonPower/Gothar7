@@ -24,7 +24,7 @@ const char* const kWorld = R"({"version": 1, "nextVobId": 2, "vobs": [
   {"type": "music", "value": "LAGER", "box": {"center": [10, 0, 0], "halfExtents": [20, 10, 20], "yaw": 30}},
   {"type": "ambient", "value": "camp", "box": {"center": [10, 0, 0], "halfExtents": [20, 10, 20]}},
   {"type": "indoor", "value": "LEO_SCHMIEDE_S1_INNEN", "box": {"center": [12, 1.5, 2], "halfExtents": [2, 1.5, 3], "yaw": 90}},
-  {"type": "fog", "value": "dense", "density": 0.3}
+  {"type": "smell", "value": "dense", "density": 0.3}
 ]})";
 
 world::WorldFile load()
@@ -93,7 +93,7 @@ TEST_CASE("Zone edit: the smallest zone counts; picking; value lists; labels")
     CHECK(zoneValues("ambient", zones, themes, amb) == std::vector<std::string>{"camp", "wald"});
     CHECK(zoneValues("indoor", zones, themes, amb) == std::vector<std::string>{"LEO_SCHMIEDE_S1_INNEN"});
     CHECK(editableZone(zones[0]));
-    CHECK_FALSE(editableZone(zones[4])); // "fog": shown, kept
+    CHECK_FALSE(editableZone(zones[4])); // "smell": shown, kept
     CHECK(zoneLabel(zones[1]) == "music LAGER (40 x 20 x 40 m)");
     const world::Zone room = newZone("indoor", "LEO_X_Y_INNEN", Vec3(1, 2, 3));
     CHECK(room.box->halfExtents == Vec3(3.0f, 1.5f, 3.0f));

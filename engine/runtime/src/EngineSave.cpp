@@ -134,6 +134,8 @@ Result<save::WorldState> Engine::captureCurrentWorld()
         npc.pickpocketed = c->pickpocketed;
         npc.summoned = c->summoned;
         npc.summonSeconds = c->summoned ? c->summonSeconds : 0.0f;
+        npc.spawn = c->spawn; // dungeon D6
+        npc.dormant = c->dormant;
         state.npcs.push_back(std::move(npc));
     }
     return state;
@@ -303,6 +305,8 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
         c->pickpocketed = saved.pickpocketed;
         c->summoned = saved.summoned;
         c->summonSeconds = saved.summonSeconds;
+        c->spawn = saved.spawn; // dungeon D6
+        c->dormant = saved.dormant;
         if (saved.life == save::Life::Down)
         {
             knockOutRestored(*c, saved.downSeconds);
@@ -315,6 +319,15 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
             {
                 c->body.reset();
             }
+        }
+    }
+    // Dungeon D6: the spawned monsters begin their state anew (resting or awake) - Lua npc_spawned.
+    for (usize i = 0; i < m_creatures.size(); ++i)
+    {
+        const Creature& c = *m_creatures[i];
+        if (!c.spawn.empty() && !c.dead && !c.vanished)
+        {
+            emitSpawned(c, true);
         }
     }
     return {};

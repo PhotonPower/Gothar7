@@ -147,6 +147,8 @@ public:
     [[nodiscard]] u32 debugMessageCount(DebugSeverity severity) const noexcept;
     /// Number of GL errors (GL_DEBUG_TYPE_ERROR) reported through the debug output.
     [[nodiscard]] u32 debugErrorCount() const noexcept { return m_debugErrors; }
+    /// Number of undefined-behaviour reports (GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR; not every driver sends them).
+    [[nodiscard]] u32 debugUndefinedCount() const noexcept { return m_debugUndefined; }
 
     /// Internal: called by the GL debug callback.
     void onDebugMessage(u32 source, u32 type, u32 id, DebugSeverity severity, const char* message);
@@ -194,6 +196,7 @@ private:
     DebugMessageFilter m_filter;
     std::array<u32, 4> m_debugCounts{};
     u32 m_debugErrors = 0;
+    u32 m_debugUndefined = 0;
     FrameStats m_stats;
     StateCache m_cache;
     bool m_framebufferHasStencil = true; // the window framebuffer has 8 stencil bits

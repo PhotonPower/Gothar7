@@ -424,9 +424,24 @@ def _skin(arm: bpy.types.Object, body: bpy.types.Object) -> None:
     bpy.context.view_layer.objects.active = body
     bpy.ops.object.vertex_group_limit_total(group_select_mode="ALL", limit=4)
     bpy.ops.object.vertex_group_normalize_all(group_select_mode="ALL", lock_active=False)
-    unweighted = sum(1 for v in body.data.vertices if not v.groups)
-    if unweighted:
-        raise SystemExit(f"{unweighted} vertices without bone weights (automatic weights failed)")
+    unweighted = [v for v in body.data.vertices if not v.groups]
+    if len(unweighted) > max(20, len(body.data.vertices) // 1000):
+        raise SystemExit(
+            f"{len(unweighted)} vertices without bone weights (automatic weights failed)"
+        )
+    if unweighted:  # a few stray vertices (big creatures): rigid on the nearest deforming bone
+        bones = [b for b in arm.data.bones if b.use_deform and b.name != "root"]
+        for v in unweighted:
+            p = v.co
+
+            def dist(b: bpy.types.Bone, p: Vector = p) -> float:
+                h, t = b.head_local, b.tail_local
+                d = t - h
+                k = max(0.0, min(1.0, (p - h).dot(d) / max(d.length_squared, 1e-12)))
+                return (p - (h + d * k)).length
+
+            body.vertex_groups[min(bones, key=dist).name].add([v.index], 1.0, "REPLACE")
+        print(f"[chargen] {len(unweighted)} vertices without automatic weights: nearest bone")
 
 
 def _mouth(c: Creature) -> Shape | None:

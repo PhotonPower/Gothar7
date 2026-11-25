@@ -6,6 +6,7 @@
 #include <g7/asset/MeshData.hpp>
 
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -13,6 +14,8 @@ namespace g7::asset
 {
 /// The JSON text of a .gltf (all of it) or .glb (chunk 0); empty if a .glb has no JSON chunk.
 [[nodiscard]] std::string_view gltfJsonText(std::span<const u8> bytes) noexcept;
+/// Dungeon D7: the `extras` of every node as JSON text (by node index; empty: none), empty without nodes.
+[[nodiscard]] std::vector<std::string> readNodeExtras(std::span<const u8> bytes);
 /// The extras of the file's materials into `materials` (same order as the file's): M17 W `extras.wind`,
 /// `extras.wind_strength` and `extras.wind_pivot`; M17 windows F1 `extras.glass`, `extras.glass_tint` and
 /// `extras.glass_pattern`. Unknown or malformed values are warned about and fall back to the defaults (still,

@@ -86,6 +86,7 @@ from gothar_worldgen.handmade import (
     schloss_item,
     schloss_room_items,
     splat_areas,
+    texture_schloss,
     with_apron,
     with_garden_plan,
     with_room_items,
@@ -933,6 +934,7 @@ def _cmd_schloss(args: argparse.Namespace, out: TextIO) -> int:
         built.write_text(text, encoding="utf-8", newline="\n")
         line = build_schloss(Path(blender), built, data_dir.parent / "building_rules.json",
                              out_glb, out_blend)  # fmt: skip
+        texture_schloss(spec, out_glb)  # W7: UVs and the houses' textures
         mesh = f"worlds/{site.name}/handmade/schloss/schloss.glb"
         doc = put_item(load_handmade(data_dir / "handmade.json"), schloss_item(spec, mesh))
         doc = with_room_items(doc, schloss_room_items(spec, mesh))  # W7 D1b: a model per room

@@ -91,9 +91,10 @@ std::vector<TriggerIssue> checkTriggers(const world::Scene& scene, const std::ve
             {
                 add(std::format("start point '{}' without a world to change to", t.changeStart));
             }
-            if (t.onEnter.empty() && t.onLeave.empty() && t.changeWorld.empty() && t.owner.empty())
+            if (t.onEnter.empty() && t.onLeave.empty() && t.changeWorld.empty() && t.owner.empty() &&
+                t.targets.empty() && t.targetId.value == 0 && !t.teleport)
             {
-                add("does nothing (no function, no level change, no owner)");
+                add("does nothing (no function, level change, owner, targets or teleport)");
             }
         });
     std::ranges::stable_sort(issues, {}, [](const TriggerIssue& i) { return i.id.value; });

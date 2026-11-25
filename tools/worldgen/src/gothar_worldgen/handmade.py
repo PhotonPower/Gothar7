@@ -243,6 +243,42 @@ def build_schloss(blender: Path, spec_path: Path, rules_path: Path, out_glb: Pat
                         rules_path, out_glb, out_blend)  # fmt: skip
 
 
+SCHLOSS_TEXTURE_ROOT = "../../generated/textures"  # from handmade/schloss/ (like the houses')
+
+
+def texture_schloss(spec: dict[str, Any], out_glb: Path) -> list[Path]:
+    """Textures on the castle and its room models (W7), as on the houses: texture coordinates
+    and the images of ``schloss.json`` ``textures`` (palette material -> kind); the cellar's
+    rooms (``cellar.rooms`` prefix) with their own kinds and darker. Writes the images that
+    are missing into ``generated/textures`` (the buildings step writes them all)."""
+    from gothar_worldgen.textures.apply import write_textures
+    from gothar_worldgen.textures.models import ModelStyle, texture_model
+
+    tex = spec.get("textures")
+    if not tex:
+        return []
+    wing = next((w for w in spec["wings"] if w["key"] == spec.get("interior", {}).get("wing")),
+                spec["wings"][0])  # fmt: skip
+    (ax, az), (bx, bz) = wing["a"], wing["b"]
+    length = math.hypot(bx - ax, bz - az)
+    axis = ((bx - ax) / length, (bz - az) / length)
+    plain = ModelStyle(tex["kinds"], axis=axis, key="schloss")
+    cellar = tex.get("cellar", {})
+    dark = ModelStyle({**tex["kinds"], **cellar.get("kinds", {})}, float(cellar.get("dark", 1.0)),
+                      str(cellar.get("suffix", "")), axis, "schloss")  # fmt: skip
+    prefix = f"schloss_{cellar['rooms']}" if cellar.get("rooms") else None
+    out = []
+    for path in sorted(out_glb.parent.glob("schloss*.glb")):
+        style = dark if prefix and path.name.startswith(prefix) else plain
+        path.write_bytes(texture_model(path.read_bytes(), style, SCHLOSS_TEXTURE_ROOT))
+        out.append(path)
+    images = out_glb.parents[2] / "generated" / "textures"
+    needed = {k for k in [*tex["kinds"].values(), *cellar.get("kinds", {}).values()] if k}
+    if any(not (images / f"{k}_albedo.png").is_file() for k in needed):
+        write_textures(images)
+    return out
+
+
 def build_marktbrunnen(blender: Path, spec_path: Path, rules_path: Path, out_glb: Path,
                        out_blend: Path | None) -> str:  # fmt: skip
     """Runs the fountain's Blender script headless; returns its summary line."""

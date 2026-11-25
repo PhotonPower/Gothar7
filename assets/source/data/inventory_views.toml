@@ -147,6 +147,14 @@ pitch = 0.0
 roll = -45.0
 fill = 0.97
 
+# cooking ladle (FP_COOK): no Lua item yet, like the broom
+[model."items/it_ladle.glb"]
+category = "misc"
+yaw = 0.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95
+
 [model."items/it_lockpick.glb"]
 yaw = 90.0
 pitch = 0.0
@@ -216,6 +224,14 @@ yaw = 90.0
 pitch = 0.0
 roll = -45.0
 fill = 0.95
+
+# the Beinhauswart's lantern (dropped in its rage phase): no Lua item yet, upright, a little from the side
+[model."items/it_lantern_beinhaus.glb"]
+category = "misc"
+yaw = 30.0
+pitch = 10.0
+roll = 0.0
+fill = 0.9
 
 # telekinesis rune: its Lua item comes with engine #404 (category rune); until then the model names it
 [model."items/it_rune_telekinesis.glb"]

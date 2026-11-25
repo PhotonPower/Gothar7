@@ -131,5 +131,10 @@
       "eg": [{"name": "KUECHE", "to": 14.0}, {"name": "SPEISEKAMMER", "to": 20.0}, {"name": "GESINDE", "to": 30.0}, {"name": "HALLE", "to": 55.0}, {"name": "WACHSTUBE", "to": 63.0}, {"name": "SCHREIBSTUBE", "to": 75.0}],
       "og": [{"name": "BIBLIOTHEK", "to": 15.0}, {"name": "KAPELLE", "to": 30.0}, {"name": "FESTSAAL", "to": 60.0}, {"name": "GEMACH", "to": 75.0}]
     }
+  },
+  "textures": {
+    "note": "W7: Texturen wie die Häuser (textures/procedural.py), Palette bleibt die Tönung. Werksteine (Sockel, Eckquader, Gesimse, Gewände, Böden) als Quader (ashlar), Putz, Dach, Holz wie die Häuser; der Keller in Bruchstein und dunkler (cellar: Räume schloss_keller_*)",
+    "kinds": {"plaster_white": "plaster", "stone": "ashlar", "stone_slab": "ashlar", "brick": "stone", "roof_old": "roof", "timber_dark": "timber", "frame": "boards", "hedge": null, "water": null},
+    "cellar": {"rooms": "keller_", "kinds": {"stone": "stone"}, "dark": 0.75, "suffix": "_cellar"}
   }
 }

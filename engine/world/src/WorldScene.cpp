@@ -22,6 +22,7 @@ void applyComponents(Scene& scene, entt::entity e, const WorldFileVob& vob)
     scene.remove<WaterVolume>(e);
     scene.remove<ItemRef>(e);
     scene.remove<Relay>(e);
+    scene.remove<Spawn>(e);
     scene.remove<SurfaceRef>(e);
     scene.remove<Mover>(e);
     switch (vob.type)
@@ -55,6 +56,9 @@ void applyComponents(Scene& scene, entt::entity e, const WorldFileVob& vob)
         break;
     case VobType::Relay:
         scene.set<Relay>(e, vob.relay);
+        break;
+    case VobType::Spawn:
+        scene.set<Spawn>(e, vob.spawn);
         break;
     }
     if (!vob.footstep.empty())
@@ -190,6 +194,11 @@ WorldFileVob captureVob(const Scene& scene, entt::entity e)
     {
         out.type = VobType::Relay;
         out.relay = *relay;
+    }
+    else if (const Spawn* spawn = scene.get<Spawn>(e))
+    {
+        out.type = VobType::Spawn;
+        out.spawn = *spawn;
     }
     if (const SurfaceRef* surface = scene.get<SurfaceRef>(e);
         surface != nullptr && (out.type == VobType::Mesh || out.type == VobType::Mob))

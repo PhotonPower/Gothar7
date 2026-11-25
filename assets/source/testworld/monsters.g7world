@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "name": "monsters",
+  "nextVobId": 10,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_MONSTER","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"mesh","name":"BODEN","pos":[0.0,-1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[80.0,1.0,80.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":3,"type":"spawn","name":"SPAWN_WACHE","pos":[0.0,0.0,-20.0],"rot":[0.0,1.0,0.0,0.0],"components":{"spawn":{"npc":"mon_gatterbock","count":1,"respawn":false,"dormant":true}}},
+    {"id":4,"type":"trigger","name":"TRG_WECKEN","pos":[-15.0,1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.0,1.0,1.0],"filter":"player","once":true,"targets":["SPAWN_WACHE"],"action":"wake"}}},
+    {"id":5,"type":"mob","name":"NISCHE","pos":[15.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[0.6,0.6,0.4],"mesh":"testworld/block.gltf","components":{"mob":{"definition":"niche","targets":["SPAWN_SCHLUPF"],"action":"wake"}}},
+    {"id":6,"type":"spawn","name":"SPAWN_SCHLUPF","pos":[16.5,0.0,0.5],"rot":[0.0,0.0,0.0,1.0],"components":{"spawn":{"npc":"mon_mauerschlupfer","count":1,"respawn":false,"dormant":true}}},
+    {"id":7,"type":"spawn","name":"SPAWN_NEST","pos":[20.0,0.0,25.0],"rot":[0.0,0.0,0.0,1.0],"components":{"spawn":{"npc":"mon_mauerschlupfer","count":2,"respawn":true,"dormant":true}}},
+    {"id":8,"type":"mesh","name":"GATE_FALLE","pos":[0.0,0.0,25.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,0.2],"mesh":"testworld/block.gltf","category":"gameplay","components":{"mover":{"kind":"gate","open":true,"seconds":0.5,"crush":"damage"}}},
+    {"id":9,"type":"start","name":"START_ZURUECK","pos":[-5.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]}
+  ],
+  "waynet": {
+    "points": [
+      {"name": "WP_MONSTER_MITTE", "pos": [0.0, 0.0, 0.0]},
+      {"name": "WP_MONSTER_WACHE", "pos": [0.0, 0.0, -18.0]},
+      {"name": "WP_MONSTER_OST", "pos": [15.0, 0.0, 3.0]},
+      {"name": "WP_MONSTER_NEST", "pos": [20.0, 0.0, 22.0]}
+    ],
+    "edges": [
+      ["WP_MONSTER_MITTE", "WP_MONSTER_WACHE"],
+      ["WP_MONSTER_MITTE", "WP_MONSTER_OST"],
+      ["WP_MONSTER_OST", "WP_MONSTER_NEST"]
+    ],
+    "freepoints": []
+  }
+}
