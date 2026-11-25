@@ -377,6 +377,17 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 - **Mauerkriecher** (figuren #440): Graph wie der Gatterbock, Erwachen = `t_emerge` (aus der Ritze), Rudel laufend
   (`pack_gait`/`chase_gait` "run"), Instanz `mon_mauerkriecher` (für Spawn-Marker mit `count` 3–6). **Offen:** Einrollen bei
   schweren Treffern (`t_curl` → `s_curled` → `t_uncurl`, Schutz von oben) braucht Kampf-Logik.
+- **Kellermutter** (Boss, figuren #471): Graph wie der Mauerkriecher (Erwachen `t_wake`; Aktionen 9 `t_call`,
+  10 `t_rage`, 11 `t_stagger`; Bool `guard` für `s_guard`), Kapsel r 1,0 / h 2,4, Instanz `mon_kellermutter` (Beute
+  `it_scythe_claw` ×2, `it_brood_gland`, noch ohne Modell). Ablauf in `ai/kellermutter.lua`, Werte in
+  `Creatures.kellermutter`: Phase 1 kämpft sie (`zs_mm_attack`); unter `phases.rage` (2/3) tobt sie einmal
+  (`zs_km_rage`) und ruft dann alle `brood.call_seconds` (15 s) ihre Brut (`zs_km_call`, Clip-Event `spawn_brood`:
+  `brood.count` 3 `mon_mauerkriecher` rings um sie, höchstens `brood.max` 6 lebend, sie greifen sofort an); unter
+  `phases.guard` (1/3) geht sie zum Hort (ihr Spawn-Marker) und hütet ihn (`zs_km_guard`, `s_guard`; kommt der Held
+  näher als 6 m, kämpft sie und kehrt danach zurück), und ihre Schwachstelle ist offen (`npc_set_weak`). Mechanik
+  `Creatures.<art>.weak = { degrees, factor, stagger_share }`: offen zählen Nahkampf und Geschosse von hinten (Brutsack,
+  bis 60° neben der Gegenrichtung) doppelt, ab 5 % ihres Lebens taumelt sie (`t_stagger`). Lua: `npc_set_weak`,
+  `npc_weak`, `boss_phase`, `brood_alive`. Noch nicht: `t_scythe_l/r`, Leuchten an `socket_glow`, Klänge.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am

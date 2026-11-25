@@ -151,8 +151,15 @@ bool Engine::creatureAction(u32 id, std::string_view action)
     {
         return false;
     }
-    constexpr std::array<std::pair<std::string_view, i32>, 6> kOnce = {
-        {{"attack_1", 1}, {"attack_2", 2}, {"hit", 3}, {"threaten", 4}, {"wake", 5}, {"steal", 6}}};
+    constexpr std::array<std::pair<std::string_view, i32>, 9> kOnce = {{{"attack_1", 1},
+                                                                        {"attack_2", 2},
+                                                                        {"hit", 3},
+                                                                        {"threaten", 4},
+                                                                        {"wake", 5},
+                                                                        {"steal", 6},
+                                                                        {"call", 9},
+                                                                        {"rage", 10},
+                                                                        {"stagger", 11}}};
     for (const auto& [name, value] : kOnce)
     {
         if (action == name)
@@ -330,6 +337,7 @@ void Engine::fixedUpdateCreatures(f32 seconds)
             a.setFloat("weapon", creatureWeaponAnimation(c)); // fighting: the stance of its weapon (M11)
         }
         a.setBool("eat", c.eat);
+        a.setBool("guard", c.guard); // Kellermutter over its treasure
         a.setBool("sleep", c.sleep);
         a.setBool("dormant", c.rest); // dungeon D6: its resting loop (s_dormant)
         a.setBool("dead", c.dead);

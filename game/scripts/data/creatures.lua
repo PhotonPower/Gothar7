@@ -55,6 +55,21 @@ Creatures = {
         chase_gait = "run",
         body = { shape = "lying", radius = 0.21, length = 0.99, offset = { 0, 0.16, -0.02 } },
     },
+    kellermutter = { -- Boss: Stammmutter der Kriecher über dem Hort, drei Phasen (ai/kellermutter.lua)
+        territory = 15,
+        attack_distance = 25,
+        wake_seconds = 2.0,
+        chase_gait = "run", -- 0,6 / 1,5 m/s
+        body = { shape = "lying", radius = 0.9, length = 5.0, offset = { 0, 1.0, 0.4 } },
+        -- Phasen nach dem Anteil des Lebens: unter rage tobt sie (t_rage) und ruft alle call_seconds die Brut
+        -- (t_call, Event spawn_brood: count Mauerkriecher, höchstens max zugleich); unter guard schleppt sie sich
+        -- zum Hort und schützt ihn (s_guard), die Schwachstelle am Brutsack ist offen.
+        phases = { rage = 2 / 3, guard = 1 / 3 },
+        brood = { npc = "mon_mauerkriecher", count = 3, max = 6, call_seconds = 15 },
+        -- Offene Schwachstelle (Brutsack hinten): Treffer von hinten (bis 60° neben der Gegenrichtung) zählen
+        -- doppelt; ab stagger_share des Lebens taumelt sie (t_stagger).
+        weak = { degrees = 60, factor = 2.0, stagger_share = 0.05 },
+    },
 }
 
 --- Die Werte des Tieres aus Creatures; nil für Menschen (Npc ohne `species`).

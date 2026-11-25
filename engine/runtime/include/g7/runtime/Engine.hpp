@@ -1575,6 +1575,10 @@ private:
     [[nodiscard]] f32 reachOf(const Combatant& c) const;           ///< m beyond the bodies
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
+    /// Creatures.<species>.weak (Kellermutter): while open, a hit coming from `from` behind it counts
+    /// `factor` times; a heavy one makes it stagger (`staggered`).
+    [[nodiscard]] i32 weakSpotDamage(const Combatant& target, i32 damage, const Vec3& from,
+                                     bool& staggered) const;
     void stopForFight(Creature& c);
     /// A save game puts an NPC back knocked out (for `seconds`) or dead (M15).
     void knockOutRestored(Creature& c, f32 seconds);
@@ -2208,6 +2212,13 @@ private:
     gameplay::Fighter m_heroFighter;
     std::map<std::string, gameplay::BodyShape, std::less<>> m_animalBodies; // by species (M11)
     std::set<std::string, std::less<>> m_sidewaysSpecies; // Creatures.<species>.move_axis = "x" (dungeon D6)
+    struct WeakSpot
+    {
+        f32 degrees = 60.0f;      ///< around straight behind it
+        f32 factor = 2.0f;        ///< damage there while open
+        f32 staggerShare = 0.05f; ///< a hit there of this share of hp_max or more: t_stagger
+    };
+    std::map<std::string, WeakSpot, std::less<>> m_weakSpots; // Creatures.<species>.weak (Kellermutter)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline

@@ -86,6 +86,20 @@ Item "it_shears" {
     weight = 0.4,
 }
 
+Item "it_scythe_claw" { -- Beute der Kellermutter (Dungeon); Modell folgt (figuren)
+    name = "Sensenklaue",
+    category = "misc",
+    value = 60,
+    weight = 1.5,
+}
+
+Item "it_brood_gland" { -- Beute der Kellermutter (Dungeon); Modell folgt (figuren)
+    name = "Brutdrüse",
+    category = "misc",
+    value = 80,
+    weight = 0.8,
+}
+
 Item "it_lute" { -- der Musiker spielt sie (zs_play_lute); Wert und Gewicht Platzhalter
     name = "Laute",
     mesh = "items/it_lute.glb",
