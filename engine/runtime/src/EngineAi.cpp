@@ -516,17 +516,29 @@ bool Engine::startCommand(Creature& c)
                                      ? cmd.text
                                      : std::format("amb_{}", cmd.text);
         // Animals (M9 part D): their graphs loop eat and sleep while the flag is set, threaten is an action.
-        if (a != nullptr && !a->hasState(in) && !a->hasState(loop) && a->hasState(cmd.text))
+        // Dungeon D6: "dormant" loops their resting pose (sleeping where the graph has none), "wake" and
+        // "steal" are actions.
+        const std::string played = cmd.text == "dormant" && a != nullptr && !a->hasState("dormant")
+                                       ? std::string("sleep")
+                                       : cmd.text;
+        if (a != nullptr && !a->hasState(in) && !a->hasState(loop) && a->hasState(played))
         {
-            if (cmd.text == "threaten")
+            constexpr std::array<std::pair<std::string_view, i32>, 3> kActions = {
+                {{"threaten", 4}, {"wake", 5}, {"steal", 6}}};
+            for (const auto& [name, value] : kActions)
             {
-                c.action = 4;
-                c.ambient.clear();
-                c.ambientPhase = Creature::AmbientPhase::None;
-                return false;
+                if (played == name)
+                {
+                    c.action = value;
+                    c.rest = c.sleep = c.eat = false;
+                    c.ambient.clear();
+                    c.ambientPhase = Creature::AmbientPhase::None;
+                    return false;
+                }
             }
-            c.eat = cmd.text == "eat";
-            c.sleep = cmd.text == "sleep";
+            c.eat = played == "eat";
+            c.sleep = played == "sleep";
+            c.rest = played == "dormant";
             c.ambientPhase = Creature::AmbientPhase::Loop;
             return false;
         }
@@ -553,15 +565,19 @@ bool Engine::startCommand(Creature& c)
             c.ambientPhase = Creature::AmbientPhase::Out;
             return true;
         }
-        if (a != nullptr && a->hasState("move") && !c.eat && !c.sleep)
+        if (a != nullptr && a->hasState("move") && !c.eat && !c.sleep && !c.rest)
         {
             a->enter("move", 0.25f);
         }
         c.eat = false; // animals: their graph goes back to walking by itself
         c.sleep = false;
+        c.rest = false;
         c.ambient.clear();
         c.ambientPhase = Creature::AmbientPhase::None;
-        c.handItem = nullptr;
+        if (c.heldItem.empty())
+        {
+            c.handItem = nullptr; // what npc_hold gave it stays (a stolen ring in its mouth)
+        }
         return false;
     }
     case Kind::Wait:

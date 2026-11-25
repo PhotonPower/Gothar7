@@ -281,6 +281,15 @@ bool readNpc(Reader& r, const Json& j, const std::string& where, NpcState& n)
     {
         return r.failed(where + ".life", "alive, down, dead or vanished");
     }
+    // Dungeon D6, additive: the spawn marker that put it in, resting.
+    if (j.contains("spawn") && !read(r, j, "spawn", where, n.spawn))
+    {
+        return false;
+    }
+    if (j.contains("dormant") && !read(r, j, "dormant", where, n.dormant))
+    {
+        return false;
+    }
     if (j.contains("character"))
     {
         gameplay::CharacterState c;
@@ -344,6 +353,14 @@ Json worldToJson(const WorldState& w)
                         {"pickpocketed", n.pickpocketed},
                         {"summoned", n.summoned},
                         {"summonSeconds", n.summonSeconds}};
+        if (!n.spawn.empty())
+        {
+            npc["spawn"] = n.spawn; // dungeon D6, additive
+        }
+        if (n.dormant)
+        {
+            npc["dormant"] = true;
+        }
         if (n.character)
         {
             npc["character"] = characterJson(*n.character);

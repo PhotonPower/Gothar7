@@ -5446,5 +5446,27 @@
     ]
    ]
   }
+ },
+ "textures": {
+  "note": "W7: Texturen wie die Häuser (textures/procedural.py), Palette bleibt die Tönung. Werksteine (Sockel, Eckquader, Gesimse, Gewände, Böden) als Quader (ashlar), Putz, Dach, Holz wie die Häuser; der Keller in Bruchstein und dunkler (cellar: Räume schloss_keller_*)",
+  "kinds": {
+   "plaster_white": "plaster",
+   "stone": "ashlar",
+   "stone_slab": "ashlar",
+   "brick": "stone",
+   "roof_old": "roof",
+   "timber_dark": "timber",
+   "frame": "boards",
+   "hedge": null,
+   "water": null
+  },
+  "cellar": {
+   "rooms": "keller_",
+   "kinds": {
+    "stone": "stone"
+   },
+   "dark": 0.75,
+   "suffix": "_cellar"
+  }
  }
 }

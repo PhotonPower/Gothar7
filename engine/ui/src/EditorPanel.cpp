@@ -64,6 +64,9 @@ void field(EditorField& f)
             ImGui::EndCombo();
         }
         break;
+    case EditorField::Kind::Button:
+        f.changed = ImGui::Button(f.label.c_str());
+        break;
     }
     ImGui::PopID();
 }

@@ -226,6 +226,10 @@ void Device::onDebugMessage(u32 source, u32 type, u32 id, DebugSeverity severity
     {
         ++m_debugErrors;
     }
+    if (type == GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR)
+    {
+        ++m_debugUndefined;
+    }
     const DebugKind kind = type == GL_DEBUG_TYPE_ERROR         ? DebugKind::Error
                            : type == GL_DEBUG_TYPE_PERFORMANCE ? DebugKind::Performance
                                                                : DebugKind::Other;

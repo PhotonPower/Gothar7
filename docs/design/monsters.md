@@ -176,6 +176,21 @@ mit Stachelkrone und Glutaugen. Braucht einen Hort mit mindestens 4 m Raumhöhe 
 - **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5) mit `sac`; 35 Knochen; lod0 11744 Dreiecke
   (Boss-Budget bis 12 k); Beschreibung `data/monsters/kellermutter.creature.toml`.
 
+### Beinhauswart (gebaut 2026-11-23)
+Hagerer, gebeugter Totengräber unklarer Art, 2,0 m bis zur Kapuze: graues Leichentuch mit tiefer Kapuze, darin ein
+knöchernes Gesicht mit zwei grünen Lichtpunkten, knöcherne Hände; rechts ein Grabspaten, links eine eiserne Laterne
+mit grünem Licht. Lebendig, kein Untoter.
+- **Verhalten (für engine):** wartet auf den Spaten gestützt an einer Gruft (`s_dormant`, `zs_dormant`) oder geht
+  seine Runde zwischen den Nischen (Gehen 0,8 m/s) und zündet mit der Laterne Lichter an (`s_eat`). Sieht er den
+  Helden, stößt er ihm die Laterne entgegen (`t_threaten`, Event `flash` = Blenden, kurzer Schrecken) und schlägt mit
+  dem Spaten: `t_attack_1` hackt von oben, `t_attack_2` fegt flach in Kniehöhe (Treffpunkt `socket_spade`). Läuft
+  3,2 m/s (langsamer als der rennende Held). Die Laterne ist ein eigenes Item `it_lantern_beinhaus` (grünes Licht am
+  Knoten `socket_light`); engine hängt sie per `npc_hold` an `socket_lantern` und lässt sie in der Rasend-Phase
+  fallen (Lebenspunkte; mit engine 2026-11-24).
+- **Technik:** menschenähnliches Rig wie der Gatterbock (§7.1) mit den Trägern `spade` (Spaten als starre Platten)
+  und `lantern` (ohne Geometrie, trägt nur `socket_lantern`); Leichentuch als Körperform; lod0 4712 Dreiecke;
+  Beschreibung `data/monsters/beinhauswart.creature.toml`.
+
 ### Brunnenmolch (gebaut 2026-11-24)
 Blinder Riesen-Höhlenmolch, 2,6 m von der Schnauze bis zur Schwanzspitze: blasse rosaweiße Haut mit Hautfalten an den
 Flanken, flacher breiter Kopf mit weitem Maul, rote, gefiederte Kiemenbüschel, kurze gespreizte Beine (vorn drei Finger,

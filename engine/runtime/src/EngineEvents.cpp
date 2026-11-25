@@ -160,6 +160,7 @@ void Engine::bindEventFunctions()
     bindMoverFunctions();    // dungeon D2
     bindSwitchFunctions();   // dungeon D3
     bindTeleportFunctions(); // dungeon D4
+    bindSpawnFunctions();    // dungeon D6
     vm.bind({"send", "send(target: string, action?: string, source?: string)",
              "Schickt ein Ereignis an das Vob `target` (Dungeon D1), wie es ein Auslöser tut: `action` ist "
              "toggle, open, close, on, off, wake, trigger (Vorgabe), lock oder unlock; `source` der Absender "

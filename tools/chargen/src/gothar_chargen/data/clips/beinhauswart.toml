@@ -1,0 +1,230 @@
+# Set "beinhauswart" (warden of the charnel house; monster contract, characters-pipeline.md §7)
+# -> monsters/beinhauswart/anims/beinhauswart.glb
+# Own creature (gothar-chargen creature beinhauswart, 2026-11-23): the clip source only holds the
+# still action "rest". Walk and run are own gait cycles (gait); everything else is keyframed.
+# Dungeon (#422): s_dormant is the pose of `zs_dormant` (leaning on the spade), t_wake the waking.
+# The spade (bone `spade`) and the lantern carrier (bone `lantern`, the item it_lantern_beinhaus hangs
+# on socket_lantern) are rigid on the hands and never keyed.
+#
+# Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up): -X raises a
+# hanging arm forwards (and swings the spade, hanging down from the right fist, to the front),
+# +X tilts the trunk forwards and bends a knee back (calf), +Z turns left.
+
+set = "beinhauswart"
+rig = "beinhauswart"
+
+[sources.src]
+file = "beinhauswart_clips.blend"
+mapping = "identity"
+
+[[clip]]
+name = "beinhauswart/s_rest"
+from = "src:rest"
+helper = true
+
+# --- locomotion (root moves forward: contract §7) ---
+
+[[clip]]
+name = "beinhauswart/s_idle"      # stooped, breathing; the hooded head turns, the lantern sways
+keyframe = "keyposes"
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "rest"], [40, "look_l"], [80, "rest"], [120, "look_r"], [160, "rest"]]
+[clip.params.poses.look_l]
+rotate = { spine_02 = [["X", 3], ["Z", 5]], head = [["Z", 25], ["X", -5]], upperarm_l = [["X", -6]] }
+move = { pelvis = [0, 0, -0.01] }
+[clip.params.poses.look_r]
+rotate = { spine_02 = [["X", 3], ["Z", -5]], head = [["Z", -25], ["X", -5]], upperarm_l = [["X", 4]] }
+move = { pelvis = [0, 0, -0.01] }
+
+[[clip]]
+name = "beinhauswart/s_walk"      # slow, shuffling round between the niches; the spade as a staff
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 0.8
+period = 36
+duty = 0.7
+lift = 0.05
+bob = 0.02
+pose = { spine_02 = [["X", 4]], head = [["X", -4]], upperarm_r = [["X", -8]], upperarm_l = [["X", -4]] }
+legs = [
+    { upper = "thigh_l", lower = "calf_l", foot = "foot_l", phase = 0.0 },
+    { upper = "thigh_r", lower = "calf_r", foot = "foot_r", phase = 0.5 },
+]
+
+[[clip]]
+name = "beinhauswart/s_run"       # hunched, hurried lope; spade carried upright, lantern swinging
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 3.2
+period = 22
+duty = 0.5
+lift = 0.12
+bob = 0.04
+pitch = 6.0
+pose = { spine_02 = [["X", 16]], head = [["X", -14]], upperarm_r = [["X", -30]], lowerarm_r = [["X", -40]], hand_r = [["X", 75]], upperarm_l = [["X", -20]], lowerarm_l = [["X", -20]] }
+legs = [
+    { upper = "thigh_l", lower = "calf_l", foot = "foot_l", phase = 0.0 },
+    { upper = "thigh_r", lower = "calf_r", foot = "foot_r", phase = 0.5 },
+]
+
+[[clip]]
+name = "beinhauswart/s_step_inplace" # base of the turns: shuffling on the spot
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 30
+duty = 0.7
+lift = 0.04
+legs = [
+    { upper = "thigh_l", lower = "calf_l", foot = "foot_l", phase = 0.0 },
+    { upper = "thigh_r", lower = "calf_r", foot = "foot_r", phase = 0.5 },
+]
+
+[[clip]]
+name = "beinhauswart/t_turn_l"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "beinhauswart/s_step_inplace"
+keys = [[0, "rest"], [50, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", 90]] }
+
+[[clip]]
+name = "beinhauswart/t_turn_r"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "beinhauswart/s_step_inplace"
+keys = [[0, "rest"], [50, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", -90]] }
+
+# --- combat ---
+
+[[clip]]
+name = "beinhauswart/t_attack_1"  # spade raised high, chopped down in front (hit at socket_spade)
+keyframe = "keyposes"
+markers = { hit_start = 18, hit_end = 24, "sound:beinhauswart_attack" = 12 }
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "rest"], [12, "raise"], [17, "raise_top"], [23, "chop"], [30, "chop"], [48, "rest"]]
+[clip.params.poses.raise]
+rotate = { spine_02 = [["X", -6], ["Z", -8]], upperarm_r = [["X", -150], ["Z", -10]], lowerarm_r = [["X", -30]], head = [["X", -8]] }
+[clip.params.poses.raise_top]
+rotate = { spine_02 = [["X", -10], ["Z", -10]], upperarm_r = [["X", -170], ["Z", -10]], lowerarm_r = [["X", -40]], head = [["X", -10]] }
+move = { pelvis = [0, 0.02, 0.01] }
+[clip.params.poses.chop]
+rotate = { spine_01 = [["X", 8]], spine_02 = [["X", 22], ["Z", 4]], upperarm_r = [["X", -70], ["Z", 6]], lowerarm_r = [["X", -8]], head = [["X", 6]], thigh_r = [["X", -14]], calf_r = [["X", 22]] }
+move = { pelvis = [0, -0.08, -0.08] }
+
+[[clip]]
+name = "beinhauswart/t_attack_2"  # spade swung flat from the right across to the left at knee height
+keyframe = "keyposes"
+markers = { hit_start = 14, hit_end = 19, "sound:beinhauswart_attack" = 8 }
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "rest"], [12, "wind"], [17, "sweep"], [21, "through"], [38, "rest"]]
+[clip.params.poses.wind]
+rotate = { spine_01 = [["Z", -10]], spine_02 = [["Z", -28]], upperarm_r = [["X", -60], ["Z", -45]], lowerarm_r = [["X", -20]], head = [["Z", 10]] }
+[clip.params.poses.sweep]
+rotate = { spine_01 = [["Z", 0], ["X", 6]], spine_02 = [["Z", 0], ["X", 12]], upperarm_r = [["X", -75], ["Z", 0]], lowerarm_r = [["X", -8]] }
+move = { pelvis = [0, -0.04, -0.05] }
+[clip.params.poses.through]
+rotate = { spine_01 = [["Z", 10], ["X", 6]], spine_02 = [["Z", 28], ["X", 12]], upperarm_r = [["X", -70], ["Z", 50]], lowerarm_r = [["X", -8]], head = [["Z", -10]] }
+move = { pelvis = [0, -0.04, -0.05] }
+
+[[clip]]
+name = "beinhauswart/t_hit"       # flinches back, the hood jerks, the lantern swings
+keyframe = "keyposes"
+markers = { "sound:beinhauswart_hit" = 1 }
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "rest"], [4, "flinch"], [18, "rest"]]
+[clip.params.poses.flinch]
+rotate = { spine_02 = [["X", -10]], head = [["X", -14]], upperarm_l = [["X", 14]], upperarm_r = [["X", 8]] }
+move = { pelvis = [0, 0.06, 0] }
+
+[[clip]]
+name = "beinhauswart/t_die"       # the green eyes fade: sags onto its knees and slumps forward
+keyframe = "keyposes"
+markers = { "sound:beinhauswart_die" = 2 }
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "rest"], [10, "sag"], [22, "kneel"], [38, "fallen"], [48, "fallen"]]
+[clip.params.poses.sag]
+rotate = { spine_02 = [["X", 14]], head = [["X", 22]], upperarm_l = [["X", 6]], upperarm_r = [["X", 6]], thigh_l = [["X", -20]], thigh_r = [["X", -20]], calf_l = [["X", 35]], calf_r = [["X", 35]] }
+move = { pelvis = [0, 0, -0.12] }
+[clip.params.poses.kneel]
+rotate = { spine_02 = [["X", 24]], head = [["X", 28]], upperarm_l = [["X", 10]], upperarm_r = [["X", 10]], thigh_l = [["X", -10]], thigh_r = [["X", -10]], calf_l = [["X", 90]], calf_r = [["X", 90]], foot_l = [["X", -50]], foot_r = [["X", -50]] }
+move = { pelvis = [0, 0.1, -0.42] }
+[clip.params.poses.fallen]
+rotate = { root = [["X", 75]], spine_02 = [["X", 5]], head = [["X", -10]], upperarm_l = [["X", -120]], upperarm_r = [["X", -140]], thigh_l = [["X", 10]], thigh_r = [["X", 10]] }
+move = { root = [0, -0.15, 0.18] }
+
+# --- behaviour ---
+
+[[clip]]
+name = "beinhauswart/s_eat"       # tends the niches: lifts the lantern to light the dead lights (minimum set)
+keyframe = "keyposes"
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "low"], [24, "lift"], [44, "lift2"], [64, "lift"], [90, "low"]]
+[clip.params.poses.low]
+rotate = { head = [["X", -6]], upperarm_l = [["X", -20]], lowerarm_l = [["X", -10]] }
+[clip.params.poses.lift]
+rotate = { head = [["X", -20]], spine_02 = [["X", -6]], upperarm_l = [["X", -120], ["Z", -10]], lowerarm_l = [["X", -30]] }
+[clip.params.poses.lift2]
+rotate = { head = [["X", -22], ["Z", 6]], spine_02 = [["X", -6]], upperarm_l = [["X", -128], ["Z", -4]], lowerarm_l = [["X", -36]] }
+
+[[clip]]
+name = "beinhauswart/s_dormant"   # waiting by the vault (zs_dormant): leans on the spade, head bowed
+keyframe = "keyposes"
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "lean"], [60, "lean"]]
+[clip.params.poses.lean]
+rotate = { head = [["X", 30]], spine_02 = [["X", 10]], upperarm_r = [["X", -25], ["Z", 10]], lowerarm_r = [["X", -35]], upperarm_l = [["X", 6]] }
+move = { pelvis = [0, 0, -0.03] }
+
+[[clip]]
+name = "beinhauswart/s_sleep"     # the same pose (minimum set)
+keyframe = "keyposes"
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "lean"], [60, "lean"]]
+[clip.params.poses.lean]
+rotate = { head = [["X", 30]], spine_02 = [["X", 10]], upperarm_r = [["X", -25], ["Z", 10]], lowerarm_r = [["X", -35]], upperarm_l = [["X", 6]] }
+move = { pelvis = [0, 0, -0.03] }
+
+[[clip]]
+name = "beinhauswart/t_wake"      # from leaning: the hood lifts, the lantern comes up, it straightens
+keyframe = "keyposes"
+markers = { "sound:beinhauswart_threaten" = 8 }
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "lean"], [12, "lean_up"], [24, "lantern"], [40, "rest"]]
+[clip.params.poses.lean]
+rotate = { head = [["X", 30]], spine_02 = [["X", 10]], upperarm_r = [["X", -25], ["Z", 10]], lowerarm_r = [["X", -35]], upperarm_l = [["X", 6]] }
+move = { pelvis = [0, 0, -0.03] }
+[clip.params.poses.lean_up]
+rotate = { head = [["X", -8]], spine_02 = [["X", 4]], upperarm_r = [["X", -25], ["Z", 10]], lowerarm_r = [["X", -35]], upperarm_l = [["X", -30]] }
+[clip.params.poses.lantern]
+rotate = { head = [["X", -10]], spine_02 = [["X", -4]], upperarm_l = [["X", -80]], lowerarm_l = [["X", -20]] }
+
+[[clip]]
+name = "beinhauswart/t_threaten"  # thrusts the lantern at the foe: the green light flares and blinds
+keyframe = "keyposes"
+markers = { "sound:beinhauswart_threaten" = 6, flash = 16 }
+[clip.params]
+base = "beinhauswart/s_rest"
+keys = [[0, "rest"], [10, "draw"], [16, "thrust"], [34, "thrust"], [50, "rest"]]
+[clip.params.poses.draw]
+rotate = { spine_02 = [["X", -8], ["Z", 10]], head = [["X", -10]], upperarm_l = [["X", -60], ["Z", -20]], lowerarm_l = [["X", -50]] }
+[clip.params.poses.thrust]
+rotate = { spine_01 = [["X", 6]], spine_02 = [["X", 10], ["Z", -6]], head = [["X", -14]], upperarm_l = [["X", -100], ["Z", 10]], lowerarm_l = [["X", -6]], upperarm_r = [["X", -15]] }
+move = { pelvis = [0, -0.08, -0.04] }

@@ -113,7 +113,8 @@ struct MobState { u64 vob; std::string definition; bool locked, open; std::map<s
 enum class Life { Alive, Down, Dead, Vanished };
 struct NpcState { std::string name, instance; Vec3 position; f32 yaw; std::optional<gameplay::CharacterState>
                   character; std::string routine; Life life; f32 downSeconds; bool pickpocketed, summoned;
-                  f32 summonSeconds; };
+                  f32 summonSeconds;
+                  std::string spawn; bool dormant; };  // dungeon D6: JSON "spawn"/"dormant", nur wenn gesetzt
 struct WorldState { std::string path; WorldDelta delta; std::vector<u64> spentTriggers;
                     std::vector<MobState> mobs; std::vector<NpcState> npcs;
                     world::EventNetSnapshot events;     // dungeon D1: JSON "relays"/"events", nur wenn nicht leer

@@ -190,6 +190,8 @@ def zones_text(zones: Sequence[dict[str, Any]]) -> str:
                 line.update({"color": [tidy(c) for c in z["color"]],
                              "distance": tidy(z["distance"]), "start": tidy(z.get("start", 0.0)),
                              "fade": tidy(z.get("fade", 3.0))})  # fmt: skip
+            if z.get("daylight") is not None:  # indoor: after the box (world_format writer)
+                line["daylight"] = tidy(z["daylight"])
             lines.append(json.dumps(line, separators=(",", ":"), ensure_ascii=False))
         else:  # other types as the engine keeps them (a JSON object: keys sorted)
             lines.append(json.dumps(z, separators=(",", ":"), ensure_ascii=False, sort_keys=True))

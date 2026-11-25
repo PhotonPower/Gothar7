@@ -152,6 +152,7 @@ Texte kommen aus Inhalt/Definitionen (lokalisiert, M14). Konvention der Engine: 
 | `trigger` | `trigger`: `shape` `box` (`halfExtents` [x,y,z] > 0, Vorgabe 1) | `sphere` (`radius` > 0, Vorgabe 1), `onEnter`/`onLeave` (Skriptfunktionsnamen, optional), `filter` `player`|`npc`|`any` (Vorgabe player), `once` (Vorgabe false), **`targets`** (Liste von Vob-Namen) und **`action`** (Dungeon D1, dungeon.md: was beim Betreten an die Ziele geht; geschrieben nach `once` und nur mit Zielen), `target` (alt: ein Name wird als ein Ziel von `targets` gelesen, eine Vob-ID bleibt erhalten und schickt an den Namen dieses Vobs), **`teleport`** (Dungeon D4: `{"to": "<Vob>"}` oder `{"world": …, "start": …}`, dann `visible` (Vorgabe true), `filter` `player`|`creature`|`items`|`any` (Vorgabe player), `yaw` Grad (nur wenn gesetzt), `active` (Vorgabe true); `changeWorld` kann `"fall": true` tragen, nur wenn true geschrieben), **`plate`** (Dungeon D3: Trittplatte, `{"weight": "any"|"creature"|"player", "release_action": …}`, nach `action`, `release_action` nur wenn gesetzt), `owner` (M9: Npc-Instanz oder Gilde – **privater Bereich**, z. B. die Stube einer Hütte; betritt der Spieler ihn, nimmt der Besitzer das wahr, `assess_enter_room`; der Filter bleibt `player`) | Volumen, das Betreten/Verlassen meldet. Box dreht und skaliert mit dem Vob, Kugel: Radius × größte Skalierung. |
 | `mob` | `mob`: `definition` (Pflicht, Name der Mob-Definition, M8) + `mesh` wie bei `mesh` | Interaktives Objekt (Bett, Truhe, Tür). `definition` ist eine `Mob`-Instanz der Skripte (Name, Typ aus `data/mobs.toml`, Schloss, Inhalt) oder ein bloßer Typ (`chest`); Fokusname aus der Instanz. Tür-Mobs: Ursprung an der Angel, das Türblatt entlang +X (gameplay.md „Mob-Interaktion“). **`open`** (Vertrag mit welt, Tür-PR): `true` = die Tür steht offen; gespeichert wird sie geschlossen (die Drehung des Vobs), offen ist +90° um die Angel, das Blatt in den Raum (weg von der Vorderseite, +Z außen). Geschrieben nach `definition` und nur, wenn `true`; die Engine speichert offene Türen ebenso (Editor-Speichern bleibt byte-gleich zum Generator). **Schalter** (Dungeon D3, Typen `lever`/`wall_button`): `targets` + `action` (wie beim Trigger, nach `open`, nur mit Zielen), `once` und `hidden` (nur wenn `true`); bei einem Hebel heißt `open` „umgelegt“. **Türen** (Dungeon D5): `no_pick` (nur wenn `true`: nur der Schlüssel öffnet) und `one_way` (`front` = Seite +Z, `back`; nur wenn gesetzt). |
 | `item` (M8 Teil B, umgesetzt) | `item`: `instance` (Pflicht, Name einer `Item`-Instanz der Skripte), `count` (1…1 000 000, Vorgabe 1, wird bei 1 nicht geschrieben), `owner` (optional, Npc-Instanz oder Gilde; Aufheben ist dann Diebstahl, M8 D) | Gegenstand, der in der Welt liegt. Kein `mesh` in der Datei: Die Engine zeichnet das `mesh` des Items bzw. einen Platzhalter seiner Kategorie, ohne Kollision (wie Gothic), und nimmt ihn in den Fokus. Aufgehoben, verschwindet der Vob; zur Laufzeit gelegte Items (`insert`, `drop_item`) haben Laufzeit-IDs und werden nicht gespeichert (Spielstand mit M14). |
+| `spawn` (Dungeon D6, umgesetzt) | `spawn`: `npc` (Npc-Instanz, Pflicht), `count` (1–32, Vorgabe 1), `respawn` (Vorgabe false), `dormant` (Vorgabe true); alle Felder werden immer geschrieben | Unsichtbarer Marker: setzt beim ersten Laden der Welt `count` NPCs ein (ab dem zweiten im Ring von 1,5 m), Blick nach dem Yaw des Vobs; Verhalten in dungeon.md „Stand D6“. |
 | `relay` (Dungeon D1, umgesetzt) | `relay`: `mode` `any`|`all`|`count` (Vorgabe any), `count` (≥ 1, nur bei count geschrieben), `delay` s (≥ 0), `once`, `invert`, `targets`, `action` (Vorgabe `trigger`); alle Felder außer `count` werden immer geschrieben | Unsichtbares Relais (wie `zCTriggerList`): sammelt Ereignisse und gibt `action` an `targets` weiter; Verhalten in dungeon.md „Stand D1“. |
 | `water` (M5 Teil E, umgesetzt) | `water`: `halfExtents` [x,y,z] > 0, `kind`: `river` (fließt entlang lokal +X der Box) oder `pond` (steht); leer = Vorgabe aus `data/water.toml` (M17, vereinbart mit welt 2026-11-07) | Wasserkörper als Box um `pos`, nur um Y gedreht; **Oberfläche = Oberkante** (pos.y + hy). Schwimmen ab Wassertiefe > Hüfthöhe (0,9 m), Tauchen mit Luftvorrat. Boxen dürfen sich überlappen (Flussabschnitte, Stufen an den Überlappungen). Darstellung der Fläche: render.md „Wasseroberfläche“ (M17 W1). Ein Gefälle-Feld ist für M17 vorgemerkt. Mit welt abgestimmt. Fehler: fehlende oder nicht positive `halfExtents`, Drehung nicht nur um Y, Skalierung ≠ 1. Abfrage: `world::WaterBodies` (`Water.hpp`): `surfaceAt(punkt)` = höchste Oberfläche der Boxen, deren Grundfläche den Punkt enthält und die von unter ihm bis höchstens 0,5 m unter ihn reichen (eine Brücke hoch über dem Fluss ist trocken). |
 
@@ -266,7 +267,7 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
 - Vorher stand hier eine Skizze mit Kanten per Index; sie wurde nie benutzt (das Spiel las den Block nicht).
 
 ## Zonen – `zones`-Block (Vertrag mit welt: `indoor` 2026-10-05; `music`, `ambient` 2026-10-08)
-- `zones` ist eine Liste; die Engine liest Zonen vom Typ **`indoor`**, **`music`** und **`ambient`** und prüft sie,
+- `zones` ist eine Liste; die Engine liest Zonen vom Typ **`indoor`**, **`music`**, **`ambient`** und **`fog`** und prüft sie,
   andere Typen bleiben unverändert erhalten (bis zu ihrem System). Fehler nennen den Eintrag
   (`zones[3].box.halfExtents: must be positive`).
 - **`music`** und **`ambient`** (M13, Entscheidung Projektinhaber) haben dasselbe Format wie `indoor`, eine gedrehte Box
@@ -302,7 +303,25 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   Die Engine reicht die 32 Räume nächst der Kamera mit ihrem Faktor an den Shader (`Engine::nearestIndoorVolumes`,
   `Engine::indoorRooms`).
 - Sonne und Punktlichter bleiben unverändert (die Sonne fällt durch Tür und Fenster, Schatten kommen aus den
-  Schattenkarten); Nebel je Zone folgt später.
+  Schattenkarten).
+- **`fog`** (Dungeon D7b, Vertrag mit welt über `dungeon.md`): eine Box wie oben, `value` ein Name, dazu der Nebel:
+  `{"type":"fog","value":"GRUFT","box":{…},"color":[r,g,b],"distance":8.0,"start":0.5,"fade":2.0}`.
+  - `color` sRGB 0..1 (Pflicht), `distance` = Meter, bei denen der Nebel 90 % verdeckt, `start` = Meter ohne Nebel
+    (Vorgabe 0), `fade` = Meter um die Box, über die er einblendet (Vorgabe 3).
+  - Gemessen an der **Kamera**: In der Box gilt der Nebel der Zone ganz (ineinander: die kleinste), außerhalb blendet
+    die nächste über `fade` aus. Er ersetzt Farbe, Beginn und Dichte des Nebels der Welt bzw. der Tageszeit.
+  - Der Editor kennt den Typ (Box verschieben und skalieren, neu anlegen mit grauem Dunst); Farbe und Weite stehen
+    in der Datei.
+
+## Umgebung je Welt – `environment`-Block (Dungeon D7b, optional)
+- `"environment": {"sky":false,"ambient":[r,g,b],"ambient_ground":[r,g,b],"fog_color":[r,g,b],"fog_start":2.0,
+  "fog_distance":30.0}` – eine Welt **ohne Himmel**: keine Sonne, kein Mond, keine Sterne, keine Tageszeit-Kurven,
+  kein sichtbares Wetter (kein Regen, Wind, Blitz, keine Nässe; das Wetter läuft weiter und gilt draußen wieder).
+  - `ambient` (Pflicht) ist das Grundlicht von oben, `ambient_ground` von unten (Vorgabe: halb so hell), Farben sRGB
+    0..1. Ohne Fackel sehr dunkel, aber nicht schwarz (`dungeon.md` Frage 13).
+  - `fog_color` ist auch der Hintergrund; `fog_distance` = Meter mit 90 % Nebel, `fog_start` = Meter ohne Nebel.
+  - `sky` darf nur `false` sein; eine Welt mit Himmel lässt den Block weg (dann `data/environment.toml`).
+  - Die Spielzeit läuft weiter (Frage 14). Lesen/Schreiben: `WorldFile::environment`, `world::fixedEnvironment`.
 
 ## Generator-Kopf (`generator`, optional, M4)
 ```json

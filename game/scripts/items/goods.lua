@@ -8,6 +8,7 @@ Item "it_ring_gold" {
     category = "ring",
     value = 120,
     weight = 0.02,
+    tags = { "shiny" }, -- glänzt: ein Mauerschlupfer stiehlt es (Dungeon D6)
 }
 
 Item "it_ring_silver" {
@@ -16,6 +17,7 @@ Item "it_ring_silver" {
     category = "ring",
     value = 60,
     weight = 0.02,
+    tags = { "shiny" }, -- glänzt: ein Mauerschlupfer stiehlt es (Dungeon D6)
 }
 
 Item "it_amulet" {
@@ -24,6 +26,7 @@ Item "it_amulet" {
     category = "amulet",
     value = 150,
     weight = 0.05,
+    tags = { "shiny" }, -- glänzt: ein Mauerschlupfer stiehlt es (Dungeon D6)
 }
 
 Item "it_chain_gold" {
@@ -32,6 +35,7 @@ Item "it_chain_gold" {
     category = "amulet",
     value = 200,
     weight = 0.08,
+    tags = { "shiny" }, -- glänzt: ein Mauerschlupfer stiehlt es (Dungeon D6)
 }
 
 Item "it_cloth_bolt" {
