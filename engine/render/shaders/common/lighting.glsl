@@ -33,6 +33,10 @@ layout(std140, binding = 0) uniform Lighting
     vec4 probeCenter[kMaxShaderProbes]; // xyz centre, w atlas slot
     vec4 probeBoxMin[kMaxShaderProbes];
     vec4 probeBoxMax[kMaxShaderProbes];
+    mat4 ssrViewProjection; // M17 windows F3: the previous frame's camera
+    mat4 ssrInverseViewProjection;
+    vec4 ssrCamera;         // xyz its position, w 1 = trace
+    vec4 ssrForward;        // xyz its forward
     vec4 indoorBoxes[2 * kMaxIndoorVolumes]; // per room: centre + cos yaw, half extents + sin yaw
     vec4 indoorAmbient[kMaxIndoorVolumes / 4]; // per room its ambient factor, four to a vec4
     vec4 pointPositionRadius[kMaxPointLights];

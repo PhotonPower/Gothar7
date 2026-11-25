@@ -232,6 +232,10 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
         gpu.probeBoxMin[i] = environment.probes[i].boxMin;
         gpu.probeBoxMax[i] = environment.probes[i].boxMax;
     }
+    gpu.ssrViewProjection = environment.ssrViewProjection;
+    gpu.ssrInverseViewProjection = glm::inverse(environment.ssrViewProjection);
+    gpu.ssrCamera = Vec4(environment.ssrCameraPosition, environment.ssr ? 1.0f : 0.0f);
+    gpu.ssrForward = Vec4(environment.ssrCameraForward, 0.0f);
     for (usize i = 0; i < rooms; ++i)
     {
         const IndoorVolume& v = environment.indoor[i];
