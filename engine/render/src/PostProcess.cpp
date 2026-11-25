@@ -163,18 +163,12 @@ void PostProcess::apply(Device& device, const SceneTarget& scene, u32 width, u32
     }
     device.bindPipeline(m_pipeline);
     device.bindTexture(0, scene.color(), m_sampler);
-    if (bloom)
-    {
-        device.bindTexture(1, *settings.bloom, m_bloomSampler);
-    }
-    if (settings.underwater)
-    {
-        device.bindTexture(2, scene.depth(), m_sampler);
-    }
-    if (settings.distortion != nullptr)
-    {
-        device.bindTexture(3, *settings.distortion, m_sampler);
-    }
+    // Units the shader declares but this frame does not read still get a plain texture: left as they were,
+    // unit 3 holds the shadow atlas with its compare sampler, which the driver reports as undefined behaviour
+    // for the sampler2D uDistortion (GL #131222).
+    device.bindTexture(1, bloom ? *settings.bloom : scene.color(), bloom ? m_bloomSampler : m_sampler);
+    device.bindTexture(2, settings.underwater ? scene.depth() : scene.color(), m_sampler);
+    device.bindTexture(3, settings.distortion != nullptr ? *settings.distortion : scene.color(), m_sampler);
     device.draw(3); // fullscreen triangle
 }
 } // namespace g7::render

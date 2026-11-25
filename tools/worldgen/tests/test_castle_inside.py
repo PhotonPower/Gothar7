@@ -113,6 +113,33 @@ def test_lights_per_room_and_zones():
     values = {z["value"] for z in p.zones}
     assert "LEO_SCHLOSS_TURM_INNEN" in values and "LEO_SCHLOSS_WEINKELLER_INNEN" in values
     assert all(z["type"] == "indoor" for z in p.zones)
+    # engine's guess fits nowhere without a window light: set where wanted (zones contract)
+    daylight = {z["value"]: z.get("daylight") for z in p.zones}
+    assert daylight["LEO_SCHLOSS_SCHREIBSTUBE_INNEN"] == 0.35
+    assert daylight["LEO_SCHLOSS_WACHSTUBE_INNEN"] == 0.15
+    assert daylight["LEO_SCHLOSS_HALLE_INNEN"] is None
+
+
+def test_castle_models_are_textured_like_the_houses():
+    kinds = BUILT["textures"]["kinds"]
+    for path in sorted(DIR.glob("schloss*.glb")):
+        gl, _ = read_glb(path.read_bytes())
+        uris = {i["uri"] for i in gl["images"]}
+        assert all(u.startswith("../../generated/textures/") for u in uris)
+        cellar = path.name.startswith("schloss_keller_")
+        for m in gl["materials"]:
+            base = m["name"].removesuffix("_cellar")
+            assert m["name"].endswith("_cellar") == cellar
+            assert ("baseColorTexture" in m["pbrMetallicRoughness"]) == (
+                kinds.get(base) is not None
+            )
+        for mesh in gl["meshes"][:1]:
+            assert all("TEXCOORD_0" in q["attributes"] for q in mesh["primitives"])
+        if path.name == "schloss_keller_gewoelbe.glb":  # rubble, darker than the castle outside
+            stone = next(m for m in gl["materials"] if m["name"] == "stone_cellar")
+            assert gl["images"][stone["pbrMetallicRoughness"]["baseColorTexture"]["index"]][
+                "uri"
+            ].endswith("/stone_albedo.png")
 
 
 def test_castle_props_are_built_within_budget():

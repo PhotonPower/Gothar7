@@ -9,7 +9,8 @@ of licences. A texture is a pair of images that tile seamlessly:
 
 Kinds (``KINDS``) and the metres one texture covers (``TILE_M``): plaster, plaster with dirt at the
 foot of the wall (``plaster_low``, tiles only along u), rubble stone, timber grain (along u), plain
-tiles (Biberschwanz), boards, the flat slabs of the street gutters. Coordinates: u to the right,
+tiles (Biberschwanz), boards, the flat slabs of the street gutters, the castle's dressed stone
+(``ashlar``). Coordinates: u to the right,
 v up (row 0 of an image is the top).
 """
 
@@ -42,6 +43,7 @@ TILE_M = {  # metres covered by one texture (u, v)
     "leaves": (1.0, 1.0),  # tree crowns, bushes, grass (W6 streets)
     "bark": (1.0, 2.0),  # around the trunk, up it
     "slab": (0.5, 2.0),  # a gutter of flat slabs: across it (one slab wide), along it (W6)
+    "ashlar": (2.0, 2.0),  # dressed stone blocks of the castle in courses (W7)
 }
 
 
@@ -435,6 +437,52 @@ def cobbles(size: int, rng: np.random.Generator) -> Texture:
     return Texture("cobbles", _mean_one(rgb), dome, 3.0)
 
 
+def ashlar(size: int, rng: np.random.Generator) -> Texture:
+    """Dressed sandstone blocks of the castle (W7): regular courses of nearly the same height,
+    blocks of different length in running bond, thin lime joints a little darker than the stone,
+    faces of slightly different shade with fine tooling marks and weathered patches; about as
+    bright as the palette (the castle's dressings stay light against the white plaster)."""
+    px_m = size / TILE_M["ashlar"][0]
+    rows = _courses(rng, size, int(0.3 * px_m), int(0.42 * px_m))
+    grain = periodic_noise((size, size), rng, beta=1.3, low_cut=8.0)
+    tooling = periodic_noise((size, size), rng, beta=1.1, low_cut=20.0, aniso=(8.0, 1.0))
+    weather = periodic_noise((size, size), rng, beta=2.6)
+    wobble = periodic_noise((size, size), rng, beta=2.0, low_cut=6.0)
+    dist = np.full((size, size), 1e3)  # pixels to the nearest joint
+    shade = np.ones((size, size))
+    warm = np.zeros((size, size))
+    y0 = 0
+    for h in rows:
+        widths = _courses(rng, size, int(0.5 * px_m), int(1.1 * px_m))
+        x0 = int(rng.integers(0, size))  # each course starts somewhere else (wraps)
+        ys = np.arange(y0, y0 + h)
+        ly = (ys - y0)[:, None].astype(float)
+        dy = np.minimum(ly, h - 1 - ly)
+        for w in widths:
+            cols = (x0 + np.arange(w)) % size
+            lx = np.arange(w)[None, :].astype(float)
+            dx = np.minimum(lx, w - 1 - lx)
+            sub = np.ix_(ys, cols)
+            dist[sub] = np.minimum(dx, dy)
+            shade[sub] = rng.uniform(0.8, 1.1)
+            warm[sub] = rng.uniform(-0.02, 0.06)
+            x0 += w
+        y0 += h
+    chips = periodic_noise((size, size), rng, beta=1.4, low_cut=10.0)  # broken arrises
+    edge = dist + 3.0 * (wobble - 0.5) + 2.5 * (chips - 0.5)
+    joint = np.clip(1.0 - (edge - 1.5) / 1.2, 0.0, 1.0)  # about 1 cm, ragged
+    bevel = np.clip(edge / 6.0, 0.0, 1.0) ** 0.5
+    speck = periodic_noise((size, size), rng, beta=0.4, low_cut=40.0)
+    val = shade * (0.95 + 0.3 * (grain - 0.5) + 0.1 * (tooling - 0.5) + 0.12 * (speck - 0.5))
+    val *= 0.82 + 0.18 * bevel
+    val -= 0.3 * np.clip((weather - 0.5) / 0.3, 0.0, 1.0)  # weathered, darker patches
+    rgb = np.stack([val * (1 + warm), val, val * (1 - warm)], axis=-1)
+    lime = np.array([0.56, 0.54, 0.49]) * (0.85 + 0.3 * grain[:, :, None])  # dirty lime joints
+    rgb = rgb * (1 - joint[:, :, None]) + lime * joint[:, :, None]
+    height = 0.7 * bevel * (1 - joint) + 0.12 * grain + 0.06 * tooling
+    return Texture("ashlar", _mean_one(rgb), height - height.min(), 2.5)
+
+
 KINDS: dict[str, Callable[[int, np.random.Generator], Texture]] = {
     "plaster": plaster,
     "plaster_low": plaster_low,
@@ -445,6 +493,7 @@ KINDS: dict[str, Callable[[int, np.random.Generator], Texture]] = {
     "roof_moss": roof_moss,
     "plaster_streak": plaster_streak,
     "slab": slab,
+    "ashlar": ashlar,  # the castle's dressed stone (W7)
 }
 
 

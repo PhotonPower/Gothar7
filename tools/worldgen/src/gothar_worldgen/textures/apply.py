@@ -70,10 +70,12 @@ def _roof_uvs(mesh: MeshData) -> np.ndarray:
     return np.stack([np.sum(p * eave, axis=1), np.sum(p * slope, axis=1)], axis=1)
 
 
-def textured(prim: Primitive, uri_root: str, offset: tuple[float, float] = (0.0, 0.0)) -> Primitive:
+def textured(prim: Primitive, uri_root: str, offset: tuple[float, float] = (0.0, 0.0),
+             kind: str | None = None) -> Primitive:  # fmt: skip
     """The primitive with texture coordinates for its kind and its two images; ``offset`` (in
-    textures) shifts the repeating kinds, so neighbouring houses do not show the same stones."""
-    kind = kind_of(prim.material)
+    textures) shifts the repeating kinds, so neighbouring houses do not show the same stones.
+    ``kind`` overrides the palette's kind (hand-made models, ``textures.models``)."""
+    kind = kind or kind_of(prim.material)
     if kind is None:
         return prim
     tu, tv = TILE_M[kind]
@@ -106,6 +108,7 @@ SHIFTED = {
     "roof_moss",
     "boards",
     "slab",
+    "ashlar",
 }  # shifted per house (texture_house)
 
 
