@@ -511,6 +511,18 @@ void Engine::applySetting(std::string_view key)
     {
         m_windEnabled = s.get<bool>("render.wind", true);
     }
+    else if (key == "render.window_reflections")
+    {
+        const std::string quality = s.get<std::string>("render.window_reflections", "medium");
+        const auto parsed = render::parseWindowReflections(quality);
+        if (!parsed)
+        {
+            G7_LOG_WARN("engine",
+                        "[render] window_reflections = {}: off, low, medium or high (medium instead)",
+                        quality);
+        }
+        m_windowReflections = parsed.value_or(render::WindowReflections::Medium);
+    }
     else if (key == "render.rain_quality")
     {
         const std::string quality = s.get<std::string>("render.rain_quality", "medium");

@@ -181,6 +181,8 @@ State "zs_pray_stand" (at_freepoint("PRAY", "pray_stand"))     -- stehend beten 
 State "zs_preach" (at_freepoint("PREACH", "preach"))           -- predigen (Altar, Kanzel, Markt)
 State "zs_beg" (at_freepoint("BEG", "beg"))                    -- am Boden sitzend betteln (Kirchentür, Brunnen, Tor)
 State "zs_play_lute" (at_freepoint("MUSIC", "play_lute", "it_lute")) -- stehend Laute spielen (Musiker)
+State "zs_read" (at_freepoint("READ", "read"))                 -- am Pult im Buch lesen (das Buch gehört zum Pult)
+State "zs_cook" (at_freepoint("COOK", "cook", "it_ladle"))     -- am Herd im Kessel rühren (Kelle)
 
 --- Am Laden stehen und sich ab und zu umsehen (Händler).
 State "zs_stand_shop" {

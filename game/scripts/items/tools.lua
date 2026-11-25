@@ -29,6 +29,13 @@ Item "it_broom" {
     value = 2,
 }
 
+Item "it_ladle" { -- die Köchin rührt damit im Kessel (zs_cook, FP_COOK)
+    name = "Kelle",
+    mesh = "items/it_ladle.glb",
+    category = "misc",
+    value = 2,
+}
+
 Item "it_mug" {
     name = "Krug",
     mesh = "items/it_mug.glb",

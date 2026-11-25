@@ -46,6 +46,10 @@ def test_parse_and_stride():
         ({"axis": "z"}, "axis"),
         ({"axis": "x"}, "needs splay"),
         ({"legs": LEGS * 5}, "2 to 8 legs"),
+        ({"sway": {"bones": ["pelvis"], "degrees": [5, 6]}}, "one per bone"),
+        ({"sway": {"bones": [], "degrees": 5}}, "sway needs bones"),
+        ({"sway": {"bones": ["pelvis"], "degrees": 60}}, "degrees"),
+        ({"sway": {"bones": ["pelvis"], "degrees": 5, "phase": 0.1}}, "sway must be"),
     ],
 )
 def test_invalid_gaits(change, message):
@@ -61,6 +65,24 @@ def test_arthropod_gaits():
     crab = parse_gait({**TROT, "legs": six + six[:2], "splay": True, "axis": "x"})
     assert len(crab.legs) == 8 and crab.axis == "x"
     assert not parse_gait(TROT).splay
+
+
+def test_sway_waves_body_and_tail():
+    """§7.6: lizards bend body and tail sideways, each next bone `lag` of the cycle later."""
+    g = parse_gait(
+        {
+            **TROT,
+            "splay": True,
+            "sway": {"bones": ["pelvis", "tail_01"], "degrees": [6, -8], "lag": 0.25},
+        }
+    )
+    assert g.sway is not None and g.sway.bones == ("pelvis", "tail_01")
+    assert g.sway.degrees == (6.0, -8.0) and g.sway.lag == 0.25
+    assert g.sway.angle(0, math.pi / 2) == pytest.approx(6.0)
+    assert g.sway.angle(1, math.pi) == pytest.approx(-8.0)  # a quarter cycle later
+    one = parse_gait({**TROT, "sway": {"bones": ["a", "b", "c"], "degrees": 4}})
+    assert one.sway is not None and one.sway.degrees == (4.0, 4.0, 4.0) and one.sway.lag == 0.0
+    assert parse_gait(TROT).sway is None
 
 
 def test_planted_foot_moves_back_at_the_speed():

@@ -5,6 +5,7 @@
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/render/Device.hpp>
+#include <g7/render/Glass.hpp>
 #include <g7/render/Lighting.hpp>
 #include <g7/render/Shadows.hpp>
 #include <g7/render/SpellFx.hpp>
@@ -41,7 +42,8 @@ struct Material
     f32 alphaCutoff = 0.5f;
     asset::AlphaMode alphaMode = asset::AlphaMode::Opaque;
     bool doubleSided = false;
-    WindBend wind; ///< M17 W: how it moves in the wind (from the glTF material and the model's bounds)
+    WindBend wind;   ///< M17 W: how it moves in the wind (from the glTF material and the model's bounds)
+    GlassLook glass; ///< M17 windows F1: a window pane (glTF `extras.glass`)
 };
 
 /// Neutral 1x1 textures shared by every MaterialSet of a renderer: materials without images then use
@@ -249,8 +251,8 @@ private:
     {
         u64 blockAndFlags = 0; // geometry block << 32 | variant | doubleSided << 8 | twoChannel << 9
         std::array<u64, 3> textures{};
-        std::array<u32, 17> values{}; // float bits: base colour (4), emissive (3), normal scale, cutoff,
-                                      // wind kind, strength, foot, height, pivot (3), hinge
+        std::array<u32, 21> values{}; // float bits: base colour (4), emissive (3), normal scale, cutoff,
+                                      // wind kind, strength, foot, height, pivot (3), hinge, glass (4)
         friend auto operator<=>(const BatchKey&, const BatchKey&) = default;
     };
     struct BatchEntry
@@ -261,6 +263,7 @@ private:
         const Material* material = nullptr;
     };
     static void setWindKey(BatchKey& key, const Material& material) noexcept;
+    static void setGlassKey(BatchKey& key, const Material& material) noexcept;
     void drawGroups(Device& device, bool shadow, const Mat4& viewProjection, const Vec3& cameraPosition);
     void uploadBatch(Device& device);
     void bindMaterial(rhi::ShaderProgram& program, Device& device, const Material& material);

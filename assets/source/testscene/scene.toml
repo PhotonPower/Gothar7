@@ -269,6 +269,13 @@ position = [-3.0, 0.0, 10.0]
 rotation_y = 20
 scale = 1.5
 
+# --- A wall with three glazed windows (M17 windows F1 test model: bullseye, diamond and plain panes), facing the
+# fire.
+[[object]]
+mesh = "glass/window_glass.gltf"
+position = [0.0, 0.0, 17.0]
+rotation_y = 180
+
 # --- Fence with a gate on the east side.
 
 [[object]]

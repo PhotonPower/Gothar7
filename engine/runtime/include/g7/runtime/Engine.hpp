@@ -1584,6 +1584,12 @@ private:
     void fixedUpdateHeroHold(gameplay::MoveInput& input, f32 seconds);
     /// Creatures.<species>.splinter: a blunt blow knocks a crystal off (into its inventory, the loot).
     void splinterOnHit(Combatant& target, const gameplay::DamageByType& weapon);
+    /// Creatures.<species>.curl (Mauerkriecher): the damage through the shell while rolled up - in full when
+    /// it comes from `from` within belly_degrees of the front (the soft belly), else damage_factor of it.
+    [[nodiscard]] i32 curledDamage(const Combatant& target, i32 damage, std::optional<Vec3> from) const;
+    /// After a hit `target` survived: true when it is rolled up (no stagger) - already, or now by a heavy
+    /// hit.
+    bool curlOnHit(Combatant& target, i32 damage);
     void stopForFight(Creature& c);
     /// A save game puts an NPC back knocked out (for `seconds`) or dead (M15).
     void knockOutRestored(Creature& c, f32 seconds);
@@ -1977,8 +1983,10 @@ private:
     render::RainRenderer m_rain;                                     // M17 R
     std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
-    f32 m_fogStart = 30.0f;        ///< [render] fog_start (or the debug panel) for worlds with sky
-    render::GrassRenderer m_grass; // M17 G1
+    f32 m_fogStart = 30.0f; ///< [render] fog_start (or the debug panel) for worlds with sky
+    render::WindowReflections m_windowReflections =
+        render::WindowReflections::Medium; // [render] window_reflections
+    render::GrassRenderer m_grass;         // M17 G1
     render::GrassRing m_grassRing;
     render::GrassQuality m_grassQuality = render::GrassQuality::Medium; // [render] grass (auto resolved)
     std::vector<render::GrassLayer> m_grassLayers;                      // per terrain layer of the world
@@ -2216,6 +2224,14 @@ private:
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
     std::map<std::string, gameplay::BodyShape, std::less<>> m_animalBodies; // by species (M11)
+    struct CurlRule
+    {
+        f32 share = 0.25f;        ///< a hit of this share of hp_max or more rolls it up
+        f32 seconds = 4.0f;       ///< it stays rolled up this long
+        f32 damageFactor = 0.25f; ///< damage through the shell meanwhile
+        f32 bellyDegrees = 0.0f;  ///< hits from within this angle of its front reach the soft belly (full)
+    };
+    std::map<std::string, CurlRule, std::less<>> m_curlRules; // Creatures.<species>.curl (dungeon D6)
     std::set<std::string, std::less<>> m_sidewaysSpecies; // Creatures.<species>.move_axis = "x" (dungeon D6)
     struct GrabRule
     {

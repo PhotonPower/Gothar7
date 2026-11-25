@@ -37,6 +37,11 @@ Data (``[clip.params]`` of a ``keyframe = "gait"`` clip)::
     splay = true                # arthropods (§7.5): each leg turns about the vertical at its hip
                                 # and bends in its own vertical plane (legs spread sideways)
     axis = "x"                  # with splay: travel sideways to the left (+X; crab, move_axis "x")
+    sway = { bones = ["pelvis", "spine_01", "tail_01"], degrees = [6, -4, 8], lag = 0.1 }
+                                # lizards (§7.6): body and tail wave sideways - each bone turns
+                                # about the vertical (degrees: one number or one per bone), every
+                                # next bone `lag` of the cycle later; pure rotation, the root
+                                # motion stays straight
 """
 
 from __future__ import annotations
@@ -62,6 +67,7 @@ KEYS = {
     "in_place",
     "splay",
     "axis",
+    "sway",
 }
 LEG_KEYS = {"upper", "lower", "foot", "phase", "reach", "curl"}
 REACH_MARGIN = 0.995  # a leg is never stretched beyond this share of its length (knee stays bent)
@@ -89,6 +95,19 @@ class Wave:
 
 
 @dataclass(frozen=True)
+class Sway:
+    """Sideways wave of body and tail (§7.6): rotation about the vertical per bone."""
+
+    bones: tuple[str, ...]
+    degrees: tuple[float, ...]  # amplitude per bone
+    lag: float = 0.0  # fraction of the cycle each next bone follows later
+
+    def angle(self, index: int, cycle: float) -> float:
+        """Degrees of bone ``index`` at ``cycle`` (radians of the loop)."""
+        return self.degrees[index] * math.sin(cycle - 2 * math.pi * self.lag * index)
+
+
+@dataclass(frozen=True)
 class Gait:
     speed: float
     period: int
@@ -106,6 +125,7 @@ class Gait:
     in_place: bool = False  # no root motion (s_charge); the natural speed comes from the feet
     splay: bool = False  # arthropods (§7.5): legs spread sideways, solved in their own plane
     axis: str = "y"  # travel: "y" forwards, "x" sideways to the left (+X, move_axis "x", §7.5)
+    sway: Sway | None = None  # lizards (§7.6): body and tail wave sideways
 
     @property
     def travel(self) -> float:
@@ -139,6 +159,22 @@ def _wave(data: object, key: str, many: bool = False) -> Wave | None:
         _number(data, "degrees", -45.0, 45.0),
         _number(data, "lag" if many else "phase", -1.0, 1.0, 0.0),
     )
+
+
+def _sway(data: object) -> Sway | None:
+    if data is None:
+        return None
+    if not isinstance(data, dict) or set(data) - {"bones", "degrees", "lag"}:
+        raise GaitError("gait: sway must be a table { bones, degrees, lag }")
+    bones = data.get("bones")
+    if not isinstance(bones, list) or not bones or not all(isinstance(b, str) for b in bones):
+        raise GaitError("gait: sway needs bones (list)")
+    raw = data.get("degrees")
+    values = raw if isinstance(raw, list) else [raw] * len(bones)
+    if len(values) != len(bones):
+        raise GaitError("gait: sway degrees must be one number or one per bone")
+    degrees = tuple(_number({"degrees": v}, "degrees", -45.0, 45.0) for v in values)
+    return Sway(tuple(bones), degrees, _number(data, "lag", -1.0, 1.0, 0.0))
 
 
 def _posture(data: object) -> tuple[tuple[str, tuple[tuple[str, float], ...]], ...]:
@@ -212,6 +248,7 @@ def parse_gait(params: dict) -> Gait:
         in_place=_flag(params, "in_place"),
         splay=_flag(params, "splay"),
         axis=_axis(params),
+        sway=_sway(params.get("sway")),
     )
 
 

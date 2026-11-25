@@ -375,8 +375,13 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   in `data/creatures.lua`, Instanzen `mon_gatterbock`/`mon_mauerschlupfer` (`npcs/dungeon.lua`, Platzhalterwerte).
   Jede Art mit Graph kann jetzt eingesetzt werden (nicht mehr nur Wolf, Keiler, Laufvogel).
 - **Mauerkriecher** (figuren #440): Graph wie der Gatterbock, Erwachen = `t_emerge` (aus der Ritze), Rudel laufend
-  (`pack_gait`/`chase_gait` "run"), Instanz `mon_mauerkriecher` (für Spawn-Marker mit `count` 3–6). **Offen:** Einrollen bei
-  schweren Treffern (`t_curl` → `s_curled` → `t_uncurl`, Schutz von oben) braucht Kampf-Logik.
+  (`pack_gait`/`chase_gait` "run"), Instanz `mon_mauerkriecher` (für Spawn-Marker mit `count` 3–6). **Einrollen**
+  (2026-11-24): `Creatures.<art>.curl = { share, seconds, damage_factor, belly_degrees }` – ein Treffer
+  (Nahkampf, Geschoss, Zauber) ab `share` × `hp_max` (Kriecher 0,25) rollt ihn ein: Graph-Bool `curled` (`t_curl` → `s_curled` → `t_uncurl`),
+  `seconds` (4 s) still ohne KI, kein Taumeln/Rückstoß, Schaden × `damage_factor` (0,25) durch den Panzer – außer
+  am **weichen Bauch**: Nahkampf und Geschosse von vorn (bis `belly_degrees` = 45° neben seiner Blickrichtung) gehen
+  voll durch, Zauber treffen immer den Panzer; Lua-Ereignis `npc_curled(npc)`. Werte vom Projektinhaber bestätigt
+  (2026-11-24, Bauch-Variante 2026-11-25); dass Fäuste den flachen Kriecher nicht treffen (der Schwung geht über ihn hinweg), ist gewollt.
 - **Kristallkrebs** (figuren #463): Graph wie der Mauerkriecher, Erwachen = `t_wake`, läuft seitwärts (`move_axis` "x",
   Körper quer), Instanz `mon_kristallkrebs` (Beute `it_kristall`, noch ohne Modell). Mechanik in C++, Werte in
   `Creatures.kristallkrebs`:

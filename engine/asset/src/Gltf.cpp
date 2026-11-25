@@ -542,7 +542,7 @@ Result<MeshData> parse(fastgltf::GltfDataBuffer& data, std::span<const u8> bytes
     auto mesh = convert(asset.value(), debugName);
     if (mesh)
     {
-        readMaterialWind(bytes, mesh.value().materials, debugName); // M17 W
+        readMaterialExtras(bytes, mesh.value().materials, debugName); // M17 W wind, M17 F1 glass
     }
     return mesh;
 }

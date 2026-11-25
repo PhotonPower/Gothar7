@@ -187,6 +187,9 @@ Ein Zauber wird gewirkt (M12, `hero`).
 ### `on("npc_clip_event", fn(npc: string, event: string))`
 Ein Clip-Event eines Monsters, auf das die Skripte reagieren (`steal`, `emerge`, `grab`, `release`, `reflect`, `spawn_brood`; characters-pipeline.md §7.5).
 
+### `on("npc_curled", fn(npc: string))`
+Ein Tier rollt sich nach einem schweren Treffer ein (`Creatures.<art>.curl`, Mauerkriecher).
+
 ### `on("npc_feared", fn(npc: string, caster: string, seconds: number))`
 Ein Furcht-Zauber trifft einen NPC bzw. ein Tier (M12, Z6): er flieht `seconds` Sekunden.
 
