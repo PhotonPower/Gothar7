@@ -1412,6 +1412,12 @@
       "context": "mobs/camp.lua",
       "status": "entwurf"
     },
+    "mob_testdungeon_niche.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/testdungeon.lua",
+      "status": "entwurf"
+    },
     "mon_gatterbock.name": {
       "de": "Gatterbock",
       "text": "Gate Ram",
