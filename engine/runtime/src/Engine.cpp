@@ -2191,8 +2191,9 @@ void Engine::renderScene(u32 width, u32 height)
     m_passTimes.begin(*m_device, "scene");
     drawScene(width, height);
     m_passTimes.end(*m_device);
-    drawRain(width, height); // M17 R
-    drawDistortion();        // M17 V: offsets of spells and big fires
+    captureScreenHistory(width, height); // M17 windows F3: the next frame's glass mirrors this one
+    drawRain(width, height);             // M17 R
+    drawDistortion();                    // M17 V: offsets of spells and big fires
 
     // Under water (M17 W3): tint, fog and wavering in the post pass; no bloom (the glow of the sun above).
     updateUnderwater();
@@ -3000,6 +3001,7 @@ void Engine::shutdown()
     m_waterRenderer = {};
     m_ssao = {};
     m_probes = {};
+    m_screenHistory = {};
     m_worldItems.clear();
     m_itemModels.clear();
     m_scriptModels.clear();

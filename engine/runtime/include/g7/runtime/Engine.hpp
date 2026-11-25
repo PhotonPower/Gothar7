@@ -46,6 +46,7 @@
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/Rain.hpp>
 #include <g7/render/ReflectionProbes.hpp>
+#include <g7/render/ScreenHistory.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/SpellFx.hpp>
 #include <g7/render/Ssao.hpp>
@@ -1764,6 +1765,8 @@ private:
     void updateReflectionProbes(const render::ShadowFrame* shadows);
     void placeReflectionProbes();
     void drawProbeFace(const render::ProbeFace& face);
+    /// M17 windows F3 (high, a world with glass): copies the finished scene for the next frame's glass.
+    void captureScreenHistory(u32 width, u32 height);
     /// The sky (background pass) for `camera` into the bound target.
     void drawBackground(const render::Camera& camera);
     void drawGrassShadow(const render::Cascade& cascade);
@@ -1982,6 +1985,7 @@ private:
     world::DayCycle m_dayCycle = world::DayCycle::fallback();
     world::Weather m_weather = world::Weather::fallback(); // M17 E1: data/weather.toml
     render::RainRenderer m_rain;                           // M17 R
+    render::ScreenHistory m_screenHistory;                 // M17 windows F3 (high)
     render::ReflectionProbes m_probes;                     // M17 windows F2 (medium, high)
     bool m_probesDirty = true;                             // place them anew (world loaded or changed)
     bool m_probesFresh = false;                            // just placed: the nearest are drawn at once
