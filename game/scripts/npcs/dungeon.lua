@@ -33,6 +33,7 @@ Npc "mon_kristallkrebs" { -- Grotte (Ebene 7): Kristalle auf dem Rücken, Schere
     damage = { edge = 20 }, -- Scheren
     -- Schieferpanzer gegen Klingen und Pfeile; stumpfe Waffen splittern ihn, Magie wirft er zum Teil zurück
     protection = { edge = 35, point = 50, blunt = 10, fire = 20, magic = 10, fall = 0 },
+    inventory = { it_kristall = 1 }, -- Beute; stumpfe Treffer schlagen bis zu drei weitere ab (Creatures.splinter)
 }
 
 Npc "mon_mauerschlupfer" {

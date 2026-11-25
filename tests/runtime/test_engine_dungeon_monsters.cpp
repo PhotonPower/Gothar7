@@ -3,6 +3,7 @@
 // them, a niche wakes the mauerschlupfer that steals something shiny and loses it again, waking survives a
 // save game, and only nests fill up again when the hero comes back into the level.
 
+#include <g7/gameplay/Movement.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/GameState.hpp>
 
@@ -204,4 +205,136 @@ TEST_CASE(
     }
     CHECK(emerged);
     CHECK_FALSE(dormant(engine, kriecher));
+}
+
+namespace
+{
+/// A Kristallkrebs `distance` m in front of the hero, facing him, lying still (dormant) until told.
+std::string crabInFront(Engine& engine, f32 distance)
+{
+    const std::string crab(run(engine, "insert_npc('mon_kristallkrebs', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("npc_set_dormant('{}', true)", crab));
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", crab));
+    frames(engine, 5);
+    const auto get = [&](std::string_view key)
+    { return static_cast<f32>(run(engine, std::format("where().{}", key)).asNumber()); };
+    const Vec3 ahead =
+        Vec3(get("x"), get("y"), get("z")) + gameplay::forwardOf(glm::radians(get("yaw"))) * distance;
+    run(engine, std::format("npc_teleport('{}', {}, {}, {}, {})", crab, ahead.x, ahead.y, ahead.z,
+                            get("yaw") + 180.0f));
+    frames(engine, 5);
+    return crab;
+}
+
+Vec3 heroAt(Engine& engine)
+{
+    const auto get = [&](std::string_view key)
+    { return static_cast<f32>(run(engine, std::format("where().{}", key)).asNumber()); };
+    return {get("x"), get("y"), get("z")};
+}
+} // namespace
+
+TEST_CASE("Engine dungeon monsters: the Kristallkrebs's pincer holds the hero fast until it lets go")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    engine.setRandomSource([] { return 0.0f; }); // every attack of the crab is a grab (grab.chance)
+    frames(engine, 3);
+    run(engine, "set_stat('hp_max', 1000) set_stat('hp', 1000)");
+    run(engine, "on('hero_grabbed', function(npc) Story.grabbed = npc end)");
+    const std::string crab = crabInFront(engine, 1.6f);
+    run(engine, std::format("wake('{}')", crab)); // it wakes and attacks the hero in front of it
+    bool held = false;
+    for (int i = 0; i < 400 && !held; ++i)
+    {
+        frames(engine, 1);
+        held = run(engine, "hero_held()").isString();
+    }
+    REQUIRE(held);
+    CHECK(run(engine, "hero_held()").asString() == crab);
+    CHECK(run(engine, "Story.grabbed").asString() == crab);
+    // Held, he does not get away walking.
+    gameplay::MoveInput back;
+    back.forward = -1.0f;
+    engine.setPlayerInputOverride(back);
+    const Vec3 before = heroAt(engine);
+    frames(engine, 20);
+    CHECK(glm::distance(before, heroAt(engine)) < 0.05f);
+    // The pincer opens (event release, at most Creatures.kristallkrebs.grab.seconds).
+    bool free = false;
+    for (int i = 0; i < 200 && !free; ++i)
+    {
+        frames(engine, 1);
+        free = run(engine, "hero_held()").isNil();
+    }
+    CHECK(free);
+    engine.setPlayerInputOverride(std::nullopt);
+}
+
+TEST_CASE("Engine dungeon monsters: blunt blows knock crystals off the Kristallkrebs, up to splinter.max")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    engine.setRandomSource([] { return 0.99f; }); // no grabs
+    frames(engine, 3);
+    run(engine, "set_stat('hp_max', 1000) set_stat('hp', 1000) set_stat('str', 60)");
+    run(engine, "give_item('it_club') equip('it_club') draw_weapon()");
+    frames(engine, 110);
+    const std::string crab = crabInFront(engine, 1.4f);
+    run(engine, std::format("npc_set_stat('{}', 'hp_max', 5000)", crab));
+    run(engine, std::format("npc_set_stat('{}', 'hp', 5000)", crab));
+    const auto crystals = [&]
+    { return run(engine, std::format("npc_item_count('{}', 'it_kristall')", crab)).asInteger(); };
+    const auto strike = [&]
+    {
+        // Back in front of him (a hit crab steps about), then one blow with the club.
+        const Vec3 at = heroAt(engine);
+        const f32 yaw = static_cast<f32>(run(engine, "where().yaw").asNumber());
+        const Vec3 ahead = at + gameplay::forwardOf(glm::radians(yaw)) * 1.4f;
+        run(engine,
+            std::format("npc_teleport('{}', {}, {}, {}, {})", crab, ahead.x, ahead.y, ahead.z, yaw + 180.0f));
+        bool started = false;
+        for (int i = 0; i < 180 && !started; ++i)
+        {
+            frames(engine, 1);
+            started = run(engine, "hero_attack()").asBool();
+        }
+        REQUIRE(started);
+        frames(engine, 40);
+    };
+    const i64 carried = crystals(); // its loot from the start (inventory)
+    for (int i = 0; i < 5; ++i)
+    {
+        strike();
+    }
+    MESSAGE("crystals knocked off ", crystals() - carried);
+    CHECK(crystals() - carried == 3); // at most splinter.max
+}
+
+TEST_CASE("Engine dungeon monsters: the Kristallkrebs throws half of the hero's spell back at him")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    run(engine,
+        "give_item('it_rune_firebolt') equip('it_rune_firebolt') set_talent('magic_circle', 1) "
+        "set_stat('mana_max', 50) set_stat('mana', 50) set_stat('hp_max', 1000) set_stat('hp', 1000)");
+    run(engine,
+        "on('npc_hit', function(a, t, d) if t == 'hero' then Story.back = (Story.back or 0) + d end end)");
+    const std::string crab = crabInFront(engine, 5.0f);
+    run(engine, std::format("npc_set_stat('{}', 'hp_max', 5000)", crab));
+    run(engine, std::format("npc_set_stat('{}', 'hp', 5000)", crab));
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_firebolt");
+    frames(engine, 60);
+    run(engine, "hero_cast(true)");
+    frames(engine, 6);
+    run(engine, "hero_cast(false)");
+    bool back = false;
+    for (int i = 0; i < 300 && !back; ++i)
+    {
+        frames(engine, 1);
+        back = !run(engine, "Story.back").isNil();
+    }
+    CHECK(back);
+    CHECK(run(engine, std::format("npc_stat('{}', 'hp')", crab)).asInteger() < 5000); // the rest reached it
 }

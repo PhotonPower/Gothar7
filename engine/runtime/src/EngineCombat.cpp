@@ -175,9 +175,13 @@ void Engine::loadCombat()
 void Engine::loadAnimalBodies()
 {
     // data/creatures.lua: Creatures.<species>.body = { shape = "lying"|"upright", radius, length, offset,
-    // axis = "x"? }; move_axis = "x": walks sideways (characters-pipeline.md section 7.5).
+    // axis = "x"? }; move_axis = "x": walks sideways (characters-pipeline.md section 7.5); grab = { chance,
+    // seconds, reach }, reflect = { share }, splinter = { item, max } (Kristallkrebs, monsters.md).
     m_animalBodies.clear();
     m_sidewaysSpecies.clear();
+    m_grabRules.clear();
+    m_reflectShares.clear();
+    m_splinterRules.clear();
     const script::Value creatures = m_scripts ? m_scripts->global("Creatures") : script::Value();
     if (creatures.asTable() == nullptr)
     {
@@ -198,6 +202,47 @@ void Engine::loadAnimalBodies()
             moveAxis != nullptr && moveAxis->asString() == "x")
         {
             m_sidewaysSpecies.insert(species);
+        }
+        const auto number = [&](const script::Value* table, std::string_view key, f32& out)
+        {
+            if (const script::Value* v = table != nullptr ? field(table->asTable(), key) : nullptr;
+                v != nullptr && v->isNumber())
+            {
+                out = static_cast<f32>(v->asNumber());
+            }
+        };
+        if (const script::Value* grab = field(def.asTable(), "grab");
+            grab != nullptr && grab->asTable() != nullptr)
+        {
+            GrabRule rule;
+            number(grab, "chance", rule.chance);
+            number(grab, "seconds", rule.seconds);
+            number(grab, "reach", rule.reach);
+            m_grabRules.insert_or_assign(species, rule);
+        }
+        if (const script::Value* reflect = field(def.asTable(), "reflect");
+            reflect != nullptr && reflect->asTable() != nullptr)
+        {
+            f32 share = 0.0f;
+            number(reflect, "share", share);
+            m_reflectShares.insert_or_assign(species, std::clamp(share, 0.0f, 1.0f));
+        }
+        if (const script::Value* splinter = field(def.asTable(), "splinter");
+            splinter != nullptr && splinter->asTable() != nullptr)
+        {
+            SplinterRule rule;
+            if (const script::Value* item = field(splinter->asTable(), "item");
+                item != nullptr && item->isString())
+            {
+                rule.item = std::string(item->asString());
+            }
+            f32 max = static_cast<f32>(rule.max);
+            number(splinter, "max", max);
+            rule.max = static_cast<i32>(max);
+            if (!rule.item.empty())
+            {
+                m_splinterRules.insert_or_assign(species, std::move(rule));
+            }
         }
         const script::Value* body = field(def.asTable(), "body");
         if (body == nullptr)
@@ -284,6 +329,10 @@ f32 Engine::reachOf(const Combatant& c) const
 
 bool Engine::startFight(Combatant& c, std::string_view move, AttackKind kind)
 {
+    if (m_heroHeld && m_heroHeld->by == c.id)
+    {
+        return false; // its pincer holds the hero: no other blow meanwhile
+    }
     const std::string mode = fightMode(c);
     const i32 talent = c.character->talent(mode == "2h" ? "melee_2h" : "melee_1h");
     bool started = false;
@@ -307,6 +356,15 @@ bool Engine::startFight(Combatant& c, std::string_view move, AttackKind kind)
     if (c.creature != nullptr && c.animal && move == "attack")
     {
         c.creature->action = c.fighter->comboHit() % 2 == 1 ? 1 : 2;
+        // Kristallkrebs: some of its attacks are a grab (t_grab: its hit window pinches, "grab" holds fast).
+        if (const auto it = m_grabRules.find(c.species); it != m_grabRules.end() && it->second.chance > 0.0f)
+        {
+            const f32 roll = m_random ? m_random() : std::uniform_real_distribution<f32>(0.0f, 1.0f)(m_rng);
+            if (roll < it->second.chance)
+            {
+                c.creature->action = 7;
+            }
+        }
     }
     else if (c.id == kHeroId && c.animal && move == "attack")
     {
@@ -746,6 +804,7 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
 
     const i32 hp = target.character->attribute("hp") - hit.damage;
     (void)target.character->setAttribute("hp", std::max(hp, 0));
+    splinterOnHit(target, weapon);
     emit("npc_hit", {attacker.name, target.name, Value(static_cast<i64>(hit.damage)), Value(hit.critical)});
     G7_LOG_INFO("engine", "{} hits {}: {} damage{} ({} left)", attacker.name, target.name, hit.damage,
                 hit.critical ? " (critical)" : "", std::max(hp, 0));
@@ -1020,6 +1079,13 @@ void Engine::bindCombatFunctions()
     vm.bind({"hero_attack", "hero_attack(kind?: \"front\"|\"left\"|\"right\") -> boolean",
              "Ein Schlag des Helden (sonst über die Steuerung).", "Kampf", heroMove("attack")});
     vm.bind({"hero_parry", "hero_parry() -> boolean", "Parade des Helden.", "Kampf", heroMove("parry")});
+    vm.bind({"hero_held", "hero_held() -> string?",
+             "Wer den Helden gerade festhält (Schere des Kristallkrebses), nil: niemand.", "Kampf",
+             [this](std::span<const Value>) -> Result<Value>
+             {
+                 const Creature* c = m_heroHeld ? creature(m_heroHeld->by) : nullptr;
+                 return c != nullptr ? Value(c->species) : Value();
+             }});
     vm.bind({"fight_state", "fight_state(npc: string) -> string",
              "Kampfzustand: ready, attack, parry, dodge, stagger, down (bewusstlos), dead; `hero` für den "
              "Helden.",
@@ -1043,6 +1109,8 @@ void Engine::bindCombatFunctions()
                      "on(\"npc_hit\", fn(attacker: string, target: string, damage: number, critical: "
                      "boolean))",
                      "Ein Nahkampftreffer (M11; `hero` für den Helden)."},
+          std::tuple{"hero_grabbed", "on(\"hero_grabbed\", fn(npc: string))",
+                     "Eine Schere hält den Helden fest (`Creatures.<art>.grab`, Kristallkrebs)."},
           std::tuple{"npc_parried", "on(\"npc_parried\", fn(defender: string, attacker: string))",
                      "Ein Schlag wurde pariert (M11)."},
           std::tuple{"npc_knocked_out", "on(\"npc_knocked_out\", fn(target: string, attacker: string))",
@@ -1407,6 +1475,91 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
     }
 }
 
+// Kristallkrebs (dungeon, monsters.md): pincers that hold fast, crystals that splinter.
+void Engine::creatureGrab(Creature& c)
+{
+    const auto self = combatant(c.id); // its species (Creature::species is the Npc instance)
+    const auto it = self ? m_grabRules.find(self->species) : m_grabRules.end();
+    auto hero = combatant(kHeroId);
+    if (it == m_grabRules.end() || c.dead || !hero || m_heroHeld ||
+        hero->fighter->state() == FightState::Down || hero->fighter->state() == FightState::Dead)
+    {
+        return;
+    }
+    Vec3 to = hero->position - c.position;
+    to.y = 0.0f;
+    const f32 distance = glm::length(to);
+    const Vec3 front = gameplay::forwardOf(c.yaw + c.acrossYaw);
+    if (distance > it->second.reach ||
+        (distance > 0.1f && glm::dot(to / distance, front) < std::cos(glm::radians(70.0f))))
+    {
+        return; // missed: nothing between the pincers
+    }
+    m_heroHeld = HeroHold{c.id, it->second.seconds};
+    G7_LOG_INFO("engine", "{} holds the hero fast", c.species);
+    if (m_scripts)
+    {
+        const Value args[] = {c.species};
+        m_scripts->emit("hero_grabbed", args);
+    }
+}
+
+void Engine::throwSpellBack(Creature& c)
+{
+    if (c.reflectPending.empty() || c.dead)
+    {
+        return;
+    }
+    const gameplay::DamageByType back = std::exchange(c.reflectPending, {});
+    spellHit(back, kHeroId, c.species, false, true);
+}
+
+void Engine::releaseHero(std::string_view why)
+{
+    if (m_heroHeld)
+    {
+        G7_LOG_INFO("engine", "the hero is free again ({})", why);
+        m_heroHeld.reset();
+    }
+}
+
+void Engine::fixedUpdateHeroHold(gameplay::MoveInput& input, f32 seconds)
+{
+    if (!m_heroHeld)
+    {
+        return;
+    }
+    const Creature* c = creature(m_heroHeld->by);
+    m_heroHeld->seconds -= seconds;
+    if (c == nullptr || c->dead || c->vanished || c->figure == nullptr ||
+        c->fighter.state() == FightState::Down || c->figure->animator.state() != "grab")
+    {
+        releaseHero("the pincer let go");
+        return;
+    }
+    if (m_heroHeld->seconds <= 0.0f)
+    {
+        releaseHero("time");
+        return;
+    }
+    input = {}; // held fast: he can strike, not walk
+}
+
+void Engine::splinterOnHit(Combatant& target, const gameplay::DamageByType& weapon)
+{
+    const auto it = m_splinterRules.find(target.species);
+    const auto blunt = weapon.find("blunt");
+    if (it == m_splinterRules.end() || target.creature == nullptr || blunt == weapon.end() ||
+        blunt->second <= 0 || target.creature->splinters >= it->second.max)
+    {
+        return;
+    }
+    ++target.creature->splinters;
+    target.character->addItem(it->second.item, 1);
+    G7_LOG_INFO("engine", "a blunt blow knocks a crystal off {} ({}/{})", target.name,
+                target.creature->splinters, it->second.max);
+}
+
 // Spells on creatures and the hero (M12 part C1).
 void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::string_view caster, bool burn,
                       bool reaction)
@@ -1424,9 +1577,28 @@ void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::s
     {
         noteHeroFight(); // fight music (M13 C)
     }
+    // Kristallkrebs (Creatures.<species>.reflect): its crystals flare and throw part of the hero's spell
+    // back (t_reflect, event "reflect"); only the rest reaches it, and it does not stagger.
+    gameplay::DamageByType reaching = damage;
+    if (const auto it = m_reflectShares.find(target->species);
+        caster == "hero" && it != m_reflectShares.end() && it->second > 0.0f && target->creature != nullptr &&
+        target->animal && !target->creature->dead)
+    {
+        gameplay::DamageByType back;
+        for (auto& [type, value] : reaching)
+        {
+            const i32 thrown = static_cast<i32>(std::lround(static_cast<f32>(value) * it->second));
+            back[type] = thrown;
+            value -= thrown;
+        }
+        target->creature->reflectPending = std::move(back);
+        target->creature->action = 8;
+        reaction = false;
+        G7_LOG_INFO("engine", "{} throws {:.0f} % of the spell back", target->name, it->second * 100.0f);
+    }
     // As a projectile (R3): damage minus protection, at least the minimum, no critical hit.
     const i32 dealt = gameplay::rangedDamage(
-        damage, [&](std::string_view type) { return target->character->protection(type); }, m_combat);
+        reaching, [&](std::string_view type) { return target->character->protection(type); }, m_combat);
     const i32 hp = target->character->attribute("hp") - dealt;
     (void)target->character->setAttribute("hp", std::max(hp, 0));
     G7_LOG_INFO("engine", "{}'s spell hits {}: {} damage ({} left)", caster, target->name, dealt,
