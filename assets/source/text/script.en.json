@@ -1166,6 +1166,12 @@
       "context": "items/tools.lua",
       "status": "entwurf"
     },
+    "it_ladle.name": {
+      "de": "Kelle",
+      "text": "Ladle",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
     "it_lantern_beinhaus.name": {
       "de": "Grüne Laterne",
       "text": "Green lantern",

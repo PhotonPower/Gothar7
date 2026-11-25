@@ -94,8 +94,9 @@ Item "it_lantern_beinhaus" { -- die grüne Laterne des Beinhauswarts (figuren #4
     weight = 1.5,
 }
 
-Item "it_shroud_rag" { -- Beute des Beinhauswarts (Dungeon); Modell folgt (figuren)
+Item "it_shroud_rag" { -- Beute des Beinhauswarts (Dungeon)
     name = "Grabtuchfetzen",
+    mesh = "items/it_shroud_rag.glb",
     category = "misc",
     value = 5,
     weight = 0.1,

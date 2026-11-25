@@ -204,6 +204,20 @@ volume = 0.6
 pitch_jitter = 0.15
 max_distance = 30
 
+[page_turn] # Buchseite am Pult umblättern (amb/s_read, Platzhalter)
+files = ["sounds/page_turn.wav"]
+bus = "ambient"
+volume = 0.4
+pitch_jitter = 0.15
+max_distance = 8
+
+[cook_stir] # mit der Kelle im Kessel rühren (amb/s_cook, Platzhalter)
+files = ["sounds/cook_stir.wav"]
+bus = "ambient"
+volume = 0.5
+pitch_jitter = 0.1
+max_distance = 10
+
 [water_drip] # Tropfen im Gewölbe (Dungeon, Platzhalter)
 files = ["sounds/water_drip.wav"]
 bus = "ambient"

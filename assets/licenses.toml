@@ -135,5 +135,6 @@ licences = ["own"]
 md = "eigene Arbeit"
 paths = [
     "data/**", "fonts/*.font.toml", "furniture/**", "items/**", "mobs/**", "music/**", "props/**", "sounds/**",
-    "testscene/*", "testworld/**", "text/**", "ui/**", "vegetation/**", "voice/**", "worlds/.gitignore",
+    "testscene/*", "testscene/glass/**", "testworld/**", "text/**", "ui/**", "vegetation/**", "voice/**",
+    "worlds/.gitignore",
 ]

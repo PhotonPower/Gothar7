@@ -179,6 +179,10 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
 - Tätigkeiten an Freepoints: `zs_repair`, `zs_repair_saw` (Schreiner, `it_saw`), `zs_repair_shears` (Schneider,
   `it_shears`), `zs_harvest`, `zs_smalltalk`, `zs_drink` (mit Krug), `zs_lean`, `zs_sit`, `zs_stand_shop`,
   `zs_campfire` (am Ofen bzw. Herd).
+- **Hausarbeit** (figurens `house.glb`, #468): `zs_read` (stehend am Pult lesen, `FP_READ`, Klang `page_turn`; das Buch
+  gehört zum Pult) und `zs_cook` (am Herd im Kessel rühren, `FP_COOK`, `it_ladle` bei `item_to_hand` bzw.
+  `item_from_hand`, Klang `cook_stir`). Im Schloss liest der Schreiber nachmittags und der Vogt abends in der
+  Bibliothek, die Köchin rührt vor- und nachmittags am Herd.
 - **Kirche, Bettler, Musik** (figurens `church.glb`/`music.glb`, Freepoint-Typen world.md „Wegnetz“):
   - Zustände `zs_pray` (kniend, `FP_PRAY`), `zs_pray_stand` (Mönche, `FP_PRAY`), `zs_preach` (`FP_PREACH`; Event
     `beat` ohne Wirkung), `zs_beg` (`FP_BEG`), `zs_play_lute` (`FP_MUSIC`, `it_lute` bei `item_to_hand` bzw.

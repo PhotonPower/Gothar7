@@ -29,6 +29,9 @@ MeshData sampleMesh()
     leaves.wind = WindKind::Leaves; // version 4
     leaves.windStrength = 1.5f;
     leaves.windPivot = Vec3(0.0f, 2.93f, 0.7f);
+    leaves.glass = true; // version 5 (not that leaves are glass)
+    leaves.glassPattern = GlassPattern::Diamond;
+    leaves.glassTint = Vec3(0.7f, 0.8f, 0.9f);
     mesh.materials.push_back(leaves);
     mesh.submeshes.push_back({0, 6, static_cast<u32>(mesh.materials.size() - 1)});
     mesh.submeshes.push_back({0, 3, 0, 2}); // a coarser level of detail (version 3)
@@ -78,6 +81,9 @@ void checkEqual(const MeshData& a, const MeshData& b)
         CHECK(x.wind == y.wind);
         CHECK(x.windStrength == y.windStrength);
         CHECK(x.windPivot == y.windPivot);
+        CHECK(x.glass == y.glass);
+        CHECK(x.glassPattern == y.glassPattern);
+        CHECK(x.glassTint == y.glassTint);
     }
     REQUIRE(a.images.size() == b.images.size());
     for (usize i = 0; i < a.images.size(); ++i)
@@ -107,12 +113,14 @@ void setU32(std::vector<u8>& data, usize at, u32 v)
 
 constexpr usize kVertexCountAt = 8;
 constexpr usize kHeaderSize = 4 + 7 * 4 + 6 * 4;
+constexpr usize kWindRecord = 17;  // per material, version 4
+constexpr usize kGlassRecord = 14; // per material, version 5
 } // namespace
 
 namespace
 {
-/// The same file in the layout of version 1, 2 or 3: without the wind per material (version 4 added it) and,
-/// before version 3, submeshes without their LOD level.
+/// The same file in the layout of version 1 to 4: without the glass per material (version 5 added it), before
+/// version 4 without the wind per material and, before version 3, submeshes without their LOD level.
 std::vector<u8> olderLayout(std::vector<u8> data, u32 version)
 {
     const auto read = [&](usize at)
@@ -121,7 +129,13 @@ std::vector<u8> olderLayout(std::vector<u8> data, u32 version)
         std::memcpy(&v, data.data() + at, 4);
         return v;
     };
-    data.resize(data.size() - usize(read(20)) * 17); // the wind records at the end
+    data.resize(data.size() - usize(read(20)) * kGlassRecord); // the glass records at the end
+    setU32(data, 4, version);
+    if (version >= 4)
+    {
+        return data;
+    }
+    data.resize(data.size() - usize(read(20)) * kWindRecord); // then the wind records
     setU32(data, 4, version);
     if (version >= 3)
     {
@@ -198,18 +212,33 @@ TEST_CASE("corrupt .g7mesh files are rejected")
         REQUIRE_MESSAGE(v3, (v3 ? "" : v3.error().message));
         CHECK(v3.value().submeshes.back().lod == 2);
         CHECK(v3.value().materials.back().wind == WindKind::None);
-        CHECK(v3.value().materials.back().windStrength == 1.0f);
+        // Version 4 (wind, no glass): no material is glass.
+        auto v4 = deserializeMesh(olderLayout(good, 4), "v4.g7mesh");
+        REQUIRE_MESSAGE(v4, (v4 ? "" : v4.error().message));
+        CHECK(v4.value().materials.back().wind == WindKind::Leaves);
+        CHECK_FALSE(v4.value().materials.back().glass);
+        CHECK(v4.value().materials.back().glassTint == kDefaultGlassTint);
     }
     SUBCASE("unknown wind kind")
     {
         auto data = good;
-        data[data.size() - 17] = 9; // the last material's wind kind
+        const usize materials = sampleMesh().materials.size();
+        data[data.size() - materials * kGlassRecord - kWindRecord] = 9; // the last material's wind kind
         rejected(data, "wind kind");
+    }
+    SUBCASE("unknown glass pattern")
+    {
+        auto data = good;
+        data[data.size() - kGlassRecord + 1] = 7; // the last material's glass pattern
+        rejected(data, "glass pattern");
+        data = good;
+        data[data.size() - kGlassRecord] = 2; // glass neither 0 nor 1
+        rejected(data, "glass pattern");
     }
     SUBCASE("collision index out of range")
     {
         auto data = good;
-        setU32(data, data.size() - 4 - usize(sampleMesh().materials.size()) * 17,
+        setU32(data, data.size() - 4 - usize(sampleMesh().materials.size()) * (kWindRecord + kGlassRecord),
                7); // the last collision index
         rejected(data, "collision index");
     }

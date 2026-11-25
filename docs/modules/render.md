@@ -631,6 +631,42 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   mit dem Wind, der Fuß nicht; ohne Wind und unmarkiert steht alles still; Mehrfach-Zeichnen und Tiefen-Pass
   biegen gleich), `test_engine_render.cpp` (Wind folgt der Lage, aus in den Einstellungen).
 
+### Spiegelnde Fenster (M17 Fenster, Teil F1 umgesetzt; Plan unten) – `Glass.hpp`, `common/glass.glsl`
+```cpp
+enum class asset::GlassPattern { Bullseye, Diamond, Plain };  parseGlassPattern(text); glassPatternName(p);
+asset::MaterialInfo::glass, glassTint (Vorgabe kDefaultGlassTint), glassPattern   // aus glTF extras, .g7mesh v5
+enum class WindowReflections { Off, Low, Medium, High };  parseWindowReflections(text); windowReflectionsName(q);
+f32 glassFresnel(cosTheta);                 // Schlick f0 0,04, höchstens 0,5 (= Shader)
+struct GlassLook { bool enabled; GlassPattern pattern; Vec3 tint; };  Material::glass
+Environment::skyZenith, windowReflections   // im Lighting-Block: vec4 skyZenith (w = Stufe 0..3)
+```
+- **Markierung (Vertrag mit welt, freigegeben 2026-11-23):** glTF-Material mit `extras.glass = true` (Name frei,
+  Vorschlag `window_glass`), optional `extras.glass_tint` [r, g, b] 0..1 (Vorgabe leicht grünlich 0,86/0,95/0,88,
+  außerhalb begrenzt) und `extras.glass_pattern` = `bullseye` (Vorgabe), `diamond` oder `plain`. Fehlerhafte Werte:
+  Warnung, Vorgabe (kein Glas bzw. Vorgabe-Tönung/-Muster). Bis welt liefert: Testmodell
+  `assets/source/testscene/glass/window_glass.gltf` (Wand mit drei Fenstern, je Muster eines; erzeugt von
+  `make_window.py`, steht in der Testszene bei z 17 zum Feuer hin).
+- **Laden und Kochen:** `GltfExtras.cpp` liest Wind und Glas in einem Durchgang (`readMaterialExtras`); `.g7mesh`
+  Version 5 hängt je Material Glas, Muster und Tönung an; `g7-cook` Version 8 kocht einmal alles neu.
+- **Stufe A (`mesh.frag`, Zweig nur für Glas und nur mit `window_reflections` ≠ `off`):** Die Scheibe ist die dunkle
+  Grundfarbe des Materials (dahinter der Raum), darüber der gespiegelte Himmel nach Fresnel (Schlick, f0 0,04:
+  frontal etwa 4 %, schräg höchstens 50 %; Entscheidung 1) – Horizont = Nebelfarbe, Zenit = `Sky::zenith`, unter dem
+  Horizont dunkler (Straße, Häuser gegenüber) –, getönt mit `glass_tint`, und der Sonnenglanz (vom Sonnenschatten
+  verdeckt). Nachts ist der Himmel dunkel, die Scheiben spiegeln kaum. Nasse Scheiben (Nässe aus Teil N) glänzen
+  stärker (Entscheidung 10). Von innen (Rückseite) milchig hell nach dem Tageslicht, ohne Spiegelung (Entscheidung 6).
+- **Scheiben (Entscheidung 2):** in der Ebene der Scheibe aus der Weltlage: Butzen 12 cm, in Reihen versetzt, je
+  Scheibe eine Wölbung und eine kleine Schräglage, Bleirute in den Zwickeln; Rauten 10 × 14 cm zwischen Bleiruten,
+  jede leicht verkippt; alle mit langsamer Welligkeit. Blei ist stumpf und dunkel.
+- **Option:** `[render] window_reflections` = `off`, `low`, `medium` (Vorgabe), `high`. `off` zeichnet Glas wie jedes
+  Material (bytegleich zu vorher). Bis die Teile F2 (Proben) und F3 (SSR) kommen, zeichnen `medium` und `high` Stufe A.
+  Der Menüeintrag kommt mit dem Abschluss-Teil.
+- **Batching:** Glas-Materialien haben Muster und Tönung im Gruppenschlüssel; andere Materialien bündeln wie bisher.
+  Schatten und Tiefen-Vorpass behandeln Glas wie jedes undurchsichtige Material.
+- **Noch offen in F1:** der warme Schimmer bei Licht im Raum dahinter (Entscheidung 4) – kommt als eigener Schritt.
+- **Tests:** `tests/render/test_glass.cpp` (Stufen, Fresnel, Lighting-Block), `tests/asset/test_material.cpp`
+  (Extras, Fehler → Vorgabe), `test_mesh_file.cpp` (Version 5, Version 4 ohne Glas, falsches Muster), GPU
+  `test_glass.cpp` (frontal schwach, schräg stark, Muster zeichnen, `off` bytegleich, Mehrfach-Zeichnen gleich).
+
 ### Gras (M17 Teile G1–G3, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
 - **Büschel auf der GPU:** Jedes Büschel ist ein Eintrag von 16 Byte (Fuß als drei Floats, gepackte Bits: Drehung,
   Höhe, Schicht, Farbton, Art, Gelände-Normale xz; `packGrassTuft`) in einem Speicherpuffer (std430, Bindung 6).

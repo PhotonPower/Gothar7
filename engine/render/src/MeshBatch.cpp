@@ -80,6 +80,19 @@ void MeshRenderer::setWindKey(BatchKey& key, const Material& material) noexcept
     key.values[16] = w.hinge;
 }
 
+void MeshRenderer::setGlassKey(BatchKey& key, const Material& material) noexcept
+{
+    const GlassLook& g = material.glass;
+    if (!g.enabled)
+    {
+        return; // other materials keep batching as before
+    }
+    key.values[17] = 1u + static_cast<u32>(g.pattern);
+    key.values[18] = bitsOf(g.tint.r);
+    key.values[19] = bitsOf(g.tint.g);
+    key.values[20] = bitsOf(g.tint.b);
+}
+
 void MeshRenderer::bindMaterial(rhi::ShaderProgram& program, Device& device, const Material& material)
 {
     program.setUniform("uBaseColor", material.baseColorFactor);
@@ -88,6 +101,9 @@ void MeshRenderer::bindMaterial(rhi::ShaderProgram& program, Device& device, con
     program.setUniform("uNormalTwoChannel", material.normalTwoChannel ? 1 : 0);
     program.setUniform("uAlphaCutoff", material.alphaCutoff);
     setWindUniforms(program, material);
+    // M17 windows F1: x = 0 no glass, else 1 + the pattern; yzw the tint.
+    const GlassLook& g = material.glass;
+    program.setUniform("uGlass", Vec4(g.enabled ? 1.0f + static_cast<f32>(g.pattern) : 0.0f, g.tint));
     device.bindTexture(0, *material.baseColor, m_sampler);
     device.bindTexture(1, *material.normal, m_sampler);
     device.bindTexture(2, *material.emissive, m_sampler);
@@ -167,6 +183,7 @@ void MeshRenderer::drawBatched(Device& device, std::span<const MeshDrawItem> ite
                                 bitsOf(material.normalScale),
                                 bitsOf(material.alphaCutoff)};
             setWindKey(entry.key, material);
+            setGlassKey(entry.key, material); // M17 windows F1
             entry.command = item.mesh->drawRecord(i);
             entry.command.baseInstance = drawIndex;
             entry.mesh = item.mesh;
