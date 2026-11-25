@@ -86,6 +86,13 @@ Item "it_shears" {
     weight = 0.4,
 }
 
+Item "it_kristall" { -- vom Kristallkrebs abgeschlagen (stumpfe Waffen, Dungeon); Modell fehlt noch (figuren)
+    name = "Leuchtkristall",
+    category = "misc",
+    value = 25,
+    weight = 0.3,
+}
+
 Item "it_lute" { -- der Musiker spielt sie (zs_play_lute); Wert und Gewicht Platzhalter
     name = "Laute",
     mesh = "items/it_lute.glb",
