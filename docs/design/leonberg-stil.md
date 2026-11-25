@@ -146,6 +146,10 @@ Eigenes Modell (Blender-Python-Skript, W-E3), eigene Interpretation eines Renais
   (dunkles Blaugrau); beide Einträge sind für das Schloss neu in der Palette (jetzt 16 Werte).
 - Ziergiebel gestuft mit Voluten und Obelisken, achteckiger Treppenturm mit welscher Haube und Laterne, Erker, Gauben.
 - Bilder bei 12:00 zur Abnahme: `C:\GotharData\review\w6\PLATZHALTER_schloss_*`.
+- **Texturen (W7):** wie die Häuser, die Palette bleibt die Tönung. Werksteine (Sockel, Eckquader, Gesimse, Gewände)
+  und die Steinböden als Quader-Mauerwerk (`ashlar`: regelmäßige Schichten, Läuferverband, feine Kalkfugen, etwa so
+  hell wie die Palette); Putz, Dach, Holz, Fensterflächen und Schornsteine mit den Texturen der Häuser. Der Keller ist
+  Bruchstein (die dunkle Sockel-Textur) und zusätzlich 25 % dunkler.
 
 ## Erste Bilder und Justierung (Platzhalter, 2026-10-03)
 Ablage `C:\GotharData\review\w5\` (nicht im Repo).

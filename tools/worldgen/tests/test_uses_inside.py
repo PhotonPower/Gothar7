@@ -889,3 +889,22 @@ def test_in_leonberg_every_room_waypoint_lies_in_a_zone_of_its_room():
                if not any(z["value"] == p["name"][3:] and inside(
                    (p["pos"][0], p["pos"][1] + 1.0, p["pos"][2]), z) for z in zones)]  # fmt: skip
     assert outside == []
+
+
+def test_a_window_light_outside_the_rooms_boxes_moves_into_them():
+    from shapely.geometry import Point
+
+    from gothar_worldgen.uses.inside import COVER_IN_M, _Room
+
+    poly = Polygon([(0.0, 0.0), (6.0, 0.0), (6.0, 3.0), (0.0, 4.0)])  # a slanted wall at the top
+    room = _Room(poly, 0.0, 2.5, Polygon(), (0.0, 1.0), (1.0, 0.0))
+    assert room.clamped((3.0, 1.5)) == (3.0, 1.5)  # well inside: stays
+    assert room.cover is not None
+    outside = [(x / 10, y / 100) for x in range(5, 60, 5) for y in range(250, 400, 2)
+               if poly.contains(Point(x / 10, y / 100))
+               and not room.cover.contains(Point(x / 10, y / 100))]  # fmt: skip
+    assert outside  # the boxes leave a strip under the slanted wall
+    for p in outside:
+        q = room.clamped(p)
+        assert room.cover.buffer(-COVER_IN_M + 1e-3).contains(Point(q))
+        assert math.dist(p, q) < 0.6
