@@ -62,6 +62,12 @@
       "context": "data/guilds.lua",
       "status": "entwurf"
     },
+    "data.guilds.name_11": {
+      "de": "Mauerkriecher",
+      "text": "Wall crawlers",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
     "data.teaching.attribute_names_01": {
       "de": "Stärke",
       "text": "Strength",
@@ -1416,6 +1422,12 @@
       "de": "Laufvogel",
       "text": "Runner Bird",
       "context": "npcs/animals.lua",
+      "status": "entwurf"
+    },
+    "mon_mauerkriecher.name": {
+      "de": "Mauerkriecher",
+      "text": "Wall Crawler",
+      "context": "npcs/dungeon.lua",
       "status": "entwurf"
     },
     "mon_mauerschlupfer.name": {

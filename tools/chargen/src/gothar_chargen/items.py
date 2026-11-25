@@ -573,9 +573,13 @@ def lute(seg: int) -> list[Mesh]:
     return [bowl, board, rose, neck, strings, bridge]
 
 
+LANTERN_LIGHT = (0.0, -0.17, 0.0)  # light: middle of the glass (marker socket_light, +Y up)
+
+
 # empty marker nodes per item (name -> position in item space), e.g. where engine puts the flame
 MARKERS: dict[str, dict[str, tuple[float, float, float]]] = {
     "it_torch": {"socket_flame": TORCH_FLAME},  # engine: flame and light, +Y up out of the head
+    "it_lantern_beinhaus": {"socket_light": LANTERN_LIGHT},  # engine: green light in the glass
 }
 
 
@@ -1083,6 +1087,31 @@ def blank_hot(seg: int) -> list[Mesh]:
     return [hot, tang]
 
 
+def lantern(seg: int) -> list[Mesh]:
+    """Iron lantern of the Beinhauswart (it_lantern_beinhaus, 2026-11-24): held at the top of its
+    bail (the origin), the body hangs below along -Y; a square frame with roof, base and corner
+    posts round a pale green glowing glass (emissive), the light at LANTERN_LIGHT. engine hangs it
+    on socket_lantern (npc_hold) and drops it in the warden's rage phase."""
+    iron, glass = Mesh("iron_forged"), Mesh("glass_glow_green")
+    bar = circle(0.004, 5)
+    t = np.linspace(0.0, np.pi, 9)  # bail: a half ring in the X-Y plane, its top at the origin
+    loft(iron, np.stack([0.032 * np.cos(t), -0.034 + 0.032 * np.sin(t), 0 * t], axis=1),
+         [bar] * len(t), tile=0.05)  # fmt: skip
+    square = 4  # lathe with four segments: a square, corners on the X and Z axes
+    lathe(iron, [(0.0, -0.075), (0.105, -0.078), (0.1, -0.066), (0.02, -0.036), (0.0, -0.032)],
+          square, tile=0.05)  # roof  # fmt: skip
+    lathe(iron, [(0.0, -0.29), (0.1, -0.29), (0.1, -0.268), (0.0, -0.268)], square, tile=0.05)
+    lathe(glass, [(0.0, -0.268), (0.082, -0.268), (0.082, -0.075), (0.0, -0.075)], square,
+          tile=0.2, fit_uv=True)  # fmt: skip
+    post = circle(0.005, 4)
+    for a in range(4):  # corner posts just outside the glass corners
+        x, z = 0.088 * np.cos(a * np.pi / 2), 0.088 * np.sin(a * np.pi / 2)
+        loft(iron, np.array([[x, -0.27, z], [x, -0.072, z]]), [post] * 2, tile=0.05)
+    loft(iron, np.array([[0.0, -0.17, 0.0], [0.0, -0.165, 0.0]]),  # a band round the glass
+         [circle(0.086, square)] * 2, ref=(1.0, 0.0, 0.0), tile=0.05)  # fmt: skip
+    return [iron, glass]
+
+
 RUNES = ("firebolt", "heal", "sleep", "transform_wolf", "summon_wolf", "telekinesis")  # it_rune_<x>
 
 ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
@@ -1133,6 +1162,7 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_lute": (lute, 16),
     "it_gulden": (gulden, 14),
     "it_blank_hot": (blank_hot, 8),
+    "it_lantern_beinhaus": (lantern, 4),
     **{f"it_rune_{spell}": ((lambda sp: lambda s: rune(s, sp))(spell), 12) for spell in RUNES},
 }
 
@@ -1149,11 +1179,14 @@ PROCEDURAL = (
     "stone", "parchment", "wax_red", "pitch", *(f"rune_{spell}" for spell in RUNES),
     "ham", "bone", "sausage", "cheese", "clay", "glass_green", "glass_amber", "linen",
     "root", "leaf_sage", "leaf_green", "leaf_dry", "flower_white", "flower_yellow",
-    "gold", "silver", "iron_hot",
+    "gold", "silver", "iron_hot", "glass_glow_green",
 )  # fmt: skip
 
 
-EMISSIVE = {"iron_hot": (1.0, 1.0, 1.0)}  # material -> glTF emissiveFactor (with its texture)
+EMISSIVE = {
+    "iron_hot": (1.0, 1.0, 1.0),
+    "glass_glow_green": (1.0, 1.0, 1.0),
+}  # material -> glTF emissiveFactor (with its texture)
 
 
 RUNE_COLOURS = {  # sign colour per spell
@@ -1335,6 +1368,10 @@ def procedural_texture(name: str, size: int = 256) -> np.ndarray:
         )
         c = c * (0.85 + 0.25 * n1[..., None])
         return np.clip(c * np.where(n2[..., None] > 0.68, 0.45, 1.0), 0, 1)
+    if name == "glass_glow_green":  # the Beinhauswart's lantern glass: pale green, brighter inside
+        u = np.linspace(0, 1, size)[None, :]
+        glow = 0.75 + 0.25 * np.sin(np.pi * u) * (0.7 + 0.3 * n1)
+        return np.clip(np.array([0.44, 1.0, 0.6])[None, None] * glow[..., None], 0, 1)
     if name == "cork":
         return np.clip(np.array([0.55, 0.4, 0.24])[None, None] * (0.7 + 0.5 * n2[..., None]), 0, 1)
     raise ValueError(f"unknown procedural texture {name}")

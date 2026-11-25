@@ -603,29 +603,46 @@ bool Engine::ghostFigureShown() const noexcept
     return m_ghostFigure && m_ghostFigure->shown && m_ghostFigure->figure && m_ghostFigure->figure->uploaded;
 }
 
-Result<std::vector<Engine::ModelMarker>> Engine::modelMarkers(std::string_view path,
-                                                              std::string_view prefix) const
+namespace
 {
-    std::vector<ModelMarker> out;
+template <typename Load>
+Result<std::vector<Engine::ModelMarker>> markersOf(const asset::Vfs& vfs, std::string_view path, Load load)
+{
+    std::vector<Engine::ModelMarker> out;
     if (!path.ends_with(".glb"))
     {
-        return out; // cooked meshes keep no empty nodes
+        return out; // cooked meshes keep no empty nodes and no extras
     }
-    auto bytes = m_vfs.read(path);
+    auto bytes = vfs.read(path);
     if (!bytes)
     {
         return bytes.error();
     }
-    auto markers = asset::loadGltfMarkers(bytes.value(), prefix, path);
+    auto markers = load(std::span<const u8>(bytes.value()));
     if (!markers)
     {
         return markers.error();
     }
     for (asset::GltfMarker& m : markers.value())
     {
-        out.push_back({std::move(m.name), m.world});
+        out.push_back({std::move(m.name), m.world, std::move(m.extras)});
     }
     return out;
+}
+} // namespace
+
+Result<std::vector<Engine::ModelMarker>> Engine::modelMarkers(std::string_view path,
+                                                              std::string_view prefix) const
+{
+    return markersOf(m_vfs, path,
+                     [&](std::span<const u8> bytes) { return asset::loadGltfMarkers(bytes, prefix, path); });
+}
+
+Result<std::vector<Engine::ModelMarker>> Engine::modelMeshExtras(std::string_view path,
+                                                                 std::string_view key) const
+{
+    return markersOf(m_vfs, path,
+                     [&](std::span<const u8> bytes) { return asset::loadGltfMeshExtras(bytes, key, path); });
 }
 } // namespace g7
 

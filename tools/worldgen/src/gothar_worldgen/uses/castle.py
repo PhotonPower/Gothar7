@@ -16,6 +16,9 @@ the room (``at`` [s, t], ``dir`` its front, or ``along`` its long axis). The kin
   contract in schloss-dungeon.md §5 and engine's dungeon.md;
 - ``lights`` (``max``: the room's light budget instead of ``roomLights``).
 
+``daylight`` (room -> 0..1) sets the indoor zone's daylight where engine's guess from the window
+lights does not fit (world.md "Zonen": a room without a window light counts as windowless).
+
 Every room gets daylight at one window (the court's first), the hearth its fire, the tower a lantern
 at each landing. Waypoints: a lane along the doorways of every storey (``doorT``), a point in each
 room's middle on it (``WP_<TAG>_<ROOM>``, the routine place), the doorways, the ways to the portal
@@ -530,11 +533,17 @@ class _Castle:
     def zones(self) -> None:
         from gothar_worldgen.uses.zones import room_boxes
 
+        daylight = self.data.get("daylight", {})  # rooms where engine's guess does not fit
         for key, room, a, b in self.rooms():
             y0, y1 = self.storeys[key]
             ring = [self.xz(a, -self.t_in), self.xz(b, -self.t_in), self.xz(b, self.t_in),
                     self.xz(a, self.t_in)]  # fmt: skip
-            self.plan.zones += room_boxes(f"{self.tag}_{room.upper()}_INNEN", ring, y0, y1)
+            boxes = room_boxes(f"{self.tag}_{room.upper()}_INNEN", ring, y0, y1)
+            part = self.geo.interior.part_name(key, room)
+            if part in daylight:
+                for z in boxes:
+                    z["daylight"] = float(daylight[part])
+            self.plan.zones += boxes
         c, ri, _ = self.tower_frame()
         ring = [(c[0] + ri * math.cos(a), c[1] + ri * math.sin(a))
                 for a in (self.tower_phase() + k * math.pi / 4 for k in range(8))]  # fmt: skip
