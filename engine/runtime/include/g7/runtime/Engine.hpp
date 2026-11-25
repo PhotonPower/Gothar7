@@ -1974,8 +1974,10 @@ private:
     render::RainRenderer m_rain;                                     // M17 R
     std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
-    f32 m_fogStart = 30.0f;        ///< [render] fog_start (or the debug panel) for worlds with sky
-    render::GrassRenderer m_grass; // M17 G1
+    f32 m_fogStart = 30.0f; ///< [render] fog_start (or the debug panel) for worlds with sky
+    render::WindowReflections m_windowReflections =
+        render::WindowReflections::Medium; // [render] window_reflections
+    render::GrassRenderer m_grass;         // M17 G1
     render::GrassRing m_grassRing;
     render::GrassQuality m_grassQuality = render::GrassQuality::Medium; // [render] grass (auto resolved)
     std::vector<render::GrassLayer> m_grassLayers;                      // per terrain layer of the world

@@ -59,6 +59,19 @@ enum class WindKind : u8
 /// Bounds of `extras.wind_strength`.
 inline constexpr f32 kMaxWindStrength = 2.0f;
 
+/// The panes of a window glass (M17 windows F1, contract with welt: glTF material `extras.glass_pattern`).
+enum class GlassPattern : u8
+{
+    Bullseye, ///< small round bulging panes in lead (the default, around 1700)
+    Diamond,  ///< lozenges between lead cames
+    Plain,    ///< one wavy pane
+};
+/// "bullseye", "diamond", "plain"; nullopt for anything else.
+[[nodiscard]] std::optional<GlassPattern> parseGlassPattern(std::string_view text) noexcept;
+[[nodiscard]] std::string_view glassPatternName(GlassPattern pattern) noexcept;
+/// `extras.glass_tint` when not given: slightly green.
+inline constexpr Vec3 kDefaultGlassTint{0.86f, 0.95f, 0.88f};
+
 /// Deliberately simple, stylised material (no metallic/roughness). Image indices refer to
 /// MeshData::images, -1 = none.
 struct MaterialInfo
@@ -76,6 +89,10 @@ struct MaterialInfo
     WindKind wind = WindKind::None; ///< glTF `extras.wind` (M17 W)
     f32 windStrength = 1.0f;        ///< `extras.wind_strength`, 0..2
     Vec3 windPivot{0.0f};           ///< `extras.wind_pivot` in model space (Hanging); the origin if not given
+    bool glass =
+        false; ///< glTF `extras.glass`: a window pane (M17 windows F1, render.md "Spiegelnde Fenster")
+    Vec3 glassTint = kDefaultGlassTint;                 ///< `extras.glass_tint`, linear 0..1
+    GlassPattern glassPattern = GlassPattern::Bullseye; ///< `extras.glass_pattern`
 };
 
 /// Range of the index buffer drawn with one material.

@@ -26,6 +26,7 @@ layout(std140, binding = 0) uniform Lighting
     vec4 aoParams;          // x ambient occlusion strength (0 off), yz 1 / viewport size (M17 P3)
     mat4 rainMapViewProjection; // M17 N: world -> rain map (depth 0 top .. 1)
     vec4 wetParams;         // x wetness, y has rain map, z puddles
+    vec4 skyZenith;         // M17 windows F1: rgb zenith colour, w window reflections (0 off .. 3 high)
     vec4 indoorBoxes[2 * kMaxIndoorVolumes]; // per room: centre + cos yaw, half extents + sin yaw
     vec4 indoorAmbient[kMaxIndoorVolumes / 4]; // per room its ambient factor, four to a vec4
     vec4 pointPositionRadius[kMaxPointLights];
