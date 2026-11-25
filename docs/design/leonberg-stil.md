@@ -59,7 +59,7 @@ Rähm und Ständer Balken. Die Muster sind eigene Geometrie in normierten Feldko
   - Dächer ab 35° behalten ihre gemessene Form.
 - **Balken:** dunkelbraun bis schwarzbraun; etwa 15 % ochsenblutrot an repräsentativen Häusern (Bürger-, Amtshaus).
 - **Fenster:** dunkle Holzrahmen, kleine Scheiben.
-- **Palette:** 16 feste Materialwerte (14 für die Häuser, dazu `hedge` und `water` für den Schlossgarten) mit gleichem Wert in allen Häusern; die Engine bündelt danach.
+- **Palette:** 16 feste Materialwerte (14 für die Häuser, dazu `hedge` und `water` für den Schlossgarten, `timber_floor` für den Dielenboden im Schloss-OG) mit gleichem Wert in allen Häusern; die Engine bündelt danach.
 
 ## Alterung
 Vorgesehen:
@@ -150,7 +150,8 @@ Eigenes Modell (Blender-Python-Skript, W-E3), eigene Interpretation eines Renais
   und die Steinböden als Quader-Mauerwerk (`ashlar`: regelmäßige Schichten, Läuferverband, feine Kalkfugen, etwa so
   hell wie die Palette); Putz, Dach, Holz, Fensterflächen und Schornsteine mit den Texturen der Häuser. Der Keller ist
   Bruchstein (die dunkle Sockel-Textur, auch der Boden) und zusätzlich 25 % dunkler. EG und OG haben Balkendecken:
-  dunkle Holzbalken quer zum Flügel, dazwischen Putzfelder.
+  dunkle Holzbalken quer zum Flügel, dazwischen Putzfelder. Das OG hat einen hellen Dielenboden (`timber_floor`, eigener
+  Palettenwert nur für das Schloss).
 
 ## Erste Bilder und Justierung (Platzhalter, 2026-10-03)
 Ablage `C:\GotharData\review\w5\` (nicht im Repo).

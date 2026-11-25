@@ -4782,7 +4782,7 @@
     "ceiling": "plaster_white"
    },
    "og": {
-    "floor": "timber_dark",
+    "floor": "timber_floor",
     "wall": "plaster_white",
     "ceiling": "plaster_white"
    }
@@ -5467,6 +5467,7 @@
    "brick": "stone",
    "roof_old": "roof",
    "timber_dark": "timber",
+   "timber_floor": "boards",
    "frame": "boards",
    "hedge": null,
    "water": null
