@@ -308,6 +308,11 @@ simulation_distance = 80.0
 # zählen immer dazu. 0 = ohne Obergrenze (M17 Perf Teil D).
 max_simulated = 32
 
+[jobs]
+# Job-System (M17 Perf Teil C): so viele Threads rechnen parallel, der Hauptthread eingeschlossen. 0 = automatisch
+# (Kerne - 1, höchstens 8), 1 = alles seriell auf dem Hauptthread (Fehlersuche).
+threads = 0
+
 [editor]
 # Editor-Modus (gothar --editor, docs/modules/tools.md): so viele Schritte lassen sich je Sitzung rückgängig machen.
 undo_depth = 200

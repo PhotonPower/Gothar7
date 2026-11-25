@@ -1,6 +1,6 @@
 # perf – Plan M17 (Profiling, Budgets, Job-System)
 
-Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). **Teil A umgesetzt:** Tracy 0.14 im Preset `profile` (ADR 0024 angenommen), Zonen je System (Spieler, Kreaturen, KI, Wahrnehmung, Wege, Animation, Kampf, Mobs, Skripte, Physik, Audio, UI, Culling, Schatten je Kaskade, Gelände, Figuren, Post, Welt laden), GPU-Zonen je Durchgang über `PassTimes`, Thread-Name der Asset-Arbeiter. Benutzen: `cmake --preset profile && cmake --build --preset profile`, `build/profile/game/gothar`, dann den Tracy-Viewer 0.14 (separat, nicht im Repo) verbinden; ohne Viewer misst Tracy nicht (on-demand). **Teil B umgesetzt:** `gothar --perf=<namen>|all` mit `assets/source/data/perf.toml` (markt, gasse, stube um 10:00 und 21:00; Stress `markt_voll` mit 60 NPCs mehr), Bericht `perf_<name>.json`, Ladephasen; erste Werte in `docs/perf/2026-11-07-erste-messung.md`. **Teil C zurückgestellt; Teil D: KI-LOD-Obergrenze nach Anzahl umgesetzt.**
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). **Teil A umgesetzt:** Tracy 0.14 im Preset `profile` (ADR 0024 angenommen), Zonen je System (Spieler, Kreaturen, KI, Wahrnehmung, Wege, Animation, Kampf, Mobs, Skripte, Physik, Audio, UI, Culling, Schatten je Kaskade, Gelände, Figuren, Post, Welt laden), GPU-Zonen je Durchgang über `PassTimes`, Thread-Name der Asset-Arbeiter. Benutzen: `cmake --preset profile && cmake --build --preset profile`, `build/profile/game/gothar`, dann den Tracy-Viewer 0.14 (separat, nicht im Repo) verbinden; ohne Viewer misst Tracy nicht (on-demand). **Teil B umgesetzt:** `gothar --perf=<namen>|all` mit `assets/source/data/perf.toml` (markt, gasse, stube um 10:00 und 21:00; Stress `markt_voll` mit 60 NPCs mehr), Bericht `perf_<name>.json`, Ladephasen; erste Werte in `docs/perf/2026-11-07-erste-messung.md`. **Teil C: C1 Job-System umgesetzt (`core/Jobs.hpp`), C2 Animation folgt; Teil D: KI-LOD-Obergrenze nach Anzahl umgesetzt.**
 Ziel (Meilenstein D): Release-Build stabil ≥ 60 FPS in der größten Welt (Leonberg) auf Zielhardware. Erst messen, dann
 parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummeriert.
 
@@ -74,9 +74,21 @@ Neu bewertet wird bei deutlich größerer Welt.
 6,5 ms, Stress p99 10 ms bei 16,7 ms), das Job-System ist im Moment nicht nötig. Es kommt erst, wenn ein Szenario das
 Budget reißt. Ebenso bleibt `.g7skin`/`.g7anim` nach Entscheidung 9 zurückgestellt (3,85 s Ladezeit sind in Ordnung).
 
-- **Eigenes, kleines System in `core`** (`g7/core/Jobs.hpp`): fester Pool aus `std::jthread`,
-  `parallelFor(count, chunk, fn)` und `JobGroup::wait()`. Keine Aufgaben-Graphen, kein Work-Stealing zu Beginn.
+- **C1 umgesetzt – eigenes, kleines System in `core`** (`g7/core/Jobs.hpp`, Einzelheiten in `core.md`): fester Pool
+  aus `std::jthread` mit einer Warteschlange (Mutex + Bedingungsvariable). Keine Aufgaben-Graphen, kein Work-Stealing.
   Fremdbibliotheken (enkiTS, Taskflow) wären eine neue Abhängigkeit mit ADR; der Bedarf ist klein (Entscheidung 6).
+  - `JobSystem(threads)`: Threads einschließlich des Aufrufers; 0 = automatisch (`autoThreads()`: Kerne − 1, höchstens
+    8), 1 = alles seriell auf dem Aufrufer.
+  - `parallelFor(count, chunk, fn(begin, end))`: jeder Index genau einmal in Stücken der Größe `chunk` (0 = etwa 4 je
+    Thread); der Aufrufer rechnet mit; ein verschachtelter Aufruf (aus einem Job) läuft seriell; die erste Ausnahme
+    eines Stücks wird nach dem Ende aller Stücke auf dem Aufrufer neu geworfen.
+  - `JobGroup(jobs)` mit `run(fn)` und `wait()` (arbeitet mit, wirft die erste Ausnahme neu).
+  - Tracy-Threadnamen `job worker 1` … `8`, Zone `job` je Job eines Arbeiters.
+  - Die `Engine` besitzt eine Instanz (`Engine::jobs()`), Log-Zeile `jobs: N thread(s)` beim Start.
+  - **Datenrennen:** Preset `tsan` (clang, `-fsanitize=thread`; nur unser Code ist instrumentiert, `tests/tsan.supp`
+    unterdrückt nur Meldungen aus Jolt und SDL) und der Workflow `.github/workflows/tsan.yml` mit allen Tests außer den
+    GPU-Tests. **Kein Pflichtcheck:** Er läuft nur nach einem Push auf `main` und auf Wunsch (`workflow_dispatch`),
+    nicht bei Pull Requests.
 - **Regeln:**
   - **Lua nur auf dem Hauptthread** (sol2 ist nicht thread-sicher). KI-Zustände und alles, was Skripte ruft, bleibt
     seriell. Parallel laufen nur reine Berechnungen.
@@ -91,10 +103,11 @@ Budget reißt. Ebenso bleibt `.g7skin`/`.g7anim` nach Entscheidung 9 zurückgest
      thread-sicher. Die Ereignisse an Lua gehen danach seriell raus.
   3. **Culling:** Sichtbarkeits-Raster und Draw-Listen je Zelle parallel, Kaskaden der Schatten getrennt.
   4. Später: Pfadsuche (A*) je Anfrage, Partikel.
-- **Anzahl Threads:** Kerne − 1, höchstens 8; `[jobs] threads` in `engine.toml` (0 = automatisch, 1 = alles seriell
-  für die Fehlersuche).
-- **Tests:** `tests/core/test_jobs.cpp` (Reihenfolge der Ergebnisse, Ausnahmen, 1 Thread = seriell); bestehende
-  Szenario-Tests laufen mit 1 und mit 4 Threads und müssen dasselbe ergeben.
+- **Anzahl Threads:** Kerne − 1, höchstens 8; `[jobs] threads` in `engine.toml` (Vorgabe 0 = automatisch, 1 = alles
+  seriell für die Fehlersuche).
+- **Tests:** `tests/core/test_jobs.cpp` (jeder Index genau einmal, Stückgrenzen, Ergebnisse in Index-Reihenfolge,
+  1 Thread = seriell auf dem Aufrufer, verschachtelt, Ausnahmen, Gruppen, Belastung), `tests/runtime/test_engine.cpp`
+  (`[jobs] threads`). Mit C2: ein Laufzeit-Szenario mit 1 und mit 4 Threads muss byte-gleich enden.
 
 ## Teil D – Optimieren nach Messung
 **Umgesetzt:** KI-LOD mit Obergrenze nach Anzahl (`[ai] max_simulated`, 32; die nächsten zum Spieler bzw. zur Kamera,
