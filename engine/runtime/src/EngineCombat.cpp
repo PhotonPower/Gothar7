@@ -179,6 +179,7 @@ void Engine::loadAnimalBodies()
     // seconds, damage_factor, belly_degrees }: rolls up on heavy hits (Mauerkriecher, monsters.md).
     m_animalBodies.clear();
     m_sidewaysSpecies.clear();
+    m_snapAbove.clear();
     m_curlRules.clear();
     const script::Value creatures = m_scripts ? m_scripts->global("Creatures") : script::Value();
     if (creatures.asTable() == nullptr)
@@ -200,6 +201,15 @@ void Engine::loadAnimalBodies()
             moveAxis != nullptr && moveAxis->asString() == "x")
         {
             m_sidewaysSpecies.insert(species);
+        }
+        if (const script::Value* snap = field(def.asTable(), "snap");
+            snap != nullptr && snap->asTable() != nullptr)
+        {
+            // snap = { above }: the hero this high above it (on a jetty) is snapped at straight up
+            // (t_snap_up).
+            const script::Value* above = field(snap->asTable(), "above");
+            m_snapAbove.insert_or_assign(
+                species, above != nullptr && above->isNumber() ? static_cast<f32>(above->asNumber()) : 0.4f);
         }
         if (const script::Value* curl = field(def.asTable(), "curl");
             curl != nullptr && curl->asTable() != nullptr)
@@ -384,6 +394,14 @@ bool Engine::startFight(Combatant& c, std::string_view move, AttackKind kind)
     if (c.creature != nullptr && c.animal && move == "attack")
     {
         c.creature->action = c.fighter->comboHit() % 2 == 1 ? 1 : 2;
+        // Brunnenmolch: the hero above it on a jetty - it snaps straight up out of the water instead.
+        if (const auto it = m_snapAbove.find(c.species); it != m_snapAbove.end())
+        {
+            if (const auto hero = combatant(kHeroId); hero && hero->position.y - c.position.y > it->second)
+            {
+                c.creature->action = 12;
+            }
+        }
     }
     else if (c.id == kHeroId && c.animal && move == "attack")
     {

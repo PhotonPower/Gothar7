@@ -151,8 +151,15 @@ bool Engine::creatureAction(u32 id, std::string_view action)
     {
         return false;
     }
-    constexpr std::array<std::pair<std::string_view, i32>, 6> kOnce = {
-        {{"attack_1", 1}, {"attack_2", 2}, {"hit", 3}, {"threaten", 4}, {"wake", 5}, {"steal", 6}}};
+    constexpr std::array<std::pair<std::string_view, i32>, 9> kOnce = {{{"attack_1", 1},
+                                                                        {"attack_2", 2},
+                                                                        {"hit", 3},
+                                                                        {"threaten", 4},
+                                                                        {"wake", 5},
+                                                                        {"steal", 6},
+                                                                        {"snap_up", 12},
+                                                                        {"submerge", 13},
+                                                                        {"listen", 14}}};
     for (const auto& [name, value] : kOnce)
     {
         if (action == name)

@@ -523,8 +523,8 @@ bool Engine::startCommand(Creature& c)
                                        : cmd.text;
         if (a != nullptr && !a->hasState(in) && !a->hasState(loop) && a->hasState(played))
         {
-            constexpr std::array<std::pair<std::string_view, i32>, 3> kActions = {
-                {{"threaten", 4}, {"wake", 5}, {"steal", 6}}};
+            constexpr std::array<std::pair<std::string_view, i32>, 5> kActions = {
+                {{"threaten", 4}, {"wake", 5}, {"steal", 6}, {"submerge", 13}, {"listen", 14}}};
             for (const auto& [name, value] : kActions)
             {
                 if (played == name)

@@ -382,6 +382,14 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   am **weichen Bauch**: Nahkampf und Geschosse von vorn (bis `belly_degrees` = 45° neben seiner Blickrichtung) gehen
   voll durch, Zauber treffen immer den Panzer; Lua-Ereignis `npc_curled(npc)`. Werte vom Projektinhaber bestätigt
   (2026-11-24, Bauch-Variante 2026-11-25); dass Fäuste den flachen Kriecher nicht treffen (der Schwung geht über ihn hinweg), ist gewollt.
+- **Brunnenmolch** (figuren #472): schwimmt nicht (Projektinhaber 2026-11-24). Graph wie der Mauerkriecher (Erwachen
+  `t_wake`; Aktionen 12 `t_snap_up`, 13 `t_submerge`, 14 `t_listen`), liegende Kapsel r 0,3 / h 0,7, Instanz
+  `mon_brunnenmolch` (blind: `senses = { sight = 0, hearing = 2 }`; Beute `it_newt_skin`, 2 × `it_newt_gills`). Er
+  lauert halb untergetaucht am Spawn-Marker im seichten Wasser (`zs_dormant`, die Pose macht der Clip) und taucht auf,
+  wenn er den Helden hört. Mechanik `Creatures.<art>.snap = { above }`: Steht der Held mehr als `above` (0,4 m) höher
+  (auf dem Steg), schnappt er am Ort senkrecht nach oben (`t_snap_up`) statt zu beißen. `returns = true`
+  (`ai/brunnenmolch.lua`): wach und ohne Kampf geht er zurück an sein Wasser (`newt_water`, beim Spawn sein Marker),
+  sinkt unter (`t_submerge`) und ruht wieder. `npc_play(npc, "listen"|"submerge")`.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am
