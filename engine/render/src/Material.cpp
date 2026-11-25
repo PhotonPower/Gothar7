@@ -470,7 +470,8 @@ void MeshRenderer::bindAmbientOcclusion(Device& device) const
     device.bindUniformBuffer(4, m_windBuffer); // M17 W: every static mesh pass reads the wind
     device.bindTexture(8, m_ambientOcclusion != nullptr ? *m_ambientOcclusion : m_defaults->white,
                        m_aoSampler);
-    device.bindTexture(9, m_rainMap != nullptr ? *m_rainMap : m_defaults->white, m_aoSampler); // M17 N
+    device.bindTexture(9, m_rainMap != nullptr ? *m_rainMap : m_defaults->white, m_aoSampler);        // M17 N
+    device.bindTexture(10, m_probeAtlas != nullptr ? *m_probeAtlas : m_defaults->white, m_aoSampler); // F2
 }
 
 void MeshRenderer::bindLighting(Device& device) const

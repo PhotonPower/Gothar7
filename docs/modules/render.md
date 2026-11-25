@@ -631,7 +631,7 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   mit dem Wind, der Fuß nicht; ohne Wind und unmarkiert steht alles still; Mehrfach-Zeichnen und Tiefen-Pass
   biegen gleich), `test_engine_render.cpp` (Wind folgt der Lage, aus in den Einstellungen).
 
-### Spiegelnde Fenster (M17 Fenster, Teile F1 und F1b umgesetzt; Plan unten) – `Glass.hpp`, `common/glass.glsl`
+### Spiegelnde Fenster (M17 Fenster, Teile F1, F1b und F2 umgesetzt; Plan unten) – `Glass.hpp`, `ReflectionProbes.hpp`, `common/glass.glsl`
 ```cpp
 enum class asset::GlassPattern { Bullseye, Diamond, Plain };  parseGlassPattern(text); glassPatternName(p);
 asset::MaterialInfo::glass, glassTint (Vorgabe kDefaultGlassTint), glassPattern   // aus glTF extras, .g7mesh v5
@@ -660,7 +660,8 @@ Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Bloc
   Scheibe eine Wölbung und eine kleine Schräglage, Bleirute in den Zwickeln; Rauten 10 × 14 cm zwischen Bleiruten,
   jede leicht verkippt; alle mit langsamer Welligkeit. Blei ist stumpf und dunkel.
 - **Option:** `[render] window_reflections` = `off`, `low`, `medium` (Vorgabe), `high`. `off` zeichnet Glas wie jedes
-  Material (bytegleich zu vorher). Bis die Teile F2 (Proben) und F3 (SSR) kommen, zeichnen `medium` und `high` Stufe A.
+  Material (bytegleich zu vorher). `medium` und `high` zeichnen Stufe A mit den Reflexions-Proben (F2); bis F3 (SSR)
+  kommt, sind beide gleich.
   Der Menüeintrag kommt mit dem Abschluss-Teil.
 - **Batching:** Glas-Materialien haben Muster und Tönung im Gruppenschlüssel; andere Materialien bündeln wie bisher.
   Schatten und Tiefen-Vorpass behandeln Glas wie jedes undurchsichtige Material.
@@ -678,11 +679,47 @@ Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Bloc
     voll ab −0,08); am Tag keiner. Welten mit eigener Umgebung (Dungeon) haben keinen.
   - Grenze: Ein begehbares Haus außerhalb der 32 nächsten Räume gilt als „übriges Haus“; kommt man näher, entscheiden
     seine Lichter (die Reihe kann dabei umspringen).
+- **Reflexions-Proben (F2, Stufe B; `medium`, `high`)** – `ReflectionProbes.hpp`, `runtime/EngineProbes.cpp`:
+  ```cpp
+  placeReflectionProbes(junctions, segments, {spacing 20, height 2.5, merge 10});  // deterministisch
+  struct ReflectionProbe { Vec3 position; AABB box; };   probeFaceCamera(position, face, range);
+  kProbeFaceForward/kProbeFaceUp (6 Seiten, x = cross(forward, up), = glass.glsl)
+  ProbeSchedule { setProbes; invalidate; update(eye, budget, faces); faceDone; shaderProbes; slotsUsed/Ready; }
+  ReflectionProbes::create(device, {faceSize 64, slots 96, radius 80, range 60}); beginFace/endFace; atlas();
+  Environment::probes, probeParams  // im Lighting-Block: vec4 probeParams, je 32 probeCenter/BoxMin/BoxMax
+  MeshRenderer::setReflectionProbes(atlas)   // Einheit 10, nur Glas liest sie
+  Engine::reflectionProbes(), probeSchedule(), probeFacesLastFrame()
+  ```
+  - **Platzierung** beim Laden der Welt (nach ihrer Kollision): zuerst die Kreuzungen des Wegnetzes (≥ 3 Nachbarn),
+    dann alle 20 m entlang jeder Kante, verworfen, wenn näher als 10 m an einer schon gesetzten; 2,5 m über dem Weg.
+    Punkte in Räumen zählen nicht. Welten ohne Wegnetz (Testszene): ein 20-m-Raster über der Szene auf dem Boden.
+    Welts Marker `VOB_PROBE_*` (Frage 9) sind noch nicht eingebaut.
+  - **Einflusskasten:** je Probe Strahlen entlang ±X/±Z bis zur ersten Wand (höchstens 25 m), nach oben bis 8 m, nach
+    unten bis 0,5 m unter den Weg – die Fassaden der Straße für die Parallaxen-Korrektur.
+  - **Atlas** statt Cubemap-Array (das RHI kennt keine Cubemaps): RGBA16F 3072 × 768 (8 Plätze je Zeile, je 6 Seiten
+    64²) plus Tiefe Depth32F = 28 MB; keine Mips (die Scheiben streuen ohnehin). Sie entsteht erst mit `medium`/`high`
+    und wird bei `low`/`off` freigegeben.
+  - **Plätze:** Die bis zu 96 Proben im Umkreis von 80 m um die Kamera, die nächsten zuerst; weiter entfernte geben
+    ihren Platz ab. **Zeichnen:** eine Würfelseite je Bild, nächste Probe zuerst (eine neue Welt: die 4 nächsten
+    sofort); alle neu alle 10 Spielminuten und wenn sich Himmel oder Sonne (Wetter) merklich ändern – bis dahin gilt
+    das alte Bild. Eine Seite zeigt Himmel, Gelände und Gebäude (gröbste Detailstufe, nichts unter 1,5 m, keine
+    Möbel in Räumen, keine Figuren, Partikel, Wasser, Gras) bis 60 m, mit Sonne und Schatten des Bildes, ohne
+    Punktlichter; das Glas darin spiegelt nur den Himmel.
+  - **Im Glas:** Der Shader bekommt die bis zu 32 fertigen Proben nächst der Kamera und nimmt je Pixel die zwei
+    nächsten (Abweichung vom Plan: je Pixel statt je Instanz – Gruppen bleiben gleich, Übergänge weich): Richtung mit
+    Kasten-Parallaxe, halb und halb, wo beide gleich nah sind, die nähere allein ab 60 % des anderen Abstands; ab 25 m
+    Abstand zur nächsten Probe blendet das Bild bis 45 m in den Himmel allein über.
 - **Tests:** `tests/render/test_glass.cpp` (Stufen, Fresnel, Lighting-Block), `tests/asset/test_material.cpp`
   (Extras, Fehler → Vorgabe), `test_mesh_file.cpp` (Version 5, Version 4 ohne Glas, falsches Muster), GPU
   `test_glass.cpp` (frontal schwach, schräg stark, Muster zeichnen, `off` bytegleich, Mehrfach-Zeichnen gleich).
   F1b: CPU Anteil der Wachen über den Tag, Nachtfaktor, Lighting-Block; GPU nachts warm, wenn die Reihe wach ist,
   dunkel sonst und am Tag; im Raum nach seinem Licht dahinter, nicht nach einem Licht davor.
+  F2: CPU `test_reflection_probes.cpp` (Platzierung: Abstände, Zusammenlegen, deterministisch; Seitenkameras = Tabellen
+  des Shaders; Plätze nur im Umkreis, Budget je Bild, nur fertige Proben für den Shader, neu nach invalidate, Atlas
+  ohne Überlappung); GPU `test_reflection_probes.cpp` (das Feld landet auf der Seite, die es sieht; Glas zeigt es
+  richtig herum und auf der richtigen Seite, `low` liest keine Proben, eine Probe 80 m weg zählt nicht),
+  `test_engine_probes.cpp` (Lager: Proben am Wegnetz mit Kasten, erst die nächsten, dann eine Seite je Bild; `low`
+  keine).
 
 ### Gras (M17 Teile G1–G3, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
 - **Büschel auf der GPU:** Jedes Büschel ist ein Eintrag von 16 Byte (Fuß als drei Floats, gepackte Bits: Drehung,

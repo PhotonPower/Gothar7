@@ -184,6 +184,9 @@ public:
     void setAmbientOcclusion(const rhi::Texture* texture) noexcept { m_ambientOcclusion = texture; }
     /// The rain map the shaders read at unit 9 for wet surfaces (M17 N); nullptr: none.
     void setRainMap(const rhi::Texture* texture) noexcept { m_rainMap = texture; }
+    /// The reflection probes' atlas the glass reads at unit 10 (M17 windows F2); nullptr: none (also while a
+    /// probe face is drawn into it).
+    void setReflectionProbes(const rhi::Texture* atlas) noexcept { m_probeAtlas = atlas; }
     /// The frame's wind (M17 W) for every following draw, shadows and depth prepass included. Until the
     /// first call (and with strength 0) nothing moves.
     void setWind(const WindFrame& wind);
@@ -237,6 +240,7 @@ private:
     bool m_depthPass = false;                       // the shadow draws go to the depth prepass
     const rhi::Texture* m_ambientOcclusion = nullptr;
     const rhi::Texture* m_rainMap = nullptr;
+    const rhi::Texture* m_probeAtlas = nullptr;
     void bindAmbientOcclusion(Device& device) const;
     static void setWindUniforms(rhi::ShaderProgram& program, const Material& material);
     rhi::Buffer m_windBuffer; // GpuWind, uniform block binding 4 (M17 W)

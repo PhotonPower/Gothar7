@@ -45,6 +45,7 @@
 #include <g7/render/PassTimes.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/Rain.hpp>
+#include <g7/render/ReflectionProbes.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/SpellFx.hpp>
 #include <g7/render/Ssao.hpp>
@@ -888,6 +889,14 @@ public:
     [[nodiscard]] render::GrassQuality grassQuality() const noexcept { return m_grassQuality; }
     [[nodiscard]] const render::GrassRing& grassRing() const noexcept { return m_grassRing; }
     [[nodiscard]] const render::GrassStats& grassStats() const noexcept { return m_grass.stats(); }
+    /// M17 windows F2: the reflection probes of the world (empty: none placed or window reflections below
+    /// medium), their schedule (slots, finished ones) and how many faces the last frame drew.
+    [[nodiscard]] std::span<const render::ReflectionProbe> reflectionProbes() const noexcept
+    {
+        return m_probes.schedule().probes();
+    }
+    [[nodiscard]] const render::ProbeSchedule& probeSchedule() const noexcept { return m_probes.schedule(); }
+    [[nodiscard]] u32 probeFacesLastFrame() const noexcept { return m_probeFacesDrawn; }
     /// Figures and lying items the grass makes way for this frame (decisions 4, 5): x, y, z, radius.
     [[nodiscard]] std::span<const Vec4> grassBenders() const noexcept { return m_grassBenders; }
     [[nodiscard]] std::span<const Vec4> grassShorteners() const noexcept { return m_grassShorteners; }
@@ -1765,6 +1774,13 @@ private:
     void resetGrassWorld(); ///< layers and paths of the loaded world
     void updateGrass();     ///< the ring around the camera, uploads (before the passes)
     void drawGrass();
+    /// M17 windows F2: places the probes when the world changed (after its collision), draws the due faces
+    /// (one a frame; at a new world the nearest probes at once) and hands the finished ones to the lighting.
+    void updateReflectionProbes(const render::ShadowFrame* shadows);
+    void placeReflectionProbes();
+    void drawProbeFace(const render::ProbeFace& face);
+    /// The sky (background pass) for `camera` into the bound target.
+    void drawBackground(const render::Camera& camera);
     void drawGrassShadow(const render::Cascade& cascade);
     [[nodiscard]] render::GrassFrame grassFrame() const;
     void drawRain(u32 width, u32 height);
@@ -1979,8 +1995,17 @@ private:
     world::Scene m_scene;       // world vobs (--world, --scene); render instances are built from it
     world::GameTime m_gameTime; // global: runs across level changes (save game: save.md)
     world::DayCycle m_dayCycle = world::DayCycle::fallback();
-    world::Weather m_weather = world::Weather::fallback();           // M17 E1: data/weather.toml
-    render::RainRenderer m_rain;                                     // M17 R
+    world::Weather m_weather = world::Weather::fallback(); // M17 E1: data/weather.toml
+    render::RainRenderer m_rain;                           // M17 R
+    render::ReflectionProbes m_probes;                     // M17 windows F2 (medium, high)
+    bool m_probesDirty = true;                             // place them anew (world loaded or changed)
+    bool m_probesFresh = false;                            // just placed: the nearest are drawn at once
+    bool m_probeGlass = false;                             // the world has window glass (else no probes)
+    f32 m_probeHour = -1.0f;                     // game hour of the last full redraw (every 10 minutes anew)
+    Vec4 m_probeSky{0.0f};                       // sky and sun of the last full redraw (weather changes)
+    u32 m_probeFacesDrawn = 0;                   // faces drawn the last frame
+    std::vector<render::ProbeFace> m_probeFaces; // per frame, reused
+    render::LightList m_probeLights;             // none: the faces get sun and sky only
     std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
     f32 m_fogStart = 30.0f; ///< [render] fog_start (or the debug panel) for worlds with sky
