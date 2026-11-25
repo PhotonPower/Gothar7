@@ -460,6 +460,22 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `tests/world/test_day_cycle.cpp` (fixedEnvironment, applyZoneFog), `tests/render_gpu/test_engine_environment.cpp`
   auf `testworld/cellar.g7world` (mittags keine Sonne, Gewitter unsichtbar, Nebel der Welt und der Gruft-Zone).
 
+## Stand D8 – Testdungeon und Szenario (umgesetzt)
+- **Ebenen der Engine** (prüfen nur die Mechanik, ersetzen welts Inhalt nicht): `testworld/dungeon_1.g7world` (ohne
+  Himmel; Hebel → Gatter, Trittplatte → Gatter, zwei Platten auf einem Relais `all` → Lua, versteckter Knopf →
+  Geheimwand vor der Nische `mob_testdungeon_niche` mit Ring und Gulden, Falltür über einem Schacht mit Fall-Trigger,
+  ruhender Gatterbock, sichtbarer Teleporter, Nebelzone vor der Nische) und `testworld/dungeon_2.g7world`
+  (Ankunft im Schacht, unsichtbarer Teleporter zurück nach `START_E01_RUECK`). Mob-Definition in
+  `game/scripts/mobs/testdungeon.lua`.
+- **Fallstrick:** Ohne Gelände legt die Engine eine Bodenplatte unter die tiefste Mesh-Unterkante. Ein Schacht braucht
+  deshalb einen Grund tief unten (`SCHACHT_E01_GRUND`), sonst steht der Held auf der Platte.
+- **Szenario** (`tests/runtime/test_engine_dungeon_scenario.cpp`, headless): alle Punkte aus „Tests“ unten, dazu das
+  Relais aus zwei Platten. Der Fall kommt mit mehr als 3 m/s und hoch im Schacht an, landet ohne Schaden, der
+  Teleporter bringt den Helden auf die offene Falltür zurück. Speichern mitten im Rätsel stellt Hebel, Gatter, Platte
+  mit Apfel, Geheimwand, verbrauchten Knopf und den wachen Gatterbock wieder her.
+- **Prüfbilder:** `C:\GotharData\review\dungeon-d8` (Gatter zu/auf, Teleporter, Falltür, Nebel der Gruft); Skript
+  im Scratchpad (`gothar --fly --cam … --exec=send(…)`).
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
@@ -471,7 +487,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 | **D6** Monster ✔ | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
 | **D7** Editor und Import ✔ | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
 | **D7b** Umgebung ✔ | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
-| **D8** Testdungeon und Szenario | zwei kleine Ebenen der Engine (`testworld/dungeon_1/2`), DoD-Szenario | mittel |
+| **D8** Testdungeon und Szenario ✔ | zwei kleine Ebenen der Engine (`testworld/dungeon_1/2`), DoD-Szenario | mittel |
 
 Nach D1–D3 kann welt mit echten Räumen bauen. D8 ersetzt welts Inhalt nicht, er prüft nur die Mechanik.
 
