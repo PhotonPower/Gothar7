@@ -827,7 +827,11 @@ eigenen Aufnahmen.
   Dächer wie die Häuser) und hängt die Bilder aus `generated/textures/` an (URI `../../generated/textures/…`; fehlende
   Bilder schreibt der Befehl). Welche Textur ein Palettenwert bekommt, steht in `schloss.json` `textures`
   (`kinds`; neu ist `ashlar`, Quader für die Werksteine und Böden); der Keller (`cellar`: Modelle `schloss_keller_*`)
-  hat Bruchstein, ist um `dark` 0,75 dunkler und heißt `*_cellar`.
+  hat Bruchstein (Wände, Gewölbe und Boden), ist um `dark` 0,75 dunkler und heißt `*_cellar`. Holz (`timber`) liegt
+  auf flachen Flächen quer zum Flügel (Maserung wie die Balken).
+- **Balkendecken (W7, Koordinator 2026-11-25):** EG und OG haben Putzdecken mit Holzbalken quer zum Flügel wie in den
+  Häusern (`interior.beams` in `schloss.json`: 0,24 × 0,26 m, gleichmäßig etwa alle 1,1 m je Raum, `timber_dark`,
+  ohne Kollision über Kopfhöhe); so bleiben die Decken zwischen den Wandlaternen lesbar. Räume zusammen 2312 Dreiecke.
 
 ### W-E4 Marktbrunnen (`gothar-worldgen marktbrunnen <ort>`, W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Das Modell, das der Projektinhaber selbst aus
