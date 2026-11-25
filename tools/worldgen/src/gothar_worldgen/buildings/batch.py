@@ -59,6 +59,23 @@ MASSING_COLOR = (0.6, 0.6, 0.6, 1.0)
 COLLISION_BUDGET = BUDGET
 
 
+def lod2_panels(lod1: Sequence[Primitive], frame_color: tuple[float, float, float, float]
+                ) -> list[Primitive]:  # fmt: skip
+    """The flat panels of lod 1 (doors ``frame``, windows ``window_glass``) as one ``frame``
+    primitive for lod 2: glass only in lod 0 and lod 1 (contract "Fensterglas")."""
+    panels = [q for q in lod1 if q.material == "frame" or (q.extras and q.extras.get("glass"))]
+    if not panels:
+        return []
+    meshes = [q.mesh for q in panels]
+    first = np.cumsum([0] + [len(m.positions) for m in meshes[:-1]])
+    mesh = MeshData(np.concatenate([m.positions for m in meshes]),
+                    np.concatenate([m.normals for m in meshes]),
+                    np.concatenate([m.uvs for m in meshes]),
+                    np.concatenate([m.indices + k for m, k in zip(meshes, first, strict=True)]
+                                   ).astype(np.uint32))  # fmt: skip
+    return [Primitive("frame", frame_color, mesh)]
+
+
 def file_stem(building_id: str) -> str:
     """File name for a building id that is unique on case-insensitive file systems.
 
@@ -341,8 +358,8 @@ def generate(
                                  door_free=neighbours.free_for(bid),
                                  door_reach=neighbours.reach_for(bid))  # fmt: skip
                 # lod 2 keeps the windows of lod 1 (flat panels): without them the houses turn
-                # into blank blocks at the distance
-                windows = [q for q in h1.primitives if q.material == "frame"]
+                # into blank blocks at the distance; the panes there are no glass (M17 contract)
+                windows = lod2_panels(h1.primitives, rules.color("frame"))
                 masses = lod2_primitives(house, base, (c.x, c.y), rules)
                 lod_prims = [h1.primitives, masses + windows]
             room_prims = dict(house.room_prims) if mode == "medieval" else {}

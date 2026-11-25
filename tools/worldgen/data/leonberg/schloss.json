@@ -137,5 +137,9 @@
     "note": "W7: Texturen wie die Häuser (textures/procedural.py), Palette bleibt die Tönung. Werksteine (Sockel, Eckquader, Gesimse, Gewände, Böden) als Quader (ashlar), Putz, Dach, Holz wie die Häuser; der Keller in Bruchstein (Wände, Gewölbe, Boden) und dunkler (cellar: Räume schloss_keller_*)",
     "kinds": {"plaster_white": "plaster", "stone": "ashlar", "stone_slab": "ashlar", "brick": "stone", "roof_old": "roof", "timber_dark": "timber", "timber_floor": "boards", "frame": "boards", "hedge": null, "water": null},
     "cellar": {"rooms": "keller_", "kinds": {"stone": "stone", "stone_slab": "stone"}, "dark": 0.75, "suffix": "_cellar"}
+  },
+  "glass": {
+    "note": "M17 Fensterglas (Vertrag coordination.md): Scheiben der geschlossenen Fenster (Fassade, Giebel, Gauben, Erker) und der Fensternischen innen als window_glass, Butzen in grünem Waldglas; doppelseitig, damit die Scheibe von innen milchig hell erscheint (Rückseite); Treppenturm-Schlitze und Laterne bleiben frame",
+    "window_glass": {"pattern": "bullseye", "tint": [0.8, 0.93, 0.82], "doubleSided": true}
   }
 }

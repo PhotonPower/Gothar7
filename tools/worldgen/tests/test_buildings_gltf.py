@@ -3,7 +3,15 @@ import struct
 import numpy as np
 import pytest
 
-from gothar_worldgen.buildings.gltf import MeshData, glb_bytes, read_glb, write_glb
+from gothar_worldgen.buildings.gltf import (
+    MeshData,
+    Primitive,
+    glb_bytes,
+    glb_bytes_multi,
+    read_glb,
+    with_glass,
+    write_glb,
+)
 
 
 def quad(n_quads: int = 1) -> MeshData:
@@ -76,3 +84,35 @@ def test_multiple_primitives_share_materials_by_name():
     assert len(doc["accessors"]) == 12 and len(doc["bufferViews"]) == 12
     for v in doc["bufferViews"]:
         assert v["byteOffset"] % 4 == 0 and v["byteOffset"] + v["byteLength"] <= len(binary)
+
+
+def _two_materials() -> bytes:
+    pos = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=np.float32)
+    nrm = np.tile(np.array([0, 0, 1], dtype=np.float32), (3, 1))
+    mesh = MeshData(pos, nrm, np.zeros((3, 2), np.float32), np.array([0, 1, 2], np.uint32))
+    stone = Primitive("stone", (0.4, 0.4, 0.3, 1.0), mesh)
+    return glb_bytes_multi([stone, Primitive("window_glass", (0.03, 0.03, 0.03, 1.0), mesh)], "m")
+
+
+def test_with_glass_marks_only_the_named_material():
+    data = _two_materials()
+    out = with_glass(data, {"window_glass": {"pattern": "bullseye", "tint": [0.8, 0.9, 0.8],
+                                             "doubleSided": True}})  # fmt: skip
+    doc, binary = read_glb(out)
+    stone, glass = doc["materials"]
+    assert "extras" not in stone and "doubleSided" not in stone
+    assert glass["extras"] == {"glass": True, "glass_pattern": "bullseye",
+                               "glass_tint": [0.8, 0.9, 0.8]}  # fmt: skip
+    assert glass["doubleSided"] is True
+    assert binary == read_glb(data)[1] and len(out) % 4 == 0
+
+
+def test_with_glass_rejects_bad_values_and_missing_materials():
+    data = _two_materials()
+    with pytest.raises(ValueError, match="pattern"):
+        with_glass(data, {"window_glass": {"pattern": "stained", "tint": [1, 1, 1]}})
+    with pytest.raises(ValueError, match="tint"):
+        with_glass(data, {"window_glass": {"pattern": "plain", "tint": [1.2, 1, 1]}})
+    with pytest.raises(ValueError, match="not in the model"):
+        with_glass(data, {"glass": {"pattern": "plain", "tint": [1, 1, 1]}})
+    assert with_glass(data, {"glass": {"pattern": "plain", "tint": [1, 1, 1]}}, require=False)

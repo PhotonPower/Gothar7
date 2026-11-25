@@ -5481,5 +5481,17 @@
    "dark": 0.75,
    "suffix": "_cellar"
   }
+ },
+ "glass": {
+  "note": "M17 Fensterglas (Vertrag coordination.md): Scheiben der geschlossenen Fenster (Fassade, Giebel, Gauben, Erker) und der Fensternischen innen als window_glass, Butzen in grünem Waldglas; doppelseitig, damit die Scheibe von innen milchig hell erscheint (Rückseite); Treppenturm-Schlitze und Laterne bleiben frame",
+  "window_glass": {
+   "pattern": "bullseye",
+   "tint": [
+    0.8,
+    0.93,
+    0.82
+   ],
+   "doubleSided": true
+  }
  }
 }
