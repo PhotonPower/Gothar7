@@ -127,6 +127,9 @@ Ein Spielstand ist geladen: Welt, NPCs, Story und benannte Timer sind wieder da 
 ### `on("game_saved", fn(slot: string))`
 Ein Spielstand ist geschrieben (M15).
 
+### `on("hero_grabbed", fn(npc: string))`
+Eine Schere hält den Helden fest (`Creatures.<art>.grab`, Kristallkrebs).
+
 ### `on("hero_teleported", fn(teleporter: string))`
 Ein Teleporter derselben Welt (Dungeon D4) hat den Helden versetzt; `teleporter` ist sein Name. In eine andere Ebene folgt stattdessen `world_loaded`.
 
@@ -183,6 +186,9 @@ Ein Zauber wird gewirkt (M12, `hero`).
 
 ### `on("npc_clip_event", fn(npc: string, event: string))`
 Ein Clip-Event eines Monsters, auf das die Skripte reagieren (`steal`, `emerge`, `grab`, `release`, `reflect`, `spawn_brood`; characters-pipeline.md §7.5).
+
+### `on("npc_curled", fn(npc: string))`
+Ein Tier rollt sich nach einem schweren Treffer ein (`Creatures.<art>.curl`, Mauerkriecher).
 
 ### `on("npc_feared", fn(npc: string, caster: string, seconds: number))`
 Ein Furcht-Zauber trifft einen NPC bzw. ein Tier (M12, Z6): er flieht `seconds` Sekunden.
@@ -365,6 +371,9 @@ Kampfzustand: ready, attack, parry, dodge, stagger, down (bewusstlos), dead; `he
 
 ### `hero_attack(kind?: "front"|"left"|"right") -> boolean`
 Ein Schlag des Helden (sonst über die Steuerung).
+
+### `hero_held() -> string?`
+Wer den Helden gerade festhält (Schere des Kristallkrebses), nil: niemand.
 
 ### `hero_parry() -> boolean`
 Parade des Helden.

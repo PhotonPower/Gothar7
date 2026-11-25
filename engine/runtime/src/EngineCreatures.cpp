@@ -151,8 +151,14 @@ bool Engine::creatureAction(u32 id, std::string_view action)
     {
         return false;
     }
-    constexpr std::array<std::pair<std::string_view, i32>, 6> kOnce = {
-        {{"attack_1", 1}, {"attack_2", 2}, {"hit", 3}, {"threaten", 4}, {"wake", 5}, {"steal", 6}}};
+    constexpr std::array<std::pair<std::string_view, i32>, 8> kOnce = {{{"attack_1", 1},
+                                                                        {"attack_2", 2},
+                                                                        {"hit", 3},
+                                                                        {"threaten", 4},
+                                                                        {"wake", 5},
+                                                                        {"steal", 6},
+                                                                        {"grab", 7},
+                                                                        {"reflect", 8}}};
     for (const auto& [name, value] : kOnce)
     {
         if (action == name)
@@ -291,6 +297,14 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         {
             c.speed = 0.0f; // knocked out or dead (M11): no routine, no walking
         }
+        else if (c.curledSeconds > 0.0f && !c.dead)
+        {
+            // Rolled up (Creatures.<species>.curl): it lies still under its shell, then goes on as before.
+            c.curledSeconds = std::max(c.curledSeconds - seconds, 0.0f);
+            c.speed = 0.0f;
+            c.turn = 0.0f;
+            c.action = 0;
+        }
         else if (c.body || c.character)
         {
             fixedUpdateAi(c, seconds); // routine, state, commands (M9 part B)
@@ -331,7 +345,8 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         }
         a.setBool("eat", c.eat);
         a.setBool("sleep", c.sleep);
-        a.setBool("dormant", c.rest); // dungeon D6: its resting loop (s_dormant)
+        a.setBool("dormant", c.rest);                // dungeon D6: its resting loop (s_dormant)
+        a.setBool("curled", c.curledSeconds > 0.0f); // rolled up after a heavy hit (Mauerkriecher)
         a.setBool("dead", c.dead);
         a.update(seconds,
                  [&](std::string_view clip, std::string_view event)
@@ -353,6 +368,18 @@ void Engine::fixedUpdateCreatures(f32 seconds)
                      if (event.starts_with("hit_") || event.starts_with("combo_"))
                      {
                          c.fighter.onEvent(event); // the combat clips time the blow (M11)
+                     }
+                     if (event == "grab")
+                     {
+                         creatureGrab(c); // Kristallkrebs: the pincer closes
+                     }
+                     else if (event == "release" && m_heroHeld && m_heroHeld->by == c.id)
+                     {
+                         releaseHero("release");
+                     }
+                     else if (event == "reflect")
+                     {
+                         throwSpellBack(c); // Kristallkrebs: its crystals flare
                      }
                      creatureScriptEvent(c, event); // steal, emerge, grab ... (dungeon D6)
                      f.events.push_front(std::format(

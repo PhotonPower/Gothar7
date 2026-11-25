@@ -14,6 +14,28 @@ Npc "mon_gatterbock" {
     senses = { angle = 140 },
 }
 
+Npc "mon_mauerkriecher" { -- Brut der Kellermutter, kommt zu 3-6 aus den Ritzen (spawn count, monsters.md)
+    name = "Mauerkriecher",
+    guild = "mauerkriecher",
+    level = 3,
+    species = "mauerkriecher",
+    attributes = { str = 10, dex = 20, hp = 30 },
+    damage = { edge = 5 }, -- Zangenbiss
+    protection = { edge = 15, point = 25, blunt = 0, fire = 0, magic = 0, fall = 0 }, -- Panzer gegen Klingen
+}
+
+Npc "mon_kristallkrebs" { -- Grotte (Ebene 7): Kristalle auf dem Rücken, Scheren halten fest (monsters.md)
+    name = "Kristallkrebs",
+    guild = "kristallkrebs",
+    level = 10,
+    species = "kristallkrebs",
+    attributes = { str = 40, dex = 10, hp = 140 },
+    damage = { edge = 20 }, -- Scheren
+    -- Schieferpanzer gegen Klingen und Pfeile; stumpfe Waffen splittern ihn, Magie wirft er zum Teil zurück
+    protection = { edge = 35, point = 50, blunt = 10, fire = 20, magic = 10, fall = 0 },
+    inventory = { it_kristall = 1 }, -- Beute; stumpfe Treffer schlagen bis zu drei weitere ab (Creatures.splinter)
+}
+
 Npc "mon_mauerschlupfer" {
     name = "Mauerschlupfer",
     guild = "mauerschlupfer",

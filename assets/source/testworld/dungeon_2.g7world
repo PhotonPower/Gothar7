@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "name": "dungeon_2",
+  "environment": {"sky":false,"ambient":[0.08,0.08,0.1],"fog_color":[0.02,0.03,0.04],"fog_start":2.0,"fog_distance":30.0},
+  "nextVobId": 6,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_E02","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"start","name":"START_E02_SCHACHT","pos":[0.0,5.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":3,"type":"mesh","name":"BODEN_E02","pos":[0.0,-1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[40.0,1.0,40.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":4,"type":"trigger","name":"TELE_E02_ZURUECK","pos":[6.0,1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,1.0,0.8],"filter":"any","once":false,"teleport":{"world":"testworld/dungeon_1.g7world","start":"START_E01_RUECK","visible":false,"filter":"player","active":true}}}},
+    {"id":5,"type":"light","name":"FACKEL_E02","pos":[2.0,2.5,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.6,0.3],"range":10.0,"intensity":1.5,"flicker":0.3}}}
+  ]
+}

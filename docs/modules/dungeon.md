@@ -374,6 +374,26 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   Keiler, dazu `dormant`, `wake`, beim Mauerschlupfer `steal` = Aktion 6), Kapseln in `data/creatures.toml`, Werte
   in `data/creatures.lua`, Instanzen `mon_gatterbock`/`mon_mauerschlupfer` (`npcs/dungeon.lua`, Platzhalterwerte).
   Jede Art mit Graph kann jetzt eingesetzt werden (nicht mehr nur Wolf, Keiler, Laufvogel).
+- **Mauerkriecher** (figuren #440): Graph wie der Gatterbock, Erwachen = `t_emerge` (aus der Ritze), Rudel laufend
+  (`pack_gait`/`chase_gait` "run"), Instanz `mon_mauerkriecher` (für Spawn-Marker mit `count` 3–6). **Einrollen**
+  (2026-11-24): `Creatures.<art>.curl = { share, seconds, damage_factor, belly_degrees }` – ein Treffer
+  (Nahkampf, Geschoss, Zauber) ab `share` × `hp_max` (Kriecher 0,25) rollt ihn ein: Graph-Bool `curled` (`t_curl` → `s_curled` → `t_uncurl`),
+  `seconds` (4 s) still ohne KI, kein Taumeln/Rückstoß, Schaden × `damage_factor` (0,25) durch den Panzer – außer
+  am **weichen Bauch**: Nahkampf und Geschosse von vorn (bis `belly_degrees` = 45° neben seiner Blickrichtung) gehen
+  voll durch, Zauber treffen immer den Panzer; Lua-Ereignis `npc_curled(npc)`. Werte vom Projektinhaber bestätigt
+  (2026-11-24, Bauch-Variante 2026-11-25); dass Fäuste den flachen Kriecher nicht treffen (der Schwung geht über ihn hinweg), ist gewollt.
+- **Kristallkrebs** (figuren #463): Graph wie der Mauerkriecher, Erwachen = `t_wake`, läuft seitwärts (`move_axis` "x",
+  Körper quer), Instanz `mon_kristallkrebs` (Beute `it_kristall`, noch ohne Modell). Mechanik in C++, Werte in
+  `Creatures.kristallkrebs`:
+  - `grab = { chance, seconds, reach }`: Dieser Anteil seiner Angriffe ist ein Griff (`t_grab`, Aktion 7; das
+    Trefferfenster kneift). Steht der Held beim Clip-Event `grab` bis `reach` m vor ihm (±70°), hält ihn die Schere:
+    Er kann zuschlagen, aber nicht gehen, bis `release`, der Krebs `t_grab` verlässt (Treffer, Tod) oder `seconds`
+    um sind. Lua: Ereignis `hero_grabbed(npc)`, Abfrage `hero_held()`. Nicht gespeichert.
+  - `reflect = { share }`: Ein Zauber des Helden trifft ihn nur zu (1 − share), ohne Taumeln; er spielt `t_reflect`
+    (Aktion 8), beim Event `reflect` trifft der Rest den Helden.
+  - `splinter = { item, max }`: Jeder Nahkampftreffer mit stumpfem Schaden schlägt ein `item` ab (in sein Inventar,
+    also Beute), höchstens `max`.
+  - Noch offen: Leuchten am `socket_glow`, Klänge `kristallkrebs_*`.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am
@@ -443,6 +463,22 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `tests/world/test_day_cycle.cpp` (fixedEnvironment, applyZoneFog), `tests/render_gpu/test_engine_environment.cpp`
   auf `testworld/cellar.g7world` (mittags keine Sonne, Gewitter unsichtbar, Nebel der Welt und der Gruft-Zone).
 
+## Stand D8 – Testdungeon und Szenario (umgesetzt)
+- **Ebenen der Engine** (prüfen nur die Mechanik, ersetzen welts Inhalt nicht): `testworld/dungeon_1.g7world` (ohne
+  Himmel; Hebel → Gatter, Trittplatte → Gatter, zwei Platten auf einem Relais `all` → Lua, versteckter Knopf →
+  Geheimwand vor der Nische `mob_testdungeon_niche` mit Ring und Gulden, Falltür über einem Schacht mit Fall-Trigger,
+  ruhender Gatterbock, sichtbarer Teleporter, Nebelzone vor der Nische) und `testworld/dungeon_2.g7world`
+  (Ankunft im Schacht, unsichtbarer Teleporter zurück nach `START_E01_RUECK`). Mob-Definition in
+  `game/scripts/mobs/testdungeon.lua`.
+- **Fallstrick:** Ohne Gelände legt die Engine eine Bodenplatte unter die tiefste Mesh-Unterkante. Ein Schacht braucht
+  deshalb einen Grund tief unten (`SCHACHT_E01_GRUND`), sonst steht der Held auf der Platte.
+- **Szenario** (`tests/runtime/test_engine_dungeon_scenario.cpp`, headless): alle Punkte aus „Tests“ unten, dazu das
+  Relais aus zwei Platten. Der Fall kommt mit mehr als 3 m/s und hoch im Schacht an, landet ohne Schaden, der
+  Teleporter bringt den Helden auf die offene Falltür zurück. Speichern mitten im Rätsel stellt Hebel, Gatter, Platte
+  mit Apfel, Geheimwand, verbrauchten Knopf und den wachen Gatterbock wieder her.
+- **Prüfbilder:** `C:\GotharData\review\dungeon-d8` (Gatter zu/auf, Teleporter, Falltür, Nebel der Gruft); Skript
+  im Scratchpad (`gothar --fly --cam … --exec=send(…)`).
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
@@ -454,7 +490,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 | **D6** Monster ✔ | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
 | **D7** Editor und Import ✔ | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
 | **D7b** Umgebung ✔ | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
-| **D8** Testdungeon und Szenario | zwei kleine Ebenen der Engine (`testworld/dungeon_1/2`), DoD-Szenario | mittel |
+| **D8** Testdungeon und Szenario ✔ | zwei kleine Ebenen der Engine (`testworld/dungeon_1/2`), DoD-Szenario | mittel |
 
 Nach D1–D3 kann welt mit echten Räumen bauen. D8 ersetzt welts Inhalt nicht, er prüft nur die Mechanik.
 

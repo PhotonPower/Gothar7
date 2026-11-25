@@ -527,6 +527,26 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `kellermutter/t_rage` | Phasenwechsel: schlägt um sich, Sensen klirren, der Sack wogt (§7.5) | – | sound:kellermutter_threaten, sound:kellermutter_call | K | platzhalter-K |
 | `kellermutter/s_guard` | Über dem Schatz: tief, Sensen bereit, Kopf dreht sich (Schleife, §7.5) | – | – | K | platzhalter-K |
 
+### Brunnenmolch (`brunnenmolch`, Dungeon, eigene Art, Echsen-Bauplan §7.6, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `brunnenmolch/s_idle` | Atmen, Kiemen wedeln, der Kopf dreht sich lauschend | – | – | K | platzhalter-K |
+| `brunnenmolch/s_walk` | Langsames Kriechen mit gespreizten Beinen, Rumpf und Schwanz schlängeln (`sway`) | ✓ 0,6 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine, `sway`)) |
+| `brunnenmolch/s_run` | Eiliger Trab (diagonale Paare), stärker schlängelnd | ✓ 1,8 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine, `sway`)) |
+| `brunnenmolch/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `brunnenmolch/t_attack_1` | Stößt vor und schnappt mit dem breiten Maul zu (Treffpunkt `socket_mouth`) | – | hit_start, hit_end | K | platzhalter-K |
+| `brunnenmolch/t_attack_2` | Schwingt den Kopf herum und beißt seitlich, der Schwanz schlägt gegen | – | hit_start, hit_end | K | platzhalter-K |
+| `brunnenmolch/t_hit` | Zuckt zurück, Kopf hoch, Schwanz schlägt | – | – | K | platzhalter-K |
+| `brunnenmolch/t_die` | Windet sich, sackt flach und rollt halb auf die Seite | – | – | K | platzhalter-K |
+| `brunnenmolch/s_eat`, `s_sleep` | Beißt und schlingt am Boden / liegt flach auf dem Bauch, Beine nach hinten angelegt | – | – | K | platzhalter-K |
+| `brunnenmolch/s_dormant` | Lauert flach, halb untergetaucht im Flachwasser bzw. am Ufer, Kiemen wedeln (`zs_dormant`, #422) | – | – | K | platzhalter-K |
+| `brunnenmolch/t_wake` | Taucht auf: Kopf und Vorderleib heben sich, die Beine kommen unter den Körper | – | splash | K | platzhalter-K |
+| `brunnenmolch/t_snap_up` | Schießt aus dem Wasser senkrecht nach oben und schnappt (am Ort, Becken bis 0,5 m hoch; §7.6) | – | hit_start, hit_end, splash | K | platzhalter-K |
+| `brunnenmolch/t_submerge` | Sinkt zurück ins Wasser, endet in `s_dormant` (am Ort) | – | splash | K | platzhalter-K |
+| `brunnenmolch/t_threaten` | Hebt den Kopf, reißt das Maul auf, Kiemen gespreizt, zischt | – | – | K | platzhalter-K |
+| `brunnenmolch/t_listen` | Blind: hebt den Kopf und lauscht nach links und rechts | – | – | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, weitere Gangarten-Varianten (erste vier siehe oben), zusätzliche

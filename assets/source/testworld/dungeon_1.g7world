@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "name": "dungeon_1",
+  "environment": {"sky":false,"ambient":[0.1,0.09,0.11],"fog_color":[0.02,0.02,0.03],"fog_start":3.0,"fog_distance":40.0},
+  "nextVobId": 23,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_E01","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"start","name":"START_E01_RUECK","pos":[-10.0,0.0,-10.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":3,"type":"mesh","name":"BODEN_E01_A","pos":[0.0,-1.0,-5.0],"rot":[0.0,0.0,0.0,1.0],"scale":[40.0,1.0,30.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":4,"type":"mesh","name":"BODEN_E01_B","pos":[0.0,-1.0,19.5],"rot":[0.0,0.0,0.0,1.0],"scale":[40.0,1.0,13.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":5,"type":"mob","name":"LEVER_E01_TOR","pos":[3.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[0.2,1.2,0.2],"mesh":"testworld/block.gltf","components":{"mob":{"definition":"lever","targets":["GATE_E01_TOR"],"action":"open"}}},
+    {"id":6,"type":"mesh","name":"GATE_E01_TOR","pos":[3.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,0.2],"mesh":"testworld/block.gltf","category":"gameplay","components":{"mover":{"kind":"gate","open":false,"seconds":0.5,"crush":"stop"}}},
+    {"id":7,"type":"trigger","name":"PLATE_E01_STEIN","pos":[9.0,0.0,-6.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,0.2,0.8],"filter":"any","once":false,"targets":["GATE_E01_PLATTE"],"action":"open","plate":{"weight":"any"}}}},
+    {"id":8,"type":"mesh","name":"GATE_E01_PLATTE","pos":[12.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,0.2],"mesh":"testworld/block.gltf","category":"gameplay","components":{"mover":{"kind":"gate","open":false,"seconds":0.5,"crush":"stop"}}},
+    {"id":9,"type":"mob","name":"BUTTON_E01_STEIN","pos":[-4.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[0.3,1.3,0.1],"mesh":"testworld/block.gltf","components":{"mob":{"definition":"wall_button","targets":["WALL_E01_NISCHE"],"action":"open","once":true,"hidden":true}}},
+    {"id":10,"type":"mesh","name":"WALL_E01_NISCHE","pos":[-9.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,0.5],"mesh":"testworld/block.gltf","category":"gameplay","components":{"mover":{"kind":"secret_wall","open":false,"seconds":0.5,"offset":[3.0,0.0,0.0],"crush":"stop"}}},
+    {"id":11,"type":"mob","name":"NISCHE_E01","pos":[-9.0,0.0,7.5],"rot":[0.0,1.0,0.0,0.0],"scale":[0.6,0.6,0.4],"mesh":"testworld/block.gltf","components":{"mob":{"definition":"mob_testdungeon_niche"}}},
+    {"id":12,"type":"mesh","name":"TRAP_E01","pos":[0.0,-0.2,11.5],"rot":[0.0,0.0,0.0,1.0],"scale":[40.0,0.2,3.0],"mesh":"testworld/block.gltf","category":"gameplay","components":{"mover":{"kind":"trapdoor","open":false,"seconds":0.3,"crush":"stop"}}},
+    {"id":13,"type":"trigger","name":"TRG_E01_FALLE","pos":[0.0,1.0,12.25],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[20.0,1.0,0.7],"filter":"player","once":true,"targets":["TRAP_E01"],"action":"open"}}},
+    {"id":14,"type":"trigger","name":"FALL_E01","pos":[0.0,-4.0,11.5],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[20.0,1.0,1.5],"filter":"player","once":false,"changeWorld":{"world":"testworld/dungeon_2.g7world","start":"START_E02_SCHACHT","fall":true}}}},
+    {"id":15,"type":"spawn","name":"SPAWN_E01_BOCK","pos":[0.0,0.0,-18.0],"rot":[0.0,1.0,0.0,0.0],"components":{"spawn":{"npc":"mon_gatterbock","count":1,"respawn":false,"dormant":true}}},
+    {"id":16,"type":"light","name":"FACKEL_E01","pos":[0.0,2.5,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.6,0.3],"range":10.0,"intensity":1.5,"flicker":0.3}}},
+    {"id":17,"type":"relay","name":"RELAY_E01_BEIDE","components":{"relay":{"mode":"all","delay":0.0,"once":false,"invert":false,"targets":["LUA_E01_BEIDE"],"action":"on"}}},
+    {"id":18,"type":"trigger","name":"PLATE_E01_LINKS","pos":[-14.0,0.0,-6.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,0.2,0.8],"filter":"any","once":false,"targets":["RELAY_E01_BEIDE"],"action":"on","plate":{"weight":"player"}}}},
+    {"id":19,"type":"trigger","name":"PLATE_E01_RECHTS","pos":[-14.0,0.0,-10.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,0.2,0.8],"filter":"any","once":false,"targets":["RELAY_E01_BEIDE"],"action":"on","plate":{"weight":"any"}}}},
+    {"id":20,"type":"trigger","name":"TELE_E01_SICHTBAR","pos":[16.0,1.0,-15.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,1.0,0.8],"filter":"any","once":false,"teleport":{"to":"START_E01","visible":true,"filter":"player","active":true}}}},
+    {"id":21,"type":"mesh","name":"SCHACHT_E01_GRUND","pos":[0.0,-12.0,11.5],"rot":[0.0,0.0,0.0,1.0],"scale":[40.0,1.0,3.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":22,"type":"light","name":"FACKEL_E01_SCHACHT","pos":[3.0,2.5,9.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.6,0.3],"range":10.0,"intensity":1.5,"flicker":0.3}}}
+  ],
+  "waynet": {
+    "points": [
+      {"name": "WP_E01_MITTE", "pos": [0.0, 0.0, 0.0]},
+      {"name": "WP_E01_WACHE", "pos": [0.0, 0.0, -16.0]}
+    ],
+    "edges": [
+      ["WP_E01_MITTE", "WP_E01_WACHE"]
+    ],
+    "freepoints": []
+  },
+  "zones": [
+    {"type":"fog","value":"GRUFT_E01","box":{"center":[-9.0,1.5,9.0],"halfExtents":[3.0,1.5,2.0],"yaw":0.0},"color":[0.35,0.37,0.4],"distance":10.0,"start":0.5,"fade":2.0}
+  ]
+}

@@ -62,6 +62,18 @@
       "context": "data/guilds.lua",
       "status": "entwurf"
     },
+    "data.guilds.name_11": {
+      "de": "Mauerkriecher",
+      "text": "Wall crawlers",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_12": {
+      "de": "Kristallkrebse",
+      "text": "Crystal crabs",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
     "data.teaching.attribute_names_01": {
       "de": "Stärke",
       "text": "Strength",
@@ -1154,6 +1166,18 @@
       "context": "items/tools.lua",
       "status": "entwurf"
     },
+    "it_kristall.name": {
+      "de": "Leuchtkristall",
+      "text": "Glow crystal",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_ladle.name": {
+      "de": "Kelle",
+      "text": "Ladle",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
     "it_letter_council.name": {
       "de": "Versiegelter Brief an den Rat",
       "text": "Sealed Letter to the Council",
@@ -1400,6 +1424,12 @@
       "context": "mobs/camp.lua",
       "status": "entwurf"
     },
+    "mob_testdungeon_niche.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/testdungeon.lua",
+      "status": "entwurf"
+    },
     "mon_gatterbock.name": {
       "de": "Gatterbock",
       "text": "Gate Ram",
@@ -1412,10 +1442,22 @@
       "context": "npcs/animals.lua",
       "status": "entwurf"
     },
+    "mon_kristallkrebs.name": {
+      "de": "Kristallkrebs",
+      "text": "Crystal Crab",
+      "context": "npcs/dungeon.lua",
+      "status": "entwurf"
+    },
     "mon_laufvogel.name": {
       "de": "Laufvogel",
       "text": "Runner Bird",
       "context": "npcs/animals.lua",
+      "status": "entwurf"
+    },
+    "mon_mauerkriecher.name": {
+      "de": "Mauerkriecher",
+      "text": "Wall Crawler",
+      "context": "npcs/dungeon.lua",
       "status": "entwurf"
     },
     "mon_mauerschlupfer.name": {

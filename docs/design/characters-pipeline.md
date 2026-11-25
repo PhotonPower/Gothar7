@@ -654,6 +654,15 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_gulden` (Gulden, 2026-11-01: fünf Goldmünzen gestapelt, zwei daneben, eine an den Stapel gelehnt; Ursprung Mitte unter dem Stapel, +Y oben; `AXIS_FREE`) | 2,6 cm Ø | Gold (prozedural); 1176 Dreiecke |
   | `it_blank_hot` (glühender Schwert-Rohling vom Amboss, 2026-11-01: flacher, grob geschmiedeter Stab mit Angel; Ursprung = Angel (Zange), +Y entlang des Stabs, +Z spätere Schneide; Material `iron_hot` leuchtet: `emissiveTexture` = Farbtextur, `emissiveFactor` 1, zur Spitze heißer; Angel Schmiedeeisen) | 0,76 m | prozedural; 248 Dreiecke |
   | `it_lantern_beinhaus` (eiserne Laterne des Beinhauswarts, 2026-11-24: quadratischer Rahmen mit Dach, Boden und Eckstreben um ein blassgrün leuchtendes Glas (`glass_glow_green`, `emissiveTexture` = Farbtextur, `emissiveFactor` 1); Ursprung = Oberkante des Bügels (Faust), +Y oben, der Körper hängt entlang −Y; leerer Knoten `socket_light` in der Glasmitte (0, −0,17, 0) für das grüne Licht der engine; hängt per `npc_hold` an `socket_lantern`, fällt in der Rasend-Phase) | 29 cm | Schmiedeeisen, Glas (prozedural); 250 Dreiecke |
+  | `it_kristall` (Leuchtkristall des Kristallkrebses, Beute, 2026-11-25: sechseckiger Splitter mit zwei kleinen Nebenkristallen am Fuß, blassblau leuchtend (`crystal_glow_blue`, emissiv); +Y zur Spitze; ID von engine) | 12 cm | prozedural |
+  | `it_newt_skin` (Molchhaut des Brunnenmolchs, Beute: gerollte blasse Haut mit zwei Schnüren und losem Lappen; +Y entlang der Rolle) | 29 cm | prozedural (`newt_skin`, `linen`) |
+  | `it_newt_gills` (Molchkiemen des Brunnenmolchs, Beute/Alchemie: drei rote, gefiederte Kiemenstiele auf einem Hautansatz; +Y nach oben) | 12 cm | prozedural (`gill_red`) |
+  | `it_crawler_plate` (Kriecherplatte des Mauerkriechers, Beute: gewölbte Ringplatte aus Chitin; +Y entlang des Bogens) | 13 × 6 cm | prozedural (`chitin`) |
+  | `it_ember_eye` (Glutauge des Gatterbocks, Beute: orange glühender Stein (`ember_glow`, emissiv) mit dunklen Rindenscherben hinten; +Y oben) | 5 cm | prozedural |
+  | `it_bat_ear` (Schlupferohr des Mauerschlupfers, Beute: blasse Ohrmembran mit drei Rippen und fleischigem Ansatz; +Y zur Spitze) | 10 cm | prozedural (`bat_skin`) |
+  | `it_shroud_rag` (Grabtuchfetzen des Beinhauswarts, Beute: gefaltetes graues Tuch mit ausgefransten Streifen; +Y entlang des Bündels) | 26 × 15 cm | prozedural (`shroud`) |
+  | `it_scythe_claw` (Sensenklaue der Kellermutter, Beute/Trophäe: gebogene Chitinklinge vom Gelenkknopf (Ursprung) entlang +Y) | 65 cm | prozedural (`chitin_dark`, `chitin`) |
+  | `it_brood_gland` (Brutdrüse der Kellermutter, Beute/Alchemie: orange leuchtende Drüse (`gland_glow_orange`, emissiv) in fünf dunklen Chitinrippen; +Y oben) | 14 cm | prozedural |
 
   Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade
   legt engine an.
@@ -830,11 +839,14 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
   `move_axis = "x"` in der Körperbeschreibung schreibt `[rig] move_axis`; `validate` erwartet dann die Root Motion von
   `s_walk`/`s_run` entlang +X; ist der Rumpf breiter als lang, liegt die Kapsel quer (`axis = "x"`). `teeth_glow`
   lässt die `tooth`-Kegel in `teeth_colour` leuchten (Kristalle).
+  Echsen (§7.6): `gait` mit `splay = true` und `sway` (Rumpf und Schwanz schlängeln um die Hochachse). Die Kapsel
+  lässt Kiemen (`gill_l/r`) und seitlich abstehende Oberschenkel/-arme (Knie mehr seitlich als unter der Hüfte) außen vor.
 
 | Art | Stand |
 |---|---|
 | `beinhauswart` | Dungeon (2026-11-23): menschenähnliches Rig 29 Knochen wie `gatterbock`, dazu die Träger `spade` (an `hand_r`, Spaten als starre Platten) und `lantern` (an `hand_l`, ohne Geometrie, zeigt nach oben), die nie animiert werden; Sockets `socket_mouth`, `socket_hand_l/r`, `socket_spade` (Mitte des Spatenblatts, Treffpunkt), `socket_lantern` (Bügel der Laterne in der Faust, +Y oben: dort hängt engine das Item `it_lantern_beinhaus` per `npc_hold` an und lässt es in der Rasend-Phase fallen); 2,0 m gebeugt, Kapsel stehend r 0,40; Leichentuch mit Kapuze und Falten als Körperform, knöchernes Gesicht in der Kapuzenöffnung, Augen leuchten grün (`eye_glow`); lod0 4712 / 2356 / 1178 Dreiecke; 14 Clips (Mindest-Set + `s_dormant`, `t_wake`); Tempo 0,8 / 3,2 m/s |
 | `bergleu` | Boss: Rig 41 Knochen (Katzen-Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Mähne `mane_back/l/r`, `tail_01..05`, zehengängige Beine mit Schulterblättern und Zehen; Sockets `socket_mouth`, `socket_paw_l/r`, `socket_tail`), Schulter 1,6 m, lod0 11096 / 5488 / 2714 Dreiecke (Boss-Budget bis 12 k), Mähne aus Strähnen (`tuft_shell`); 19 Clips (Mindest-Set + `s_stalk`, `t_pounce` am Ort, `t_tail_lash`, `t_roar`, `t_rage`, `t_stagger`, `t_turn_back`); Tempo 1,5 / 8,0 / Anpirschen 1,0 m/s (mit engine 2026-10-08) |
+| `brunnenmolch` | Dungeon (2026-11-24), erste Art nach dem Echsen-Bauplan §7.6: blinder Riesen-Höhlenmolch, Rig 29 Knochen (`pelvis`, `spine_01..03`, `neck_01`, `head`, `jaw`, Kiemen `gill_l/r`, `tail_01..06`, gespreizte Beine `front_/back_upper/lower/foot_l/r`; Socket `socket_mouth`), 2,6 m lang, 0,33 m hoch, Kapsel liegend r 0,21 / l 1,08; blasse rosaweiße Haut, rote Kiemenbüschel, Ruderschwanz mit Flossensaum, keine Augen (nur dunkle Flecken unter der Haut); lod0 7394 / 3696 / 1848 Dreiecke; 17 Clips (Mindest-Set + `s_dormant`, `t_wake`, `t_snap_up`, `t_submerge` mit `splash`, `t_listen`); schwimmt nicht; Tempo 0,6 / 1,8 m/s mit `sway` |
 | `gatterbock` | Dungeon (2026-11-23): menschenähnliches Rig 25 Knochen (`spine_01/02`, `neck_01`, `head`, Arme `clavicle/upperarm/lowerarm/hand`, Beine `thigh/calf/foot/ball`; Sockets `socket_mouth`, `socket_hand_l/r`), 2,5 m, Kapsel stehend r 0,28; Rumpf aus einem Eisengerüst (Voxel-Hülle) und 27 starren Platten: ungleich große, behauene und verwitterte Sandsteinblöcke mit gefasten, abgeschlagenen Kanten, Rissen und Moos in den Fugen, rostige Eisenbänder (v2 nach Wunsch des Projektinhabers); Glutaugen (`eye_glow`); lod0 6288 / 3144 / 1572 Dreiecke; 14 Clips (Mindest-Set + `s_dormant`, `t_wake`); Tempo 0,9 / 2,2 m/s |
 | `glemsmahr` | Rig 37 Knochen (neues Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Arme als Vorderbeine mit Schulter, Hand und je drei Fingern, zehengängige Hinterbeine mit Zehen; Sockets `socket_mouth`, `socket_eyes`, `socket_hand_l/r`), geduckt 1,53 m, Kapsel stehend, lod0 7636 / 3758 / 1848 Dreiecke, emissive Augen (`eye_glow`); 19 Clips (Mindest-Set + `s_sneak`, `t_rise`/`s_upright`/`t_lower`, `t_leap` und `t_jump_back` am Ort mit `leap_start`/`leap_land`, `t_recoil`); Tempo 1,4 / 6,5 / Schleichen 0,9 m/s (mit engine 2026-10-07) |
 | `mauerkriecher` | Dungeon (2026-11-23), erste Art nach dem Gliederfüßer-Bauplan §7.5: Rig 34 Knochen (`pelvis`, `spine_01`, `neck_01`, `head`, `mandible_l/r`, Fühler `antenna_01/02_l/r`, `abdomen_01..04`, Beine `leg_1..3_upper/lower/foot_l/r`; Socket `socket_mouth`), 1,0 m lang (ohne Fühler), 0,29 m hoch, Kapsel liegend r 0,21 / l 0,99 (ohne Fühler und Beine); Panzer aus 24 überlappenden Ringplatten (`plate_shell`); lod0 5432 / 2716 / 1358 Dreiecke; 18 Clips (Mindest-Set + `s_dormant`, `t_wake`, `t_curl`/`s_curled`/`t_uncurl`, `t_emerge` mit Event `emerge`); Gang mit gespreizten Beinen im Wechseldreischritt; Tempo 1,2 / 5,0 m/s |
@@ -925,7 +937,7 @@ Gewichte; Translation nur auf `root`/`pelvis`; Kollision `[rig.collision]`).
 - **Werkzeug:** `gothar-chargen creature` (§7.4) mit dem neuen Rig-Muster; neue Formen nach Bedarf (Ringplatten
   `plate_shell` gibt es schon).
 
-### 7.6 Echsen-Bauplan (Vorschlag an engine, 2026-11-23, für den Brunnenmolch)
+### 7.6 Echsen-Bauplan (Vertrag mit engine, Antworten 2026-11-24 über den Koordinator; gebaut: Brunnenmolch)
 
 Für die Dungeon-Art **Brunnenmolch** (`monsters.md` „Dungeon-Arten“): blinder Riesen-Höhlenmolch, 2,6 m lang,
 lauert halb untergetaucht im flachen Wasser bzw. am Ufer der Zisterne, schnappt nach dem Helden am Steg und taucht
@@ -944,10 +956,13 @@ gilt weiter (Ausrichtung, Bind-Pose = natürliche Lage, ≤ 64 Knochen, Translat
   `splay = true`.
 - **Neu:** `gill_l/r` am Kopf (Kiemenbüschel, nur Drehung; sie wedeln in den Schleifen).
 - **Socket** `socket_mouth` (Biss, Pflicht).
-- **Knochenzahl** (Schätzung): 28.
-- **Kollision:** `capsule_lying` aus dem Rumpf ohne Schwanz und Beine (§7.1), Schätzung r 0,22 / l 1,5.
+- **Knochenzahl:** Brunnenmolch 29 (mit `root` und `socket_mouth`).
+- **Kollision:** `capsule_lying` aus dem Rumpf ohne Schwanz, Kiemen und gespreizte Beine (§7.1); Brunnenmolch
+  r 0,21 / l 1,08 (Schnauze bis Hüfte).
 - **Schlängeln:** Gehen und Laufen biegen Rumpf und Schwanz seitlich in einer Welle (Drehung um +Y in
-  glTF). Im Werkzeug: neues `gait`-Feld `sway` (Grad, Knochenliste, Phasenversatz je Knochen).
+  glTF). Im Werkzeug: `gait`-Feld `sway = { bones = [...], degrees = [...], lag = 0.06 }` (Grad als eine Zahl oder
+  je Knochen, jeder folgende Knochen `lag` des Zyklus später); reine Drehung um die Senkrechte, die Root Motion bleibt
+  gerade. Die gespreizten Beine gleichen die Drehung ihres Elternknochens aus und bleiben in der Welt stehen.
 - **Clips:**
   - Mindest-Set aus §7.1: `s_idle`, `s_walk`, `s_run`, `t_attack_1`, `t_attack_2`, `t_hit`, `t_die`, `s_eat`,
     `s_sleep`, `t_threaten`, `t_turn_l/r`;

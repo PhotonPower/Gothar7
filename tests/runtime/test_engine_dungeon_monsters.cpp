@@ -3,6 +3,7 @@
 // them, a niche wakes the mauerschlupfer that steals something shiny and loses it again, waking survives a
 // save game, and only nests fill up again when the hero comes back into the level.
 
+#include <g7/gameplay/Movement.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/GameState.hpp>
 
@@ -181,4 +182,247 @@ TEST_CASE("Engine dungeon monsters: only a nest fills up again when the hero com
     {
         CHECK(dormant(engine, npc.asString()));
     }
+}
+
+TEST_CASE(
+    "Engine dungeon monsters: the Mauerkriecher rests in its crack and comes out (t_emerge) at the hero")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::string kriecher(run(engine, "insert_npc('mon_mauerkriecher', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("npc_set_dormant('{}', true)", kriecher)); // as a spawn marker does (npc_spawned)
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", kriecher));
+    frames(engine, 30);
+    CHECK(dormant(engine, kriecher));
+    CHECK(run(engine, std::format("npc_state('{}').animation", kriecher)).asString() == "dormant");
+    run(engine, std::format("wake('{}')", kriecher)); // as when it notices the hero: out of the crack
+    bool emerged = false;
+    for (int i = 0; i < 180 && !emerged; ++i)
+    {
+        frames(engine, 1);
+        emerged = run(engine, std::format("npc_state('{}').animation", kriecher)).asString() == "wake";
+    }
+    CHECK(emerged);
+    CHECK_FALSE(dormant(engine, kriecher));
+}
+
+namespace
+{
+/// A Kristallkrebs `distance` m in front of the hero, facing him, lying still (dormant) until told.
+std::string crabInFront(Engine& engine, f32 distance)
+{
+    const std::string crab(run(engine, "insert_npc('mon_kristallkrebs', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("npc_set_dormant('{}', true)", crab));
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", crab));
+    frames(engine, 5);
+    const auto get = [&](std::string_view key)
+    { return static_cast<f32>(run(engine, std::format("where().{}", key)).asNumber()); };
+    const Vec3 ahead =
+        Vec3(get("x"), get("y"), get("z")) + gameplay::forwardOf(glm::radians(get("yaw"))) * distance;
+    run(engine, std::format("npc_teleport('{}', {}, {}, {}, {})", crab, ahead.x, ahead.y, ahead.z,
+                            get("yaw") + 180.0f));
+    frames(engine, 5);
+    return crab;
+}
+
+Vec3 heroAt(Engine& engine)
+{
+    const auto get = [&](std::string_view key)
+    { return static_cast<f32>(run(engine, std::format("where().{}", key)).asNumber()); };
+    return {get("x"), get("y"), get("z")};
+}
+} // namespace
+
+TEST_CASE("Engine dungeon monsters: the Kristallkrebs's pincer holds the hero fast until it lets go")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    engine.setRandomSource([] { return 0.0f; }); // every attack of the crab is a grab (grab.chance)
+    frames(engine, 3);
+    run(engine, "set_stat('hp_max', 1000) set_stat('hp', 1000)");
+    run(engine, "on('hero_grabbed', function(npc) Story.grabbed = npc end)");
+    const std::string crab = crabInFront(engine, 1.6f);
+    run(engine, std::format("wake('{}')", crab)); // it wakes and attacks the hero in front of it
+    bool held = false;
+    for (int i = 0; i < 400 && !held; ++i)
+    {
+        frames(engine, 1);
+        held = run(engine, "hero_held()").isString();
+    }
+    REQUIRE(held);
+    CHECK(run(engine, "hero_held()").asString() == crab);
+    CHECK(run(engine, "Story.grabbed").asString() == crab);
+    // Held, he does not get away walking.
+    gameplay::MoveInput back;
+    back.forward = -1.0f;
+    engine.setPlayerInputOverride(back);
+    const Vec3 before = heroAt(engine);
+    frames(engine, 20);
+    CHECK(glm::distance(before, heroAt(engine)) < 0.05f);
+    // The pincer opens (event release, at most Creatures.kristallkrebs.grab.seconds).
+    bool free = false;
+    for (int i = 0; i < 200 && !free; ++i)
+    {
+        frames(engine, 1);
+        free = run(engine, "hero_held()").isNil();
+    }
+    CHECK(free);
+    engine.setPlayerInputOverride(std::nullopt);
+}
+
+TEST_CASE("Engine dungeon monsters: blunt blows knock crystals off the Kristallkrebs, up to splinter.max")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    engine.setRandomSource([] { return 0.99f; }); // no grabs
+    frames(engine, 3);
+    run(engine, "set_stat('hp_max', 1000) set_stat('hp', 1000) set_stat('str', 60)");
+    run(engine, "give_item('it_club') equip('it_club') draw_weapon()");
+    frames(engine, 110);
+    const std::string crab = crabInFront(engine, 1.4f);
+    run(engine, std::format("npc_set_stat('{}', 'hp_max', 5000)", crab));
+    run(engine, std::format("npc_set_stat('{}', 'hp', 5000)", crab));
+    const auto crystals = [&]
+    { return run(engine, std::format("npc_item_count('{}', 'it_kristall')", crab)).asInteger(); };
+    const auto strike = [&]
+    {
+        // Back in front of him (a hit crab steps about), then one blow with the club.
+        const Vec3 at = heroAt(engine);
+        const f32 yaw = static_cast<f32>(run(engine, "where().yaw").asNumber());
+        const Vec3 ahead = at + gameplay::forwardOf(glm::radians(yaw)) * 1.4f;
+        run(engine,
+            std::format("npc_teleport('{}', {}, {}, {}, {})", crab, ahead.x, ahead.y, ahead.z, yaw + 180.0f));
+        bool started = false;
+        for (int i = 0; i < 180 && !started; ++i)
+        {
+            frames(engine, 1);
+            started = run(engine, "hero_attack()").asBool();
+        }
+        REQUIRE(started);
+        frames(engine, 40);
+    };
+    const i64 carried = crystals(); // its loot from the start (inventory)
+    for (int i = 0; i < 5; ++i)
+    {
+        strike();
+    }
+    MESSAGE("crystals knocked off ", crystals() - carried);
+    CHECK(crystals() - carried == 3); // at most splinter.max
+}
+
+TEST_CASE("Engine dungeon monsters: the Kristallkrebs throws half of the hero's spell back at him")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    run(engine,
+        "give_item('it_rune_firebolt') equip('it_rune_firebolt') set_talent('magic_circle', 1) "
+        "set_stat('mana_max', 50) set_stat('mana', 50) set_stat('hp_max', 1000) set_stat('hp', 1000)");
+    run(engine,
+        "on('npc_hit', function(a, t, d) if t == 'hero' then Story.back = (Story.back or 0) + d end end)");
+    const std::string crab = crabInFront(engine, 5.0f);
+    run(engine, std::format("npc_set_stat('{}', 'hp_max', 5000)", crab));
+    run(engine, std::format("npc_set_stat('{}', 'hp', 5000)", crab));
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_firebolt");
+    frames(engine, 60);
+    run(engine, "hero_cast(true)");
+    frames(engine, 6);
+    run(engine, "hero_cast(false)");
+    bool back = false;
+    for (int i = 0; i < 300 && !back; ++i)
+    {
+        frames(engine, 1);
+        back = !run(engine, "Story.back").isNil();
+    }
+    CHECK(back);
+    CHECK(run(engine, std::format("npc_stat('{}', 'hp')", crab)).asInteger() < 5000); // the rest reached it
+}
+
+TEST_CASE("Engine dungeon monsters: a heavy hit rolls the Mauerkriecher up - its shell takes most, not at "
+          "its belly")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::string kriecher(run(engine, "insert_npc('mon_mauerkriecher', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("npc_set_dormant('{}', true)", kriecher)); // lies still until the first blow
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", kriecher));
+    run(engine, std::format("npc_set_stat('{}', 'hp_max', 600)", kriecher));
+    run(engine, std::format("npc_set_stat('{}', 'hp', 600)", kriecher));
+    frames(engine, 10);
+    // The hero strong (one blow is heavy: a quarter of its life or more), the Kriecher right in front of him.
+    run(engine, "set_stat('str', 400)");
+    run(engine, "set_stat('hp_max', 1000) set_stat('hp', 1000)"); // its bites do not knock him out
+    run(engine, "give_item('it_sword_old') equip('it_sword_old')");
+    run(engine, "draw_weapon()");
+    frames(engine, 110);
+    // `turn` degrees on the hero's yaw: 0 shows the hero its shell from behind, 180 its front (the belly).
+    const auto putInFront = [&](f32 turn)
+    {
+        const auto get = [&](std::string_view key)
+        { return static_cast<f32>(run(engine, std::format("where().{}", key)).asNumber()); };
+        const Vec3 ahead =
+            Vec3(get("x"), get("y"), get("z")) + gameplay::forwardOf(glm::radians(get("yaw"))) * 1.1f;
+        run(engine, std::format("npc_teleport('{}', {}, {}, {}, {})", kriecher, ahead.x, ahead.y, ahead.z,
+                                get("yaw") + turn));
+    };
+    putInFront(0.0f);
+    frames(engine, 10);
+    const auto hpNow = [&] { return run(engine, std::format("npc_stat('{}', 'hp')", kriecher)).asInteger(); };
+    const auto animation = [&]
+    { return std::string(run(engine, std::format("npc_state('{}').animation", kriecher)).asString()); };
+    const i64 before = hpNow();
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    bool curled = false;
+    for (int i = 0; i < 120 && !curled; ++i)
+    {
+        frames(engine, 1);
+        curled = animation() == "curl" || animation() == "curled";
+    }
+    const i64 first = before - hpNow();
+    MESSAGE("first blow ", first);
+    REQUIRE(curled);
+    CHECK(first >= 150);
+    // Rolled up it does not move; a second blow from behind mostly bounces off the shell.
+    frames(engine, 40);
+    const i64 middle = hpNow();
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    frames(engine, 100);
+    const i64 second = middle - hpNow();
+    MESSAGE("second blow (rolled up) ", second);
+    CHECK(second > 0);
+    CHECK(second * 2 < first);
+    CHECK((animation() == "curled" || animation() == "curl"));
+    // After its time (4 s) it unrolls and goes on.
+    bool unrolled = false;
+    for (int i = 0; i < 300 && !unrolled; ++i)
+    {
+        frames(engine, 1);
+        unrolled = animation() == "uncurl" || animation() == "move";
+    }
+    CHECK(unrolled);
+
+    // Rolled up again, but facing the hero: the soft belly at its front takes the blow in full.
+    run(engine, std::format("npc_set_stat('{}', 'hp_max', 1000)", kriecher)); // two full blows to take
+    run(engine, std::format("npc_set_stat('{}', 'hp', 1000)", kriecher));
+    putInFront(180.0f);
+    frames(engine, 5);
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    curled = false;
+    for (int i = 0; i < 120 && !curled; ++i)
+    {
+        frames(engine, 1);
+        curled = animation() == "curl" || animation() == "curled";
+    }
+    REQUIRE(curled);
+    frames(engine, 40);
+    putInFront(180.0f); // in case the blow pushed it round
+    const i64 rolled = hpNow();
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    frames(engine, 100);
+    const i64 belly = rolled - hpNow();
+    MESSAGE("blow on the belly (rolled up) ", belly);
+    CHECK((animation() == "curled" || animation() == "curl"));
+    CHECK(belly >= 2 * second);
 }

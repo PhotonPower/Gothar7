@@ -303,6 +303,24 @@ def wood_creak(rng: random.Random) -> Samples:
     return normalise(fade(creak, 0.1, 0.2), 0.5)
 
 
+def page_turn(rng: random.Random) -> Samples:
+    # A page of a heavy book turned at the lectern: a dry paper rustle that swells and ends with a soft flap.
+    rustle = envelope(highpass(lowpass(noise(0.45, rng), 6000.0), 1500.0), 0.12, 0.2)
+    flap = envelope(lowpass(noise(0.06, rng), 900.0), 0.002, 0.03)
+    return normalise(rustle + flap, 0.4)
+
+
+def cook_stir(rng: random.Random) -> Samples:
+    # A wooden ladle stirring a thick stew in an iron kettle: slow scraping, a bubble or two.
+    seconds = 1.6
+    scrape = lowpass(noise(seconds, rng), 700.0)
+    swirl = [s * (0.6 + 0.4 * math.sin(2 * math.pi * i / (RATE * 0.8))) for i, s in enumerate(scrape)]
+    bubbles = scatter(
+        len(swirl), 3, lambda: envelope(tone(180.0 + 120.0 * rng.random(), 0.08), 0.005, 0.03), rng
+    )
+    return normalise(fade(mix((swirl, 1.0), (bubbles, 0.5)), 0.2, 0.3), 0.45)
+
+
 def mug_clink(rng: random.Random) -> Samples:
     ring = mix(
         *[(envelope(tone(f, 0.4), 0.001, 0.08), g) for f, g in ((2100.0, 1.0), (3400.0, 0.5), (5200.0, 0.3))]
@@ -441,6 +459,8 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "dog_bark": dog_bark,
     "wood_creak": wood_creak,
     "mug_clink": mug_clink,
+    "page_turn": page_turn,
+    "cook_stir": cook_stir,
     "lute_play": lute_play,
     "frog": frog,
     "water_drip": water_drip,

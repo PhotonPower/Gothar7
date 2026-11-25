@@ -14,6 +14,7 @@
 #include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/gameplay/Character.hpp>
+#include <g7/gameplay/Combat.hpp>
 #include <g7/physics/Character.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/SkinnedMesh.hpp>
@@ -231,13 +232,17 @@ struct Creature
     bool eat = false;
     bool sleep = false;
     bool dead = false;
-    bool rest = false;              ///< graph "dormant": its resting loop (statue, rolled up), dungeon D6
-    std::string spawn;              ///< dungeon D6: the spawn marker that put it in, empty: none
-    bool dormant = false;           ///< dungeon D6: resting until it wakes (saved; the behaviour is Lua's)
-    bool moveAcross = false;        ///< Creatures.<species>.move_axis = "x": walks sideways (a crab)
-    std::string heldItem;           ///< npc_hold (dungeon D6): the item shown at handBone, empty: none
-    f32 acrossYaw = 0.0f;           ///< the turn of its figure against its course while walking sideways
-    bool asleep = false;            ///< M12 (Z6): put to sleep by a spell, until hurt or the time is over
+    bool rest = false;       ///< graph "dormant": its resting loop (statue, rolled up), dungeon D6
+    std::string spawn;       ///< dungeon D6: the spawn marker that put it in, empty: none
+    bool dormant = false;    ///< dungeon D6: resting until it wakes (saved; the behaviour is Lua's)
+    bool moveAcross = false; ///< Creatures.<species>.move_axis = "x": walks sideways (a crab)
+    std::string heldItem;    ///< npc_hold (dungeon D6): the item shown at handBone, empty: none
+    gameplay::DamageByType
+        reflectPending;       ///< Creatures.<species>.reflect: thrown back at the event "reflect"
+    i32 splinters = 0;        ///< Creatures.<species>.splinter: crystals knocked off so far
+    f32 acrossYaw = 0.0f;     ///< the turn of its figure against its course while walking sideways
+    f32 curledSeconds = 0.0f; ///< > 0: rolled up after a heavy hit (Creatures.<species>.curl), graph "curled"
+    bool asleep = false;      ///< M12 (Z6): put to sleep by a spell, until hurt or the time is over
     std::optional<u32> sleepEffect; ///< its effect over the head
     bool summoned = false;          ///< M12 (Z8): called by a spell; vanishes when its time is over
     f32 summonSeconds = 0.0f;       ///< ... in this many seconds (2 s after its death)

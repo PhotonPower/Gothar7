@@ -315,7 +315,8 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     {
         input = {}; // standing while the shape changes (Z7)
     }
-    m_playerInput.mouseTurn = 0.0f; // used up by this step
+    fixedUpdateHeroHold(input, seconds); // a Kristallkrebs's pincer holds him fast
+    m_playerInput.mouseTurn = 0.0f;      // used up by this step
     m_playerInput.jump = false;
     m_playerYawBefore = m_movement.yaw();
     m_playerFeetBefore = m_playerFeet;
