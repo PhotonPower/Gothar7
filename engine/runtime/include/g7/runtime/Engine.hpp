@@ -1055,6 +1055,8 @@ public:
     /// Tests and demos: replaces the keyboard/mouse input of the player (nullopt: back to the actions).
     /// A jump in it counts once, when it turns on.
     void setPlayerInputOverride(std::optional<gameplay::MoveInput> input) { m_playerInputOverride = input; }
+    /// The lights the monsters carry this frame (Creatures.<species>.glow: crystals, a weak spot, a lantern).
+    [[nodiscard]] std::vector<render::PointLight> creatureLights() const;
 
 private:
     void shutdown();
@@ -2258,6 +2260,15 @@ private:
     };
     std::map<std::string, CurlRule, std::less<>> m_curlRules; // Creatures.<species>.curl (dungeon D6)
     std::set<std::string, std::less<>> m_sidewaysSpecies; // Creatures.<species>.move_axis = "x" (dungeon D6)
+    struct GlowRule
+    {
+        std::string socket = "socket_glow"; ///< where the light sits
+        Vec3 colour{1.0f};
+        f32 radius = 4.0f;
+        f32 intensity = 1.0f;
+        bool holding = false; ///< only while it holds something (npc_hold: the Beinhauswart's lantern)
+    };
+    std::map<std::string, GlowRule, std::less<>> m_glowRules; // Creatures.<species>.glow (dungeon monsters)
     struct GrabRule
     {
         f32 chance = 0.0f;  ///< share of its attacks that are a grab (t_grab)

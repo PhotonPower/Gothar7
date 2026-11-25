@@ -237,6 +237,7 @@ struct Creature
     bool dormant = false;    ///< dungeon D6: resting until it wakes (saved; the behaviour is Lua's)
     bool moveAcross = false; ///< Creatures.<species>.move_axis = "x": walks sideways (a crab)
     std::string heldItem;    ///< npc_hold (dungeon D6): the item shown at handBone, empty: none
+    std::string glow;        ///< Creatures.<species>.glow: its species (a light at a socket), empty: none
     gameplay::DamageByType
         reflectPending;       ///< Creatures.<species>.reflect: thrown back at the event "reflect"
     i32 splinters = 0;        ///< Creatures.<species>.splinter: crystals knocked off so far

@@ -426,3 +426,26 @@ TEST_CASE("Engine dungeon monsters: a heavy hit rolls the Mauerkriecher up - its
     CHECK((animation() == "curled" || animation() == "curl"));
     CHECK(belly >= 2 * second);
 }
+
+TEST_CASE("Engine dungeon monsters: the Kristallkrebs's crystals glow blue at socket_glow and move with it")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::size_t before = engine.creatureLights().size();
+    const std::string crab(run(engine, "insert_npc('mon_kristallkrebs', 'WP_MONSTER_OST')").asString());
+    frames(engine, 5);
+    const auto lights = engine.creatureLights();
+    REQUIRE(lights.size() == before + 1);
+    const render::PointLight& glow = lights.back();
+    CHECK(glow.color.z > glow.color.x); // pale blue
+    const f32 x = static_cast<f32>(run(engine, std::format("npc_state('{}').x", crab)).asNumber());
+    const f32 y = static_cast<f32>(run(engine, std::format("npc_state('{}').y", crab)).asNumber());
+    const f32 z = static_cast<f32>(run(engine, std::format("npc_state('{}').z", crab)).asNumber());
+    CHECK(glm::distance(glow.position, Vec3(x, y, z)) < 1.5f); // on its back
+    CHECK(glow.position.y > y + 0.3f);
+    run(engine,
+        std::format("npc_teleport('{}', {}, {}, {})", crab, x + 6.0f, y, z)); // it moves, the light too
+    frames(engine, 3);
+    CHECK(engine.creatureLights().back().position.x > glow.position.x + 5.0f);
+}

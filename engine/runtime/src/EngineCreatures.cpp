@@ -478,6 +478,39 @@ void Engine::drawCreatures(bool shadow, u32 cascade)
     }
 }
 
+std::vector<render::PointLight> Engine::creatureLights() const
+{
+    // Creatures.<species>.glow: the crab's crystals, the mother's weak spot, the warden's lantern. Dead ones
+    // go dark; a light that needs something in hand goes out when it is dropped.
+    std::vector<render::PointLight> out;
+    std::vector<Mat4> space;
+    for (const auto& owned : m_creatures)
+    {
+        const Creature& c = *owned;
+        if (c.glow.empty() || c.dead || c.vanished || !c.figure)
+        {
+            continue;
+        }
+        const auto it = m_glowRules.find(c.glow);
+        if (it == m_glowRules.end() || (it->second.holding && c.heldItem.empty()))
+        {
+            continue;
+        }
+        const i32 bone = c.figure->skeleton.find(it->second.socket);
+        if (bone < 0)
+        {
+            continue;
+        }
+        // The pose of this step (the drawn modelSpace is not there without a window or out of view).
+        space.resize(c.figure->skeleton.size());
+        c.figure->skeleton.modelSpace(c.figure->poseNow, space);
+        const Mat4 at = creatureMatrix(c.position, c.yaw + c.acrossYaw) * space[static_cast<usize>(bone)];
+        out.push_back(
+            render::PointLight{Vec3(at[3]), it->second.radius, it->second.colour, it->second.intensity});
+    }
+    return out;
+}
+
 void Engine::creaturesUi()
 {
     ui::CreaturesPanel panel;

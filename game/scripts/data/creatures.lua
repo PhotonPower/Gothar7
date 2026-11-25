@@ -70,6 +70,8 @@ Creatures = {
         grab = { chance = 0.33, seconds = 2.5, reach = 2.2 },
         reflect = { share = 0.5 }, -- die Hälfte eines Zaubers des Helden geht an ihn zurück (Event reflect)
         splinter = { item = "it_kristall", max = 3 }, -- stumpfe Treffer schlagen Kristalle ab (Beute)
+        -- Die Kristalle leuchten im Dunkeln blassblau und verraten ihn (socket_glow); tot erlöschen sie.
+        glow = { socket = "socket_glow", colour = { 0.45, 0.75, 1.0 }, radius = 5, intensity = 1.2 },
     },
 }
 
