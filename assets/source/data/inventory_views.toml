@@ -236,3 +236,77 @@ fill = 0.9
 # telekinesis rune: its Lua item comes with engine #404 (category rune); until then the model names it
 [model."items/it_rune_telekinesis.glb"]
 category = "rune"
+
+# --- loot of the dungeon species (F6, 2026-11-25): Lua items by engine with the same IDs, all misc ---
+
+# Kristallkrebs crystal: upright shard, slightly from the side
+[model."items/it_kristall.glb"]
+category = "misc"
+yaw = 30.0
+pitch = 15.0
+roll = -20.0
+fill = 0.85
+
+# Brunnenmolch skin: the roll lies diagonally, its flap visible
+[model."items/it_newt_skin.glb"]
+category = "misc"
+yaw = 20.0
+pitch = 25.0
+roll = -45.0
+fill = 0.9
+
+# Brunnenmolch gills: the tuft upright, filaments to the sides
+[model."items/it_newt_gills.glb"]
+category = "misc"
+yaw = 0.0
+pitch = 10.0
+roll = 0.0
+fill = 0.8
+
+# Mauerkriecher ring plate: the arched outside towards the viewer
+[model."items/it_crawler_plate.glb"]
+category = "misc"
+yaw = 65.0
+pitch = 20.0
+roll = -30.0
+fill = 0.85
+
+# Gatterbock ember eye: the glowing front towards the viewer
+[model."items/it_ember_eye.glb"]
+category = "misc"
+yaw = 20.0
+pitch = 10.0
+roll = 0.0
+fill = 0.65
+
+# Mauerschlupfer ear: the membrane open towards the viewer
+[model."items/it_bat_ear.glb"]
+category = "misc"
+yaw = 0.0
+pitch = 10.0
+roll = -15.0
+fill = 0.85
+
+# Beinhauswart shroud: the folded bundle diagonally, from above
+[model."items/it_shroud_rag.glb"]
+category = "misc"
+yaw = 20.0
+pitch = 35.0
+roll = -40.0
+fill = 0.85
+
+# Kellermutter scythe claw: long, diagonal like a blade
+[model."items/it_scythe_claw.glb"]
+category = "misc"
+yaw = 0.0
+pitch = 10.0
+roll = -45.0
+fill = 0.95
+
+# Kellermutter brood gland: upright, a little from above
+[model."items/it_brood_gland.glb"]
+category = "misc"
+yaw = 20.0
+pitch = 20.0
+roll = 0.0
+fill = 0.75

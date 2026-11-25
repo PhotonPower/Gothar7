@@ -151,15 +151,17 @@ bool Engine::creatureAction(u32 id, std::string_view action)
     {
         return false;
     }
-    constexpr std::array<std::pair<std::string_view, i32>, 9> kOnce = {{{"attack_1", 1},
-                                                                        {"attack_2", 2},
-                                                                        {"hit", 3},
-                                                                        {"threaten", 4},
-                                                                        {"wake", 5},
-                                                                        {"steal", 6},
-                                                                        {"call", 9},
-                                                                        {"rage", 10},
-                                                                        {"stagger", 11}}};
+    constexpr std::array<std::pair<std::string_view, i32>, 11> kOnce = {{{"attack_1", 1},
+                                                                         {"attack_2", 2},
+                                                                         {"hit", 3},
+                                                                         {"threaten", 4},
+                                                                         {"wake", 5},
+                                                                         {"steal", 6},
+                                                                         {"grab", 7},
+                                                                         {"reflect", 8},
+                                                                         {"call", 9},
+                                                                         {"rage", 10},
+                                                                         {"stagger", 11}}};
     for (const auto& [name, value] : kOnce)
     {
         if (action == name)
@@ -370,6 +372,18 @@ void Engine::fixedUpdateCreatures(f32 seconds)
                      if (event.starts_with("hit_") || event.starts_with("combo_"))
                      {
                          c.fighter.onEvent(event); // the combat clips time the blow (M11)
+                     }
+                     if (event == "grab")
+                     {
+                         creatureGrab(c); // Kristallkrebs: the pincer closes
+                     }
+                     else if (event == "release" && m_heroHeld && m_heroHeld->by == c.id)
+                     {
+                         releaseHero("release");
+                     }
+                     else if (event == "reflect")
+                     {
+                         throwSpellBack(c); // Kristallkrebs: its crystals flare
                      }
                      creatureScriptEvent(c, event); // steal, emerge, grab ... (dungeon D6)
                      f.events.push_front(std::format(

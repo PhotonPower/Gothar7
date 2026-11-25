@@ -1575,6 +1575,15 @@ private:
     [[nodiscard]] f32 reachOf(const Combatant& c) const;           ///< m beyond the bodies
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
+    /// Creatures.<species>.grab (Kristallkrebs): at the clip event "grab" the pincer holds the hero if he
+    /// stands within reach in front of it; "release" (or the holder leaving t_grab, dying, the time) lets go.
+    void creatureGrab(Creature& c);
+    void releaseHero(std::string_view why);
+    /// Creatures.<species>.reflect: at the clip event "reflect" the share kept back hits the hero.
+    void throwSpellBack(Creature& c);
+    void fixedUpdateHeroHold(gameplay::MoveInput& input, f32 seconds);
+    /// Creatures.<species>.splinter: a blunt blow knocks a crystal off (into its inventory, the loot).
+    void splinterOnHit(Combatant& target, const gameplay::DamageByType& weapon);
     /// Creatures.<species>.weak (Kellermutter): while open, a hit coming from `from` behind it counts
     /// `factor` times; a heavy one makes it stagger (`staggered`).
     [[nodiscard]] i32 weakSpotDamage(const Combatant& target, i32 damage, const Vec3& from,
@@ -2228,6 +2237,26 @@ private:
     };
     std::map<std::string, CurlRule, std::less<>> m_curlRules; // Creatures.<species>.curl (dungeon D6)
     std::set<std::string, std::less<>> m_sidewaysSpecies; // Creatures.<species>.move_axis = "x" (dungeon D6)
+    struct GrabRule
+    {
+        f32 chance = 0.0f;  ///< share of its attacks that are a grab (t_grab)
+        f32 seconds = 2.5f; ///< it holds at most this long
+        f32 reach = 2.0f;   ///< metres from its middle to the hero at the event "grab"
+    };
+    std::map<std::string, GrabRule, std::less<>> m_grabRules; // Creatures.<species>.grab (Kristallkrebs)
+    std::map<std::string, f32, std::less<>> m_reflectShares;  // Creatures.<species>.reflect.share
+    struct SplinterRule
+    {
+        std::string item; ///< the loot a blunt blow knocks off
+        i32 max = 3;
+    };
+    std::map<std::string, SplinterRule, std::less<>> m_splinterRules; // Creatures.<species>.splinter
+    struct HeroHold
+    {
+        u32 by = 0;         ///< the creature holding the hero
+        f32 seconds = 0.0f; ///< left at most
+    };
+    std::optional<HeroHold> m_heroHeld; // held fast by a pincer: the hero cannot walk (not saved)
     struct WeakSpot
     {
         f32 degrees = 60.0f;      ///< around straight behind it

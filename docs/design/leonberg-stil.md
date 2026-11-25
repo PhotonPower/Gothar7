@@ -149,7 +149,8 @@ Eigenes Modell (Blender-Python-Skript, W-E3), eigene Interpretation eines Renais
 - **Texturen (W7):** wie die Häuser, die Palette bleibt die Tönung. Werksteine (Sockel, Eckquader, Gesimse, Gewände)
   und die Steinböden als Quader-Mauerwerk (`ashlar`: regelmäßige Schichten, Läuferverband, feine Kalkfugen, etwa so
   hell wie die Palette); Putz, Dach, Holz, Fensterflächen und Schornsteine mit den Texturen der Häuser. Der Keller ist
-  Bruchstein (die dunkle Sockel-Textur) und zusätzlich 25 % dunkler.
+  Bruchstein (die dunkle Sockel-Textur, auch der Boden) und zusätzlich 25 % dunkler. EG und OG haben Balkendecken:
+  dunkle Holzbalken quer zum Flügel, dazwischen Putzfelder.
 
 ## Erste Bilder und Justierung (Platzhalter, 2026-10-03)
 Ablage `C:\GotharData\review\w5\` (nicht im Repo).

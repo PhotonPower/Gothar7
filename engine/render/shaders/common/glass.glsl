@@ -71,8 +71,61 @@ vec3 glassPane(vec3 worldPosition, vec3 n, int pattern, out float lead)
     return normalize(n + t * slope.x + b * slope.y);
 }
 
-// The glass's colour: `albedo` is the dark pane behind (the room), `tint` the glass's own colour.
-vec3 glassColor(vec3 worldPosition, vec3 cameraPosition, vec3 n, vec3 albedo, vec3 tint, int pattern)
+// M17 windows F1b (decision 4): the warm glow of a light behind the pane at night (render::windowsAwake).
+const vec3 kGlassGlowColor = vec3(1.0, 0.42, 0.12); // candle and hearth light through old glass (linear)
+const float kGlassGlowStrength = 0.2;
+const float kGlassStorey = 2.8; // m, the height of a storey: each storey of a house's side is one window row
+
+// How much light burns behind the pane, 0..1. In a room of the world (indoor zones near the camera): its point
+// lights behind the pane. Elsewhere by chance per window row (house = the model's origin, storey, side), lit
+// when its number is below the share still awake; the brightness differs a little from row to row.
+float glassLightBehind(vec3 worldPosition, vec3 n, vec3 origin, out float key)
+{
+    const vec3 behind = worldPosition - n * 0.4;
+    const float storey = floor((worldPosition.y - origin.y) / kGlassStorey);
+    const float side = floor(atan(n.z, n.x) / 1.5707963 + 0.5);
+    key = glassHash(origin.xz * 0.731 + vec2(storey * 7.13 + side * 3.17, side * 1.91 + storey * 0.37));
+    if (indoorAmount(behind) > 0.5)
+    {
+        vec3 sum = vec3(0.0);
+        for (int i = 0; i < lightCount(); ++i)
+        {
+            const int index = lightIndex(i);
+            const vec4 light = uLighting.pointPositionRadius[index];
+            const vec3 d = light.xyz - worldPosition;
+            if (dot(d, n) < -0.05) // behind the pane, in the room
+            {
+                sum += uLighting.pointColor[index].rgb * pointLightAttenuation(length(d), max(light.w, 4.0));
+            }
+        }
+        return clamp(dot(sum, vec3(0.3, 0.5, 0.2)) * 4.0, 0.0, 1.0);
+    }
+    return key < uLighting.glassGlow.x ? 0.6 + 0.4 * glassHash(vec2(key * 91.7, storey + 3.1)) : 0.0;
+}
+
+// `pane` is the perturbed normal of glassPane: every small pane scatters the light differently, brightest
+// where it bulges towards the eye; the light stands low in the room (a candle on the table), so the upper part
+// of a window row is a little darker.
+vec3 glassGlow(vec3 worldPosition, vec3 n, vec3 pane, vec3 origin)
+{
+    const float night = uLighting.glassGlow.y;
+    if (night <= 0.0)
+    {
+        return vec3(0.0);
+    }
+    float key;
+    const float light = glassLightBehind(worldPosition, n, origin, key);
+    const float t = uLighting.glassGlow.z + key * 60.0;
+    const float flicker = 0.93 + 0.07 * sin(t * 7.3) * sin(t * 2.9 + 1.0); // the flames move
+    const float scatter = 0.45 + 0.55 * pow(max(dot(pane, n), 0.0), 12.0);
+    const float height = mod(worldPosition.y - origin.y, kGlassStorey);
+    const float low = 1.0 - 0.35 * smoothstep(0.8, 2.4, height);
+    return kGlassGlowColor * (kGlassGlowStrength * light * flicker * night * scatter * low);
+}
+
+// The glass's colour: `albedo` is the dark pane behind (the room), `tint` the glass's own colour, `origin` the
+// model's origin (the house, for the glow at night).
+vec3 glassColor(vec3 worldPosition, vec3 cameraPosition, vec3 n, vec3 albedo, vec3 tint, int pattern, vec3 origin)
 {
     const vec3 view = normalize(cameraPosition - worldPosition);
     if (!gl_FrontFacing)
@@ -88,7 +141,9 @@ vec3 glassColor(vec3 worldPosition, vec3 cameraPosition, vec3 n, vec3 albedo, ve
     const vec3 behind = albedo * tint * incomingLight(worldPosition, n);
     const float sun = pow(max(dot(r, uLighting.sunDirection.xyz), 0.0), mix(300.0, 900.0, wet));
     const vec3 glint = uLighting.sunColor.rgb * sun * (1.5 + 2.0 * wet) * sunShadow(worldPosition, n);
-    const vec3 glass = mix(behind, glassSky(r) * tint, fresnel) + glint * fresnel;
+    // At night a light behind shines through the glass (F1b), the mirror on top as by day.
+    const vec3 glow = glassGlow(worldPosition, n, pane, origin) * tint;
+    const vec3 glass = mix(behind + glow, glassSky(r) * tint, fresnel) + glint * fresnel;
     const vec3 came = albedo * 0.5 * incomingLight(worldPosition, n); // lead: dull and dark
     return mix(glass, came, lead);
 }

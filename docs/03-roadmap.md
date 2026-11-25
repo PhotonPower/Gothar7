@@ -349,7 +349,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
   - Plan (Teile W1–W3, freigegeben 2026-11-07): `docs/modules/render.md` „Plan M17: Wasser und Post-Processing“
 - [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
   - Plan ohne Vulkan (freigegeben 2026-11-23, nach Schloss/Dungeon): `docs/modules/render.md` „Plan M17: Spiegelnde Fenster“, Vertrag Glas-Material mit welt, Gefühlsfragen 1–10
-  - F1 Glas-Material und Stufe A (Himmel, Fresnel, Butzen/Rauten, Option `render.window_reflections`, `.g7mesh` v5, Testmodell in der Testszene); offen: warmer Schimmer (Frage 4), F2 Proben, F3 SSR, Abschluss (Menü)
+  - F1 Glas-Material und Stufe A (Himmel, Fresnel, Butzen/Rauten, Option `render.window_reflections`, `.g7mesh` v5, Testmodell in der Testszene); F1b warmer Schimmer nachts (Frage 4: Räume nach ihren Lichtern, übrige Häuser je Fensterreihe zufällig nach der Uhrzeit); offen: F2 Proben, F3 SSR, Abschluss (Menü)
 - [x] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional – #358, #360, #375
   - Plan (Teile P1–P3, freigegeben 2026-11-07): ebenda
 - [x] Vegetation: Instancing, Wind-Animation, Grasfelder – Wind-Animation umgesetzt (Wetter Teil W); Grasrenderer G1 (Büschel in 16-m-Kacheln, Option `render.grass`, `render.md` „Gras“; Plan „Plan M17: Grasfelder und Vegetations-Instancing“, freigegeben 2026-11-23), G2 (`data/grass.toml` je Schichtname, optionale `terrain.grass_mask`; die Maske für Leonberg liefert welt); G3 (Pinsel „Gras“ als Überlagerung `<welt>.grass.png`, Fenster „Grass“, F2 zeichnet Kachelgrenzen); V gemessen (`docs/perf/2026-11-23-vegetation.md`: Sammeln 0,04–0,09 ms, Instanz-Puffer zurückgestellt), Schatten-Kriterium: kleine Deko nur in den ersten zwei Kaskaden; Gras weicht Figuren (0,8 m) und wird um liegende Items (0,5 m) gekürzt (Entscheidungen 4, 5); G4 Felder (Getreide) bleibt optional offen
@@ -370,6 +370,9 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
   - D4 Teleporter und Fall umgesetzt (in der Welt mit Weißblende und ohne Zurückspringen, in andere Ebenen, Kreaturen und Gegenstände, an/aus per Ereignis; Fall durch den Schacht als Weltwechsel mit Geschwindigkeit, ohne Fallschaden; schwarzes Abblenden nach jedem Weltwechsel)
   - D5 Nischen und Türen umgesetzt (Mob-Typ `niche` wie eine Truhe ohne Deckel, Türen mit `no_pick` und `one_way`; Clips `mob/niche/…` von figuren offen)
   - D6 Monster umgesetzt (Vob-Typ `spawn`, `zs_dormant` mit halber Wahrnehmung, `wake` an Marker, Nester füllen sich beim Wiederkommen, Gatterbock und Mauerschlupfer mit Graphen, Mauerschlupfer stiehlt Glänzendes `tags = { "shiny" }`, Seitwärtsgang `move_axis` und Kapsel quer `axis = "x"`)
+  - D7 Editor und Import umgesetzt (`extras` an `VOB_`-Knoten aus Blender inkl. `VOB_PLATE_`/`TELEPORT_`/`RELAY_`/`SPAWN_` und `extras.mover`, Inspektor der Dungeon-Komponenten, Linien Sender → Ziel, Prüfen beim Speichern, Vorschau bewegter Teile)
+  - D7b Umgebung je Welt umgesetzt (Block `environment` ohne Himmel, Sonne und Wetter, mit Grundlicht und Nebel; Zonen-Typ `fog`)
+  - D8 Testdungeon und Szenario umgesetzt (`testworld/dungeon_1`/`dungeon_2`, `test_engine_dungeon_scenario.cpp`; Prüfbilder `C:\GotharData\review\dungeon-d8`) – damit ist die Mechanik D1–D8 fertig; offen: Bau welt, Clips figuren, weitere Monster
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 

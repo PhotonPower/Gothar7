@@ -10,6 +10,7 @@ belongs to faces of one plane), in metres like the houses' builder writes them:
 
 - walls (steeper than ``FLAT_NY``): u along the wall (horizontal, in the face), v up;
 - flat faces (floors, ceilings, the tops of cornices): u along ``axis`` (the wing), v across;
+  wood (``timber``) the other way round: its grain runs with the beams across the wing;
 - roofs: recomputed in ``textured`` (u along the eave, v up the slope).
 
 Which kind a material gets and how much darker it is (the cellar) is data (``schloss.json``
@@ -120,9 +121,11 @@ def texture_model(data: bytes, style: ModelStyle, uri_root: str) -> bytes:
             idx = _accessor(doc, binary, prim["indices"]).astype(np.uint32)
             f = style.dark
             rgba = (color[0] * f, color[1] * f, color[2] * f, color[3])
-            p = Primitive(mname + style.suffix, rgba,
-                          MeshData(pos, nrm, planar_uvs(pos, nrm, style.axis), idx))  # fmt: skip
             kind = style.kinds.get(mname)
+            ax, az = style.axis
+            axis = (-az, ax) if kind == "timber" else (ax, az)  # wood: grain across the wing
+            p = Primitive(mname + style.suffix, rgba,
+                          MeshData(pos, nrm, planar_uvs(pos, nrm, axis), idx))  # fmt: skip
             render.append(textured(p, uri_root, offset, kind) if kind else p)
     if not name:
         raise ValueError("no render node")

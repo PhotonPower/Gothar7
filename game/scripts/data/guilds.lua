@@ -37,4 +37,5 @@ Attitudes.guard.citizen = "friendly"
 Guilds.gatterbock = { name = "Gatterböcke" }
 Guilds.mauerschlupfer = { name = "Mauerschlupfer" }
 Guilds.mauerkriecher = { name = "Mauerkriecher" }
+Guilds.kristallkrebs = { name = "Kristallkrebse" }
 Guilds.kellermutter = { name = "Kellermutter" }

@@ -86,15 +86,25 @@ Item "it_shears" {
     weight = 0.4,
 }
 
-Item "it_scythe_claw" { -- Beute der Kellermutter (Dungeon); Modell folgt (figuren)
+Item "it_kristall" { -- vom Kristallkrebs abgeschlagen (stumpfe Waffen, Dungeon)
+    name = "Leuchtkristall",
+    mesh = "items/it_kristall.glb",
+    category = "misc",
+    value = 25,
+    weight = 0.3,
+}
+
+Item "it_scythe_claw" { -- Beute der Kellermutter (Dungeon)
     name = "Sensenklaue",
+    mesh = "items/it_scythe_claw.glb",
     category = "misc",
     value = 60,
     weight = 1.5,
 }
 
-Item "it_brood_gland" { -- Beute der Kellermutter (Dungeon); Modell folgt (figuren)
+Item "it_brood_gland" { -- Beute der Kellermutter (Dungeon)
     name = "Brutdrüse",
+    mesh = "items/it_brood_gland.glb",
     category = "misc",
     value = 80,
     weight = 0.8,
