@@ -381,7 +381,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `seconds` (4 s) still ohne KI, kein Taumeln/Rückstoß, Schaden × `damage_factor` (0,25) durch den Panzer – außer
   am **weichen Bauch**: Nahkampf und Geschosse von vorn (bis `belly_degrees` = 45° neben seiner Blickrichtung) gehen
   voll durch, Zauber treffen immer den Panzer; Lua-Ereignis `npc_curled(npc)`. Werte vom Projektinhaber bestätigt
-  (2026-11-24); dass Fäuste den flachen Kriecher nicht treffen (der Schwung geht über ihn hinweg), ist gewollt.
+  (2026-11-24, Bauch-Variante 2026-11-25); dass Fäuste den flachen Kriecher nicht treffen (der Schwung geht über ihn hinweg), ist gewollt.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am
