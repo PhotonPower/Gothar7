@@ -148,3 +148,20 @@ def test_castle_props_are_built_within_budget():
         model = PROPS[name]()
         assert model.triangles() <= 1500
         assert (REPO / "assets" / "source" / "props" / f"{name}.glb").read_bytes() == model.glb()
+
+
+def test_ground_and_upper_rooms_have_beam_ceilings_the_cellar_a_rubble_floor():
+    m = geo.build(BUILT)
+    beams = BUILT["interior"]["beams"]
+    for room, faces in m.rooms.items():
+        storey = room.split("_")[0]
+        if storey in beams["storeys"]:
+            wood = faces.get(beams["material"], [])
+            under = [f for f in wood if all(abs(p[1] - f[0][1]) < 1e-6 for p in f)]
+            assert len(under) >= 3, room  # the beams' bottoms
+            assert "plaster_white" in faces  # the fields between them
+    assert BUILT["textures"]["cellar"]["kinds"]["stone_slab"] == "stone"
+    gl, _ = read_glb((DIR / "schloss_keller_gewoelbe.glb").read_bytes())
+    floor = next(m for m in gl["materials"] if m["name"] == "stone_slab_cellar")
+    uri = gl["images"][floor["pbrMetallicRoughness"]["baseColorTexture"]["index"]]["uri"]
+    assert uri.endswith("/stone_albedo.png")
