@@ -408,3 +408,26 @@ TEST_CASE("glTF: empty VOB_ nodes with their world placement (ADR 0023)")
     CHECK(glm::length(Vec3(markers.value()[1].world[0])) == doctest::Approx(2.0f));
     CHECK_FALSE(loadGltfMarkers(std::span(reinterpret_cast<const u8*>("x"), 1), "VOB_").ok());
 }
+
+TEST_CASE("glTF: extras of VOB_ nodes and of mesh nodes with a mover (dungeon D7)")
+{
+    const std::string json = R"({"asset": {"version": "2.0"}, "scene": 0,
+      "scenes": [{"nodes": [0, 1, 2]}],
+      "nodes": [
+        {"name": "Gitter", "mesh": 0, "extras": {"mover": {"kind": "gate", "seconds": 1.5}}},
+        {"name": "VOB_PLATE_STEIN", "extras": {"targets": "GATE_A", "action": "open"}},
+        {"name": "Boden", "mesh": 0}
+      ],
+      "meshes": [{"primitives": [{"attributes": {"POSITION": 0}}]}],
+      "accessors": [{"componentType": 5126, "count": 3, "type": "VEC3"}]})";
+    const auto bytes = std::span(reinterpret_cast<const u8*>(json.data()), json.size());
+    auto markers = loadGltfMarkers(bytes, "VOB_");
+    REQUIRE(markers.ok());
+    REQUIRE(markers.value().size() == 1);
+    CHECK(markers.value()[0].extras.find("\"targets\":\"GATE_A\"") != std::string::npos);
+    auto movers = loadGltfMeshExtras(bytes, "mover");
+    REQUIRE(movers.ok());
+    REQUIRE(movers.value().size() == 1); // "Boden" has no extras
+    CHECK(movers.value()[0].name == "Gitter");
+    CHECK(movers.value()[0].extras.find("\"kind\":\"gate\"") != std::string::npos);
+}

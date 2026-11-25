@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "name": "monsters_2",
+  "nextVobId": 3,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_ZWEI","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"mesh","name":"BODEN","pos":[0.0,-1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[30.0,1.0,30.0],"mesh":"testworld/block.gltf","category":"gameplay"}
+  ]
+}

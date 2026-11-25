@@ -349,6 +349,100 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 - **Tests:** `tests/world/test_switches.cpp` (Felder), `tests/runtime/test_engine_doors.cpp` auf
   `testworld/doors.g7world`.
 
+## Stand D6 – Monster (umgesetzt)
+- **Format:** Vob-Typ **`spawn`** mit `components.spawn` = `npc`, `count` (1–32), `respawn`, `dormant` (world.md).
+- **Einsetzen** (`EngineSpawns.cpp`): Beim **ersten** Laden einer Welt (nicht aus einem Spielstand und nicht beim
+  Wiederkommen in eine besuchte Ebene) setzt jeder Marker seine NPCs ein (nach Vob-ID; der erste auf dem Marker, die
+  weiteren im Ring von 1,5 m, auf dem Boden darunter, Blick nach dem Yaw des Markers), vor `world_loaded`. Danach
+  Lua-Ereignis **`npc_spawned(npc, spawn, dormant, restored)`**. Nach dem Laden eines Spielstands bzw. beim
+  Wiederkommen kommt es noch einmal für jeden lebenden mit `restored = true`: Die KI wird nicht gespeichert, sein
+  Zustand beginnt neu (ruhend oder wach im Revier).
+- **Ruhen** (`zs_dormant`, `game/scripts/ai/monsters.lua`): Das Monster spielt seine Ruhe-Schleife (Graph-Bool
+  `dormant` → `s_dormant`; ohne den Zustand `sleep`). Es erwacht, wenn es den Helden mit **halber Sichtweite**
+  sieht, ein Geräusch in **halber Hörweite** hört, getroffen wird oder `wake` seinen Marker erreicht
+  (`dungeon_event`). Erwachen: `zs_mm_wake` spielt `t_wake` (Graph-Aktion 5) und wartet `wake_seconds`
+  (`Creatures`), dann Angriff (bzw. Stehlen). Ob es ruht, ist Engine-Zustand (`npc_dormant`/`npc_set_dormant`,
+  gespeichert als `NpcState.dormant`); was es tut, steht in Lua.
+- **Revier:** Wache Monster ohne Aufgabe (nach Kampf oder Flucht) streifen um ihren Marker (`zs_mm_roam`; ein
+  Vob-Name gilt jetzt überall als Ort wie ein Wegpunkt, `navigationTarget`). Sie folgen dem Helden nicht in andere
+  Ebenen (Frage 9): Eine verlassene Ebene ruht mit allen Monstern, wie sie waren.
+- **Nester** (`respawn`, Frage 8): Kommt der Held durch einen Weltwechsel in die Ebene zurück, verschwinden die
+  Toten des Nests und es wird bis `count` aufgefüllt (ruhend, wenn `dormant`). Alle anderen Marker bleiben leer.
+- **Mob-Ziele:** Truhen und Nischen mit `targets` schicken `action` beim Öffnen (eine durchsuchte Nische weckt den
+  Mauerschlupfer: `targets = ["SPAWN_…"]`, `action = "wake"`).
+- **Gatterbock** (figuren #432) und **Mauerschlupfer** (#436): Graphen `data/anim/<art>.animgraph.toml` (wie der
+  Keiler, dazu `dormant`, `wake`, beim Mauerschlupfer `steal` = Aktion 6), Kapseln in `data/creatures.toml`, Werte
+  in `data/creatures.lua`, Instanzen `mon_gatterbock`/`mon_mauerschlupfer` (`npcs/dungeon.lua`, Platzhalterwerte).
+  Jede Art mit Graph kann jetzt eingesetzt werden (nicht mehr nur Wolf, Keiler, Laufvogel).
+- **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
+  **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
+  Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am
+  `socket_mouth` (`npc_hold`) und fliehen. Ohne Glänzendes greifen sie an. Stirbt der Dieb, fällt es heraus
+  (`npc_drop_item`). Clip-Events der Dungeon-Arten (`steal`, `emerge`, `grab`, `release`, `reflect`,
+  `spawn_brood`) gehen als `npc_clip_event(npc, event)` an Lua.
+- **Seitwärtsgang** (Gliederfüßer §7.5): `Creatures.<art>.move_axis = "x"` – die Geh-Clips laufen entlang **+X**
+  (nach links der Figur); die Engine dreht die Figur beim Gehen eine Vierteldrehung nach rechts gegen den Weg
+  (4 rad/s), im Stand, Kampf und Tod schaut sie wieder nach vorn. Die Trefferkapsel folgt. Liegende Kapsel quer:
+  `body = { shape = "lying", axis = "x", … }`. Die Werte überträgt engine aus figurens Rig-TOML.
+- **Lua:** `spawn_npcs(spawn)`, `npc_dormant`, `npc_set_dormant`, `npc_hold(npc, item?, socket?)`,
+  `npc_drop_item(npc, item, count?)`; Ereignisse `npc_spawned`, `npc_clip_event`, dazu `npc_stole` (Lua).
+- **Nebenbei:** Eine Kapsel, die die Physik ablehnt (Höhe nicht über dem doppelten Radius), wird jetzt gewarnt;
+  vorher ging das Tier still ohne Kapsel (und ohne Einklemmen).
+- **Tests:** `tests/world/test_spawn.cpp` (Format), `tests/gameplay/test_weapon_sweep.cpp` (Kapsel quer),
+  `tests/runtime/test_engine_dungeon_monsters.cpp` auf `testworld/monsters.g7world` + `monsters_2.g7world` (Ruhen,
+  Wecken per Ereignis und per Sicht, Spielstand, Nische weckt den Dieb, Stehlen und Fallenlassen, Nest füllt sich).
+- **Offen:** Mauerkriecher (#440), Kristallkrebs, Kellermutter (Graphen und Verhalten wie `emerge`, `grab`,
+  `reflect`, `spawn_brood`, sobald die Modelle da sind); Klangnamen `sound:gatterbock_*`/`mauerschlupfer_*` in
+  `data/sounds.toml`.
+
+## Stand D7 – Editor und Import (umgesetzt)
+- **Import aus Blender** (`tools/editor/GlbVobImport`, Vertrag in `asset.md` „VOB_-Knoten“): neue Knoten
+  `VOB_PLATE_`, `VOB_TELEPORT_`, `VOB_RELAY_`, `VOB_SPAWN_`; die glTF-`extras` jedes `VOB_`-Knotens füllen dessen
+  Komponente (Schlüssel wie in der `.g7world`, `targets` auch als Text `"A, B"`, Schalter auch 0/1). Ein Mesh-Knoten
+  mit `extras.mover` macht das platzierte Modell zum bewegten Teil. Unbekannte Schlüssel werden gewarnt
+  (`Editor::importWarnings`), falsche Werte lassen den Vob weg. Gelesen wird mit `asset::loadGltfMarkers`
+  (`GltfMarker::extras`) und `asset::loadGltfMeshExtras`, in der Engine `Engine::modelMarkers`/`modelMeshExtras`.
+- **Inspektor** (`EditorDungeon.cpp`): Sender (Trigger, Platte, Teleporter, Hebel/Knopf/Truhe, Relais) zeigen `targets`
+  als Text und eine Liste „add target“ (nur Vobs, die Ereignisse empfangen: bewegte Teile, Relais, Mobs, Spawn-Marker,
+  Teleporter), dazu `action`. Platte (`weight`, `release`), Teleporter (`to` aus Startpunkten und Markern, oder Welt
+  und Startpunkt aus Listen, `filter`, `visible`, `active`), Relais (`mode`, `count`, `delay`, `once`, `invert`), Mob
+  (`switch once`, `hidden`, `no pick`, `one way`), Spawn (`npc` aus den NPC-Instanzen, `count`, `respawn`, `dormant`),
+  jedes Mesh/Mob: `mover` (Art wählen oder entfernen, `open`, `seconds`, `crush`, Klänge). Ein Trigger ohne Platte
+  und Teleporter bekommt Knöpfe „make plate“ und „make teleporter“. Felder der Art `Button` (neu in
+  `ui::EditorField`) sind Aktionen, keine Änderungen.
+- **Linien** im Debug-Draw (`dungeonLinks`, `linkColor`): Pfeil vom Sender zum Ziel, Farbe je Aktion (open/on grün,
+  close/off rot, toggle/trigger gelb, wake orange, lock/unlock blau), Teleporter violett zum `to`. Ein Ziel ohne Vob
+  ist ein roter Strich mit „? NAME“. Bis 80 m um die Kamera; die der Auswahl liegen obenauf.
+- **Prüfen** (`checkDungeon`, im Fenster der Zonen/Trigger unter „check the triggers“ und bei **jedem Speichern**,
+  das nicht blockiert, aber die Zahl meldet): Ziele ohne Vob bzw. mit mehrfach vergebenem Namen, Platten und Relais
+  ohne Ziele, Teleporter mit fehlendem `to`, fehlender Welt oder fehlendem Startpunkt, Relais auf einem Zyklus,
+  Spawn-Marker mit unbekannter NPC-Instanz (nur mit Skripten), bewegte Teile ohne Namen. Ein Trigger mit Zielen
+  oder Teleporter gilt nicht mehr als „does nothing“. Ziele, die nur Lua hört (`dungeon_event`), werden als „no
+  vob“ gemeldet – gewollt, damit Tippfehler auffallen.
+- **Probelauf:** „preview open“/„preview shut“ an einem bewegten Teil stellt es sofort hin (`Engine::previewMover`),
+  „probe: send“ an einem Sender zeigt, was er an bewegte Teile unter seinen Zielen schickt (open/close/toggle). Vor
+  jeder Änderung und vor dem Speichern gehen alle Vorschauen zurück (`Engine::resetMovers`), gespeichert wird die
+  geschlossene Lage der Datei. Den Rest des Netzes (Relais mit Verzögerung, Türen, Lua) probiert man mit
+  Play-in-Editor (F5).
+- **Tests:** `tests/editor/test_dungeon_edit.cpp` (extras aller Typen, Mover aus extras, Linien, Prüfungen),
+  `tests/asset/test_gltf.cpp` (extras der Knoten), `tests/render_gpu/test_editor.cpp` „dungeon wiring“ (Probe,
+  Vorschau, Speichern, Prüfung).
+
+## Stand D7b – Umgebung je Welt (umgesetzt)
+- **Format** (`world.md` „Umgebung je Welt“ und „Zonen“): Block `environment` (`sky` false, `ambient`,
+  `ambient_ground`, `fog_color`, `fog_start`, `fog_distance`; Farben sRGB) und Zonen-Typ `fog` (`color`, `distance`,
+  `start`, `fade`). Nebel wird über die Weite angegeben (90 % bei `distance` Metern), nicht als Dichte.
+- **Laufzeit:** Mit dem Block nimmt die Engine statt der Tageszeit-Kurven `world::fixedEnvironment` (Sonne 0,
+  Himmel = Nebelfarbe, keine Sterne, kein Mond, keine Schatten), wendet kein Wetter an, und `Engine::weatherNow()`
+  ist dort still (kein Regen, Wind, Blitz, keine Nässe, kein Regenklang); der Zustand des Wetters läuft weiter. Eine
+  Nebelzone an der Kamera mischt ihren Nebel über `fade` ein (`world::fogZoneAt`, `world::applyZoneFog`) – auch in
+  Welten mit Himmel. Der Nebelbeginn aus `[render] fog_start` bzw. dem Debug-Fenster bleibt für Welten mit Himmel
+  erhalten (`m_fogStart`).
+- **Editor:** Zonen-Typ `fog` in der Liste (neu: grauer Dunst, 15 m).
+- **Tests:** `tests/world/test_world_file.cpp` (Block und Zone lesen, prüfen, schreiben, Gewicht am Rand),
+  `tests/world/test_day_cycle.cpp` (fixedEnvironment, applyZoneFog), `tests/render_gpu/test_engine_environment.cpp`
+  auf `testworld/cellar.g7world` (mittags keine Sonne, Gewitter unsichtbar, Nebel der Welt und der Gruft-Zone).
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
@@ -357,9 +451,9 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 | **D3** Schalter und Platten ✔ | Mob-Typen `lever`, `wall_button` (versteckt), Platte mit Gewicht inkl. Items; figuren-Clips | mittel |
 | **D4** Teleporter und Fall ✔ | Teleport in der Welt und in andere Ebenen, Fall als Weltwechsel mit Geschwindigkeit, Abblenden | mittel |
 | **D5** Nischen und Türen ✔ | `niche`, Tür-Ereignisse, `no_pick`, `one_way` | klein |
-| **D6** Monster | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
-| **D7** Editor und Import | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
-| **D7b** Umgebung | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
+| **D6** Monster ✔ | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
+| **D7** Editor und Import ✔ | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
+| **D7b** Umgebung ✔ | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
 | **D8** Testdungeon und Szenario | zwei kleine Ebenen der Engine (`testworld/dungeon_1/2`), DoD-Szenario | mittel |
 
 Nach D1–D3 kann welt mit echten Räumen bauen. D8 ersetzt welts Inhalt nicht, er prüft nur die Mechanik.

@@ -213,6 +213,14 @@ const std::vector<TriggerIssue>& Editor::checkTriggers()
     m_triggerIssues =
         editor::checkTriggers(m_engine.scene(), m_engine.hasScripts() ? &m_scriptFunctions : nullptr,
                               [this](std::string_view w) { return startsOf(w); });
+    // Dungeon D7: the wiring of senders, plates, teleporters, relays and spawn markers.
+    m_mobLists = mobLists();
+    std::vector<TriggerIssue> dungeon = checkDungeon(
+        m_engine.scene(), [this](std::string_view w) { return startsOf(w); },
+        m_engine.hasScripts() ? &m_mobLists.npcs : nullptr);
+    m_triggerIssues.insert(m_triggerIssues.end(), std::make_move_iterator(dungeon.begin()),
+                           std::make_move_iterator(dungeon.end()));
+    std::ranges::stable_sort(m_triggerIssues, {}, [](const TriggerIssue& i) { return i.id.value; });
     m_status = std::format("triggers: {} issue(s)", m_triggerIssues.size());
     return m_triggerIssues;
 }

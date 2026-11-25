@@ -1,0 +1,337 @@
+# Creature "beinhauswart" (F5, own work, dungeon 2026-11-23): the warden of the charnel house - a
+# gaunt, stooped grave-digger of unclear kind in a grey shroud with a deep hood, a bony face with
+# two green points of light, bony hands; a grave spade in the right hand; the iron lantern with
+# green light in the left is a separate item (it_lantern_beinhaus) that engine hangs on
+# socket_lantern (npc_hold) and drops in the rage phase. 2.0 m to the top of the hood (stooped).
+# Alive, not undead (owner's decision 2026-11-23). Design: docs/design/monsters.md "Dungeon-Arten".
+# Humanoid monster rig like the Gatterbock (characters-pipeline §7.1): human reference names with
+# `neck_01`, legs `thigh/calf/foot/ball`, no fingers. The shroud is part of the body surface (it
+# follows the legs); the spade is rigid plates on the right hand.
+# Built by `gothar-chargen creature beinhauswart` (blender/build_creature.py, creature.py).
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. Sizes are
+# half axes.
+
+art = "beinhauswart"
+material = "fur"
+voxel = 0.010
+smooth = 4
+triangles = 4200       # lod0 core; spade and the glowing eyes add ~0.5 k
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 53
+ao = 0.8
+normal_size = 512
+normal_strength = 0.8
+plate_bevel = 0.004
+eye_colour = "#1e3a24"
+eye_glow = 1.0
+eye_glow_colour = "#70ff9a"           # pale green eyes (like the lantern glass)
+
+[orientation]                # upright biped
+left = ["foot_r", "foot_l"]
+forward = ["foot_l", "ball_l"]
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.04 }      # front of the face
+socket_hand_l = { parent = "hand_l", length = 0.06 }   # lantern hand
+socket_hand_r = { parent = "hand_r", length = 0.06 }   # spade hand: hit point of the shaft
+socket_spade = { parent = "spade", length = 0.04 }     # middle of the spade blade: hit point
+socket_lantern = { parent = "lantern", length = 0.04 } # lantern bail in the fist, +Y up (npc_hold)
+
+# --- rig (natural stance: stooped, head pushed forward) ---
+
+[[bone]]
+name = "pelvis"
+head = [0, 0, 0.98]
+tail = [0, 0, 1.12]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, 0, 1.12]
+tail = [0, -0.04, 1.36]
+
+[[bone]]
+name = "spine_02"
+parent = "spine_01"
+head = [0, -0.04, 1.36]
+tail = [0, -0.15, 1.60]
+
+[[bone]]
+name = "neck_01"
+parent = "spine_02"
+head = [0, -0.16, 1.60]
+tail = [0, -0.25, 1.70]
+
+[[bone]]
+name = "head"
+parent = "neck_01"
+head = [0, -0.25, 1.70]
+tail = [0, -0.29, 1.90]
+
+[[bone]]
+name = "clavicle_l"
+parent = "spine_02"
+mirror = true
+head = [0.04, -0.12, 1.54]
+tail = [0.19, -0.12, 1.56]
+
+[[bone]]
+name = "upperarm_l"
+parent = "clavicle_l"
+mirror = true
+head = [0.22, -0.12, 1.54]
+tail = [0.27, -0.20, 1.24]
+
+[[bone]]
+name = "lowerarm_l"
+parent = "upperarm_l"
+mirror = true
+head = [0.27, -0.20, 1.24]
+tail = [0.30, -0.40, 1.07]
+
+[[bone]]
+name = "hand_l"
+parent = "lowerarm_l"
+mirror = true
+head = [0.30, -0.40, 1.07]
+tail = [0.31, -0.42, 0.97]
+
+[[bone]]
+name = "thigh_l"
+parent = "pelvis"
+mirror = true
+head = [0.11, 0, 0.98]
+tail = [0.12, -0.04, 0.53]
+
+[[bone]]
+name = "calf_l"
+parent = "thigh_l"
+mirror = true
+head = [0.12, -0.04, 0.53]
+tail = [0.12, 0.0, 0.09]
+
+[[bone]]
+name = "foot_l"
+parent = "calf_l"
+mirror = true
+head = [0.12, 0.0, 0.09]
+tail = [0.12, -0.12, 0.03]
+
+[[bone]]
+name = "ball_l"              # bony toes under the hem
+parent = "foot_l"
+mirror = true
+head = [0.12, -0.12, 0.03]
+tail = [0.12, -0.21, 0.02]
+
+[[bone]]
+name = "spade"               # rigid carrier of the spade (not animated; tail = blade)
+parent = "hand_r"
+head = [-0.31, -0.43, 0.97]
+tail = [-0.31, -0.43, 0.14]
+
+[[bone]]
+name = "lantern"             # carrier of the lantern item (not animated; points up, tail = bail)
+parent = "hand_l"
+head = [0.31, -0.42, 0.785]
+tail = [0.31, -0.42, 0.97]
+
+# --- colour zones ---
+
+[zone.cloth]                 # grey linen shroud: coarse weave hanging in folds, earth at the hem
+colour = "#66625a"
+colour2 = "#55524b"
+variation = 0.08
+strands = 0.45
+wrinkles = 0.5
+spots = 0.08
+belly = -0.15
+relief = 1.2
+
+[zone.bone]                  # bare, yellowed bone of the face, hands and feet
+colour = "#cdc2a4"
+colour2 = "#a89c80"
+variation = 0.12
+wrinkles = 0.4
+spots = 0.25
+
+[zone.wood]                  # worn ash shaft of the spade
+colour = "#6a5038"
+colour2 = "#55402c"
+variation = 0.12
+strands = 0.6
+
+[zone.iron]                  # blackened iron of the spade blade
+colour = "#2f2e2c"
+colour2 = "#3e352c"
+variation = 0.14
+spots = 0.35
+stripe_colour = "#5a3a22"
+
+# --- shroud and hood (merged body) ---
+
+[[shape]]
+kind = "capsule"             # the shroud: narrow at the shoulders, wide at the hem
+zone = "cloth"
+a = [0, -0.06, 1.48]
+b = [0, 0.02, 0.36]
+r = 0.22
+r2 = 0.36
+
+[[shape]]
+kind = "cut_box"             # flat hem on the ground
+zone = "cloth"
+center = [0, 0, -0.20]
+size = [0.8, 0.8, 0.22]
+
+[[shape]]
+kind = "ellipsoid"           # stooped shoulders and back
+zone = "cloth"
+center = [0, -0.06, 1.50]
+size = [0.27, 0.22, 0.17]
+rotate = [-25, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # hump of the hood over the neck
+zone = "cloth"
+center = [0, -0.12, 1.66]
+size = [0.17, 0.17, 0.14]
+
+[[shape]]
+kind = "ellipsoid"           # the deep hood with a pointed back
+zone = "cloth"
+center = [0, -0.22, 1.80]
+size = [0.17, 0.21, 0.20]
+rotate = [-15, 0, 0]
+
+[[shape]]
+kind = "cone"
+zone = "cloth"
+a = [0, -0.16, 1.86]
+b = [0, 0.03, 1.94]
+r = 0.12
+
+[[shape]]
+kind = "ellipsoid"           # bony face, deep in the hood
+zone = "bone"
+center = [0, -0.28, 1.75]
+size = [0.08, 0.09, 0.11]
+
+[[shape]]
+kind = "cut"                 # the opening of the hood: a dark hollow in front of the face
+zone = "bone"
+center = [0, -0.48, 1.76]
+size = [0.10, 0.11, 0.14]
+
+[[shape]]
+kind = "eye"                 # two green points of light
+mirror = true
+bone = "head"
+center = [0.034, -0.376, 1.78]
+size = [0.014, 0.008, 0.014]
+
+[[shape]]
+kind = "capsule"             # folds of the shroud, front
+zone = "cloth"
+mirror = true
+a = [0.08, -0.22, 1.40]
+b = [0.14, -0.32, 0.05]
+r = 0.025
+r2 = 0.05
+
+[[shape]]
+kind = "capsule"
+zone = "cloth"
+mirror = true
+a = [0.18, -0.12, 1.42]
+b = [0.30, -0.20, 0.05]
+r = 0.02
+r2 = 0.045
+
+[[shape]]
+kind = "capsule"             # folds of the shroud, back
+zone = "cloth"
+mirror = true
+a = [0.10, 0.10, 1.45]
+b = [0.16, 0.30, 0.05]
+r = 0.025
+r2 = 0.05
+
+[[shape]]
+kind = "capsule"
+zone = "cloth"
+a = [0, 0.12, 1.45]
+b = [0, 0.36, 0.05]
+r = 0.025
+r2 = 0.05
+
+[[shape]]
+kind = "capsule"             # sleeves
+zone = "cloth"
+mirror = true
+a = [0.20, -0.11, 1.53]
+b = [0.27, -0.20, 1.24]
+r = 0.07
+
+[[shape]]
+kind = "capsule"
+zone = "cloth"
+mirror = true
+a = [0.27, -0.20, 1.24]
+b = [0.295, -0.36, 1.10]
+r = 0.06
+r2 = 0.10
+
+[[shape]]
+kind = "capsule"             # bony wrists
+zone = "bone"
+mirror = true
+a = [0.29, -0.35, 1.11]
+b = [0.30, -0.40, 1.07]
+r = 0.025
+
+[[shape]]
+kind = "ellipsoid"           # bony fists
+zone = "bone"
+mirror = true
+center = [0.305, -0.42, 1.02]
+size = [0.035, 0.045, 0.055]
+
+[[shape]]
+kind = "ellipsoid"           # bony feet under the hem
+zone = "bone"
+mirror = true
+center = [0.12, -0.17, 0.035]
+size = [0.05, 0.09, 0.03]
+
+# --- spade (rigid on the right hand) ---
+
+[[shape]]
+kind = "plate"               # shaft through the fist
+zone = "wood"
+bone = "spade"
+center = [-0.31, -0.43, 0.98]
+size = [0.016, 0.016, 0.72]
+
+[[shape]]
+kind = "plate"               # cross grip at the top
+zone = "wood"
+bone = "spade"
+center = [-0.31, -0.43, 1.70]
+size = [0.06, 0.016, 0.016]
+
+[[shape]]
+kind = "plate"               # iron collar
+zone = "iron"
+bone = "spade"
+center = [-0.31, -0.43, 0.27]
+size = [0.03, 0.02, 0.03]
+
+[[shape]]
+kind = "plate"               # blade
+zone = "iron"
+bone = "spade"
+center = [-0.31, -0.43, 0.12]
+size = [0.10, 0.008, 0.13]

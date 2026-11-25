@@ -91,6 +91,9 @@ TEST_CASE("Engine render: the pond in the camp is drawn by the water pass, by qu
         CHECK(std::ranges::any_of(engine.passTimes(), [](const g7::render::PassTime& p)
                                   { return p.name == "water" && p.milliseconds > 0.0f; }));
         CHECK(engine.renderDevice()->debugErrorCount() == 0);
+        // Post without distortion: its unit 3 no longer keeps the shadow atlas and its compare sampler
+        // (GL #131222 on NVIDIA; Mesa does not report it).
+        CHECK(engine.renderDevice()->debugUndefinedCount() == 0);
     }
 }
 

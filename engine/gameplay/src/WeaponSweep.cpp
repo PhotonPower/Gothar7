@@ -99,7 +99,7 @@ SweepTarget bodyTarget(u32 id, const BodyShape& shape, const Vec3& feet, const V
     const Vec3 right(-ahead.z, 0.0f, ahead.x);
     const Vec3 middle =
         feet + right * shape.offset.x + Vec3(0.0f, shape.offset.y, 0.0f) + ahead * shape.offset.z;
-    const Vec3 axis = shape.lying ? ahead : Vec3(0.0f, 1.0f, 0.0f);
+    const Vec3 axis = !shape.lying ? Vec3(0.0f, 1.0f, 0.0f) : shape.across ? right : ahead;
     const f32 half = std::max(shape.length * 0.5f - shape.radius, 0.0f);
     return {id, middle - axis * half, middle + axis * half, shape.radius};
 }

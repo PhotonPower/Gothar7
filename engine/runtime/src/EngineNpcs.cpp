@@ -139,6 +139,12 @@ std::optional<Vec3> Engine::navigationTarget(std::string_view name) const
     {
         return m_waynet.freepoints()[*fp].position;
     }
+    // Dungeon D6: a vob by its name (a spawn marker is the home a monster roams around).
+    if (const entt::entity e = name.empty() ? entt::entity{entt::null} : m_scene.findByName(StringId(name));
+        e != entt::null)
+    {
+        return Vec3(m_scene.worldMatrix(e)[3]);
+    }
     return std::nullopt;
 }
 

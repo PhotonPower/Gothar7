@@ -354,7 +354,7 @@ TEST_CASE("Editor GPU: zones and triggers - a music zone at the camera switches 
         REQUIRE(editor.undo().value());
         CHECK(engine.runFrame());
         CHECK(engine.music()->status().theme == "STADT");
-        CHECK_FALSE(editor.addZone("fog", "dense", Vec3(0.0f)).ok()); // other types are not edited
+        CHECK_FALSE(editor.addZone("smell", "dense", Vec3(0.0f)).ok()); // other types are not edited
 
         // Triggers: the camp's level change to the cave is fine; a broken function name is found.
         editor.setZoneMode(false);
@@ -632,6 +632,65 @@ TEST_CASE(
         editor.brush().mode = editor::BrushMode::Raise;
         CHECK_FALSE(editor.beginStroke().ok());
     }
+}
+
+TEST_CASE("Editor GPU: dungeon wiring - a lever's probe opens its gate at once, saving keeps it shut; checks")
+{
+    // A copy of the switches world (dungeon D3) in a temporary folder.
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::Path dir =
+        std::filesystem::temp_directory_path() / ("g7_editor_dungeon_" + std::to_string(stamp));
+    std::filesystem::create_directories(dir);
+    const fs::Path file = dir / "switches_copy.g7world";
+    auto text = fs::readText(fs::fromUtf8(G7_TESTSCENE).parent_path().parent_path() / "testworld" /
+                             "switches.g7world");
+    REQUIRE(text.ok());
+    REQUIRE(fs::writeText(file, text.value()).ok());
+    {
+        EngineConfig config = editorConfig(file);
+        config.start = "START_SCHALTER";
+        Engine engine(config);
+        REQUIRE(engine.init().ok());
+        editor::Editor editor(engine);
+        engine.addTool(editor);
+        CHECK(engine.runFrame());
+
+        // The lever (id 3) sends "open" to GATE_HEBEL: the probe shows it open at once.
+        CHECK(editor.probeSender(world::VobId{3}) == 1);
+        REQUIRE(engine.moverInfo("GATE_HEBEL").has_value());
+        CHECK(engine.moverInfo("GATE_HEBEL")->open);
+        CHECK(engine.moverInfo("GATE_HEBEL")->position == doctest::Approx(1.0f));
+        CHECK(engine.runFrame()); // inspector of the selection with the dungeon fields
+        editor.select(world::VobId{2});
+        CHECK(engine.runFrame());
+        CHECK(editor.previewMover(world::VobId{2}, false));
+        CHECK_FALSE(engine.moverInfo("GATE_HEBEL")->open);
+        CHECK(editor.previewMover(world::VobId{2}, std::nullopt)); // the other way: open
+        CHECK(engine.moverInfo("GATE_HEBEL")->open);
+        CHECK_FALSE(editor.previewMover(world::VobId{3}, true)); // a lever is no moving part
+
+        // Saving puts the preview back: the gate is stored shut where it was.
+        REQUIRE(editor.save().ok());
+        CHECK_FALSE(engine.moverInfo("GATE_HEBEL")->open);
+        auto saved = world::parseWorldFile(fs::readText(file).value(), "switches_copy.g7world");
+        REQUIRE(saved.ok());
+        const auto gate = std::ranges::find_if(saved.value().vobs,
+                                               [](const world::WorldFileVob& v) { return v.id.value == 2; });
+        REQUIRE(gate != saved.value().vobs.end());
+        REQUIRE(gate->mover.has_value());
+        CHECK_FALSE(gate->mover->open);
+        CHECK(gate->transform.position == Vec3(3.0f, 0.0f, 6.0f));
+
+        // The checks: PLATE_HELD sends to LUA_HELD, which is no vob (a Lua name - reported, not wrong).
+        const auto& issues = editor.checkTriggers();
+        CHECK(
+            std::ranges::any_of(issues, [](const editor::TriggerIssue& i)
+                                { return i.id.value == 8 && i.text.find("LUA_HELD") != std::string::npos; }));
+        CHECK(std::ranges::none_of(issues, [](const editor::TriggerIssue& i) { return i.id.value == 3; }));
+        CHECK(engine.renderDevice()->debugErrorCount() == 0);
+    }
+    std::error_code ignored;
+    std::filesystem::remove_all(dir, ignored);
 }
 
 TEST_CASE(

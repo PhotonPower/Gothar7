@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "name": "cellar",
+  "environment": {"ambient":[0.12,0.11,0.13],"fog_color":[0.03,0.03,0.04],"fog_distance":30.0,"fog_start":2.0,"sky":false},
+  "nextVobId": 4,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_KELLER","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"mesh","name":"BODEN","pos":[0.0,-0.2,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[40.0,0.2,40.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":3,"type":"light","name":"FACKEL","pos":[2.0,2.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.6,0.3],"range":8.0,"intensity":1.0,"flicker":0.3}}}
+  ],
+  "zones": [
+    {"type":"fog","value":"GRUFT","box":{"center":[10.0,1.5,10.0],"halfExtents":[4.0,1.5,4.0],"yaw":0.0},"color":[0.4,0.42,0.45],"distance":8.0,"start":0.5,"fade":2.0}
+  ]
+}
