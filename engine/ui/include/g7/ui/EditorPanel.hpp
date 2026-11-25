@@ -32,6 +32,7 @@ struct EditorField
         Color,  ///< linear colour
         Flag,
         Choice, ///< one of `choices`
+        Button, ///< an action, not a property: `changed` = pressed this frame (dungeon D7 previews)
     };
     std::string label;
     Kind kind = Kind::ReadOnly;

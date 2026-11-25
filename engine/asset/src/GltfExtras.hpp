@@ -6,6 +6,7 @@
 #include <g7/asset/MeshData.hpp>
 
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -16,6 +17,8 @@ namespace g7::asset
 /// M17 W: `extras.wind`, `extras.wind_strength` and `extras.wind_pivot` of the file's materials into
 /// `materials` (same order as the file's). Unknown or malformed values are warned about and leave the
 /// material still (a model must not fail to load over its wind).
+/// Dungeon D7: the `extras` of every node as JSON text (by node index; empty: none), empty without nodes.
+[[nodiscard]] std::vector<std::string> readNodeExtras(std::span<const u8> bytes);
 void readMaterialWind(std::span<const u8> bytes, std::vector<MaterialInfo>& materials,
                       std::string_view debugName);
 } // namespace g7::asset

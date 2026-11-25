@@ -104,3 +104,10 @@ def test_zones_of_the_enterable_houses():
     (z,) = indoor_zones(houses, index)
     assert z["value"] == "LEO_WOHNHAUS_ZJV_INNEN"  # as WP_LEO_WOHNHAUS_ZJV_INNEN
     assert corners(z).contains(Point(2.0, 1.5))
+
+
+def test_an_indoor_zones_daylight_follows_its_box():
+    room = room_boxes("LEO_X_INNEN", [(0.0, 0.0), (4.0, 0.0), (4.0, 3.0), (0.0, 3.0)], 0.0, 2.5)
+    room[0]["daylight"] = 0.15
+    line = zones_text(room).splitlines()[1].strip()
+    assert '"box":{' in line and line.endswith('},"daylight":0.15}')  # after the box

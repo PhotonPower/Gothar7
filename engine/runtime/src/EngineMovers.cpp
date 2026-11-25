@@ -283,6 +283,45 @@ std::optional<MoverInfo> Engine::moverInfo(std::string_view name) const
     return std::nullopt;
 }
 
+bool Engine::previewMover(std::string_view name, std::optional<bool> open)
+{
+    for (auto& [id, m] : m_movers)
+    {
+        if (m.name == name)
+        {
+            const f32 at = open.value_or(m.course.target < 0.5f) ? 1.0f : 0.0f;
+            m.course.position = at;
+            m.course.target = at;
+            placeMover(id, m);
+            m.blocks = world::moverBlocks(m.mover.kind, m.course);
+            updateMoverBlocks();
+            return true;
+        }
+    }
+    return false;
+}
+
+void Engine::resetMovers()
+{
+    bool changed = false;
+    for (auto& [id, m] : m_movers)
+    {
+        const f32 at = m.mover.open ? 1.0f : 0.0f;
+        if (m.course.position != at || m.course.target != at)
+        {
+            m.course.position = at;
+            m.course.target = at;
+            placeMover(id, m);
+            m.blocks = world::moverBlocks(m.mover.kind, m.course);
+            changed = true;
+        }
+    }
+    if (changed)
+    {
+        updateMoverBlocks();
+    }
+}
+
 void Engine::storeMovers(world::WorldFile& file, bool withState) const
 {
     for (world::WorldFileVob& vob : file.vobs)

@@ -62,6 +62,30 @@ std::string_view gltfJsonText(std::span<const u8> bytes) noexcept
     return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
 }
 
+std::vector<std::string> readNodeExtras(std::span<const u8> bytes)
+{
+    using Json = nlohmann::json;
+    std::vector<std::string> out;
+    const std::string_view text = gltfJsonText(bytes);
+    if (text.find("\"extras\"") == std::string_view::npos)
+    {
+        return out;
+    }
+    const Json doc = Json::parse(text.begin(), text.end(), nullptr, false);
+    if (doc.is_discarded() || !doc.contains("nodes") || !doc["nodes"].is_array())
+    {
+        return out;
+    }
+    for (const Json& node : doc["nodes"])
+    {
+        out.push_back(node.is_object() && node.contains("extras") && node["extras"].is_object() &&
+                              !node["extras"].empty()
+                          ? node["extras"].dump()
+                          : std::string());
+    }
+    return out;
+}
+
 void readMaterialWind(std::span<const u8> bytes, std::vector<MaterialInfo>& materials,
                       std::string_view debugName)
 {

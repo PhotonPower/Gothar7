@@ -351,7 +351,7 @@ TEST_CASE("WorldFile: indoor zones - turned boxes read, checked, written one per
     std::string text = writeWorldFile(world);
     const std::string zones =
         R"([{"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[5.0,1.2,1.0],"halfExtents":[2.0,1.2,1.5],"yaw":30.0}},)"
-        R"({"type":"fog","value":"CAMP"},)"
+        R"({"type":"smell","value":"CAMP"},)"
         R"({"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[2.0,1.2,4.0],"halfExtents":[1.0,1.2,1.0],"yaw":30.0}},)"
         R"({"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-90.5,0.1,28.0],"halfExtents":[3.1,1.45,2.6],"yaw":-71.86}}])";
     const auto at = text.find("\"zones\":");
@@ -368,7 +368,7 @@ TEST_CASE("WorldFile: indoor zones - turned boxes read, checked, written one per
     const auto gasthaus = written.find("LEO_GASTHAUS_ZHE_INNEN");
     const auto smithyWest = written.find(R"("center":[2.0,1.2,4.0])");
     const auto smithyEast = written.find(R"("center":[5.0,1.2,1.0])");
-    CHECK(written.find(R"({"type":"fog","value":"CAMP"})") != std::string::npos); // an unknown type: kept
+    CHECK(written.find(R"({"type":"smell","value":"CAMP"})") != std::string::npos); // an unknown type: kept
     CHECK(gasthaus < smithyWest);
     CHECK(smithyWest < smithyEast); // same room: by x
     CHECK(
@@ -510,4 +510,84 @@ TEST_CASE("World file: one vob as text and back (save game delta, M15)")
     CHECK(back.value().item.count == 3);
     CHECK_FALSE(parseVobJson("{").ok());
     CHECK_FALSE(parseVobJson("{\"type\": \"item\"}").ok()); // no id
+}
+
+TEST_CASE("WorldFile: environment without sky and fog zones (dungeon D7b) - read, checked, written, stable")
+{
+    WorldFile world = parse(kCamp);
+    CHECK_FALSE(world.environment.has_value());
+    const std::string base = writeWorldFile(world);
+    const auto head = base.find("  \"name\"");
+    REQUIRE(head != std::string::npos);
+    const auto with = [&](const std::string& entries)
+    { return base.substr(0, head) + entries + base.substr(head); };
+    const std::string text = with(
+        R"(  "environment": {"sky": false, "ambient": [0.08, 0.07, 0.1], "fog_color": [0.05, 0.05, 0.06],
+  "fog_start": 2, "fog_distance": 25},
+)");
+    const WorldFile read = parse(text);
+    REQUIRE(read.environment.has_value());
+    CHECK(read.environment->ambient == Vec3(0.08f, 0.07f, 0.1f));
+    CHECK_FALSE(read.environment->ambientGround.has_value());
+    CHECK(read.environment->fogStart == doctest::Approx(2.0f));
+    CHECK(read.environment->fogDistance == doctest::Approx(25.0f));
+    const std::string written = writeWorldFile(read);
+    CHECK(
+        written.find(
+            R"("environment": {"sky":false,"ambient":[0.08,0.07,0.1],"fog_color":[0.05,0.05,0.06],"fog_start":2.0,"fog_distance":25.0})") !=
+        std::string::npos);
+    CHECK(writeWorldFile(parse(written)) == written);
+    CHECK(parse(written).environment == read.environment);
+
+    const auto fails = [&](const std::string& entries, const char* expected)
+    {
+        auto r = parseWorldFile(with(entries), "w.g7world");
+        REQUIRE_FALSE(r.ok());
+        CHECK_MESSAGE(r.error().message.find(expected) != std::string::npos, r.error().message);
+    };
+    fails(R"(  "environment": {"sky": true, "ambient": [0, 0, 0]},
+)",
+          "sky");
+    fails(R"(  "environment": {"fog_color": [0, 0, 0]},
+)",
+          "ambient");
+    fails(R"(  "environment": {"ambient": [0, 0, 0], "fog_start": 30, "fog_distance": 20},
+)",
+          "fog_distance");
+
+    // Fog zones: a box with its fog.
+    const auto at = written.find("\"zones\":");
+    REQUIRE(at != std::string::npos);
+    const auto end = written.find("\n}", at);
+    const std::string zoned =
+        written.substr(0, at) + "\"zones\": " +
+        R"([{"type":"fog","value":"GRUFT","box":{"center":[0.0,1.0,0.0],"halfExtents":[4.0,2.0,4.0],"yaw":0.0},"color":[0.5,0.55,0.6],"distance":8.0,"start":0.5,"fade":2.0}])" +
+        written.substr(end);
+    const WorldFile foggy = parse(zoned);
+    REQUIRE(foggy.zones.size() == 1);
+    REQUIRE(foggy.zones[0].fog.has_value());
+    CHECK(foggy.zones[0].fog->distance == doctest::Approx(8.0f));
+    CHECK(foggy.zones[0].fog->fade == doctest::Approx(2.0f));
+    CHECK(checkZone(foggy.zones[0], "zones[0]").ok());
+    const std::string rewritten = writeWorldFile(foggy);
+    CHECK(
+        rewritten.find(
+            R"(    {"type":"fog","value":"GRUFT","box":{"center":[0.0,1.0,0.0],"halfExtents":[4.0,2.0,4.0],"yaw":0.0},"color":[0.5,0.55,0.6],"distance":8.0,"start":0.5,"fade":2.0})") !=
+        std::string::npos);
+    CHECK(writeWorldFile(parse(rewritten)) == rewritten);
+    std::string noColor = zoned;
+    noColor.replace(noColor.rfind(R"("color")"), 7, R"("colour")");
+    auto bad = parseWorldFile(noColor, "w.g7world");
+    REQUIRE_FALSE(bad.ok());
+    CHECK(bad.error().message.find("color") != std::string::npos);
+
+    // Where a fog zone counts: 1 inside, fading out over `fade` metres.
+    f32 weight = 0.0f;
+    CHECK(fogZoneAt(foggy.zones, Vec3(1.0f, 1.0f, 1.0f), weight) == &foggy.zones[0]);
+    CHECK(weight == doctest::Approx(1.0f));
+    CHECK(fogZoneAt(foggy.zones, Vec3(5.0f, 1.0f, 0.0f), weight) == &foggy.zones[0]); // 1 m outside
+    CHECK(weight == doctest::Approx(0.5f));
+    CHECK(fogZoneAt(foggy.zones, Vec3(7.0f, 1.0f, 0.0f), weight) == nullptr);
+    CHECK(weight == 0.0f);
+    CHECK(zoneDistance(*foggy.zones[0].box, Vec3(0.0f, 6.0f, 0.0f)) == doctest::Approx(3.0f));
 }
