@@ -363,6 +363,10 @@ void Engine::fixedUpdateCreatures(f32 seconds)
                      {
                          c.fighter.onEvent(event); // the combat clips time the blow (M11)
                      }
+                     if (event == "flash")
+                     {
+                         creatureFlash(c); // Beinhauswart: the lantern flares
+                     }
                      creatureScriptEvent(c, event); // steal, emerge, grab ... (dungeon D6)
                      f.events.push_front(std::format(
                          "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));

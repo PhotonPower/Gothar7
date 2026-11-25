@@ -179,6 +179,7 @@ void Engine::loadAnimalBodies()
     // seconds, damage_factor, belly_degrees }: rolls up on heavy hits (Mauerkriecher, monsters.md).
     m_animalBodies.clear();
     m_sidewaysSpecies.clear();
+    m_flashRules.clear();
     m_curlRules.clear();
     const script::Value creatures = m_scripts ? m_scripts->global("Creatures") : script::Value();
     if (creatures.asTable() == nullptr)
@@ -200,6 +201,30 @@ void Engine::loadAnimalBodies()
             moveAxis != nullptr && moveAxis->asString() == "x")
         {
             m_sidewaysSpecies.insert(species);
+        }
+        if (const script::Value* flash = field(def.asTable(), "flash");
+            flash != nullptr && flash->asTable() != nullptr)
+        {
+            // flash = { distance, degrees, seconds, colour = { r, g, b } }: the Beinhauswart's lantern.
+            FlashRule rule;
+            const auto number = [&](std::string_view key, f32& out)
+            {
+                if (const script::Value* v = field(flash->asTable(), key); v != nullptr && v->isNumber())
+                {
+                    out = static_cast<f32>(v->asNumber());
+                }
+            };
+            number("distance", rule.distance);
+            number("degrees", rule.degrees);
+            number("seconds", rule.seconds);
+            if (const script::Value* rgb = field(flash->asTable(), "colour");
+                rgb != nullptr && rgb->asTable() != nullptr && rgb->asTable()->array.size() == 3)
+            {
+                const auto& a = rgb->asTable()->array;
+                rule.colour = Vec3(static_cast<f32>(a[0].asNumber()), static_cast<f32>(a[1].asNumber()),
+                                   static_cast<f32>(a[2].asNumber()));
+            }
+            m_flashRules.insert_or_assign(species, rule);
         }
         if (const script::Value* curl = field(def.asTable(), "curl");
             curl != nullptr && curl->asTable() != nullptr)
@@ -303,6 +328,36 @@ bool Engine::curlOnHit(Combatant& target, i32 damage)
     }
     G7_LOG_INFO("engine", "{} rolls up ({:.1f} s)", target.name, it->second.seconds);
     return true;
+}
+
+void Engine::creatureFlash(const Creature& c)
+{
+    const auto self = combatant(c.id); // its species (Creature::species is the Npc instance)
+    const auto it = self ? m_flashRules.find(self->species) : m_flashRules.end();
+    auto hero = combatant(kHeroId);
+    if (it == m_flashRules.end() || c.dead || c.heldItem.empty() || !hero ||
+        hero->fighter->state() == FightState::Down || hero->fighter->state() == FightState::Dead)
+    {
+        return; // no lantern in its hand (dropped in the rage phase): nothing flares
+    }
+    Vec3 toHero = hero->position - c.position;
+    toHero.y = 0.0f;
+    const f32 distance = glm::length(toHero);
+    const f32 cosine = std::cos(glm::radians(it->second.degrees));
+    if (distance > it->second.distance ||
+        (distance > 0.1f && glm::dot(-toHero / distance, gameplay::forwardOf(hero->yaw)) < cosine))
+    {
+        return; // too far, or he looks away
+    }
+    m_screenFade = ScreenFade{it->second.colour, it->second.seconds, it->second.seconds};
+    hero->fighter->stagger(); // a short fright
+    playReaction(*hero, "none/t_hit_light");
+    G7_LOG_INFO("engine", "{}'s lantern blinds the hero", c.species);
+    if (m_scripts)
+    {
+        const Value args[] = {c.species};
+        m_scripts->emit("hero_blinded", args);
+    }
 }
 
 gameplay::SweepTarget Engine::bodyOf(const Combatant& c) const
@@ -1128,6 +1183,8 @@ void Engine::bindCombatFunctions()
           std::tuple{
               "npc_curled", "on(\"npc_curled\", fn(npc: string))",
               "Ein Tier rollt sich nach einem schweren Treffer ein (`Creatures.<art>.curl`, Mauerkriecher)."},
+          std::tuple{"hero_blinded", "on(\"hero_blinded\", fn(npc: string))",
+                     "Eine Laterne blendet den Helden (`Creatures.<art>.flash`, Beinhauswart)."},
           std::tuple{"npc_parried", "on(\"npc_parried\", fn(defender: string, attacker: string))",
                      "Ein Schlag wurde pariert (M11)."},
           std::tuple{"npc_knocked_out", "on(\"npc_knocked_out\", fn(target: string, attacker: string))",

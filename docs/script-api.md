@@ -127,6 +127,9 @@ Ein Spielstand ist geladen: Welt, NPCs, Story und benannte Timer sind wieder da 
 ### `on("game_saved", fn(slot: string))`
 Ein Spielstand ist geschrieben (M15).
 
+### `on("hero_blinded", fn(npc: string))`
+Eine Laterne blendet den Helden (`Creatures.<art>.flash`, Beinhauswart).
+
 ### `on("hero_teleported", fn(teleporter: string))`
 Ein Teleporter derselben Welt (Dungeon D4) hat den Helden versetzt; `teleporter` ist sein Name. In eine andere Ebene folgt stattdessen `world_loaded`.
 

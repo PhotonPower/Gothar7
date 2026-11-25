@@ -58,6 +58,21 @@ Creatures = {
         -- von vorn (bis 45° neben der Blickrichtung) trifft man den weichen Bauch voll (Projektinhaber 2026-11-24).
         curl = { share = 0.25, seconds = 4.0, damage_factor = 0.25, belly_degrees = 45 },
     },
+    beinhauswart = { -- wartet an einer Gruft (zs_dormant), blendet mit der grünen Laterne, schlägt mit dem Spaten
+        territory = 12,
+        attack_distance = 20,
+        wake_seconds = 1.4,
+        threaten_distance = 8, -- nach dem Erwachen und alle flash.every Sekunden: Laterne entgegenstoßen
+        threaten_seconds = 1.2,
+        chase_gait = "run", -- 0,8 / 3,2 m/s: langsamer als der rennende Held
+        body = { shape = "upright", radius = 0.3, length = 2.0, offset = { 0, 1.0, 0 } },
+        -- Event flash von t_threaten: Wer bis distance m vor ihm steht und zu ihm schaut (bis degrees neben der
+        -- Blickrichtung), sieht seconds lang grünweiß und taumelt. Nur mit der Laterne in der Hand; bei
+        -- lantern_drop des Lebens lässt er sie fallen (Rasend-Phase: danach nur noch der Spaten).
+        flash = { distance = 7, degrees = 60, seconds = 1.5, colour = { 0.75, 1.0, 0.8 }, every = 10 },
+        lantern = "it_lantern_beinhaus",
+        lantern_drop = 0.5,
+    },
 }
 
 --- Die Werte des Tieres aus Creatures; nil für Menschen (Npc ohne `species`).

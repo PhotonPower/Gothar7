@@ -1575,6 +1575,9 @@ private:
     [[nodiscard]] f32 reachOf(const Combatant& c) const;           ///< m beyond the bodies
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
+    /// Creatures.<species>.flash (Beinhauswart): at the clip event "flash" its lantern blinds the hero if he
+    /// stands within distance and looks at it - a white screen for a moment and a stagger.
+    void creatureFlash(const Creature& c);
     /// Creatures.<species>.curl (Mauerkriecher): the damage through the shell while rolled up - in full when
     /// it comes from `from` within belly_degrees of the front (the soft belly), else damage_factor of it.
     [[nodiscard]] i32 curledDamage(const Combatant& target, i32 damage, std::optional<Vec3> from) const;
@@ -2222,6 +2225,14 @@ private:
     };
     std::map<std::string, CurlRule, std::less<>> m_curlRules; // Creatures.<species>.curl (dungeon D6)
     std::set<std::string, std::less<>> m_sidewaysSpecies; // Creatures.<species>.move_axis = "x" (dungeon D6)
+    struct FlashRule
+    {
+        f32 distance = 7.0f; ///< m in front of it
+        f32 degrees = 60.0f; ///< the hero looks at it within this angle
+        f32 seconds = 1.5f;  ///< the screen stays bright this long (fading)
+        Vec3 colour{1.0f};   ///< of the light
+    };
+    std::map<std::string, FlashRule, std::less<>> m_flashRules; // Creatures.<species>.flash (Beinhauswart)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline
