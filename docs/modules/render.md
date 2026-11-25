@@ -487,7 +487,9 @@ Environment::ambientOcclusion, viewportTexel;  GpuLighting::aoParams;  Engine::s
   und Punktlichter bleiben. Wirkt daher vor allem im Schatten und in Innenräumen: Mauerfüße, unter Vorsprüngen,
   Fensterlaibungen, Ecken.
 - **Passzeiten:** mit SSAO misst die Engine `scene` (nur noch Schatten), `depth` (Vorpass), `ssao`, `shading`
-  (Hauptpass); ohne wie bisher `scene`.
+  (Hauptpass); ohne wie bisher `scene`. Mit spiegelnden Fenstern davor `probes` (Würfelseiten der Reflexions-Proben,
+  nur wenn die Welt Glas hat und die Stufe `medium`/`high` ist) und danach `glass` (Kopie des Bildes für die
+  Bildraum-Spiegelung, nur `high`).
 - **Tests:** GPU `test_ssao.cpp` (Proben in der Halbkugel; eine Stufe in der Tiefe verdunkelt die Wand daneben, eine
   freie Wand bleibt offen), `test_engine_render.cpp` (aus: kein `depth`/`ssao`-Pass; an: beide und ein Ergebnis).
   Der Vorpass allein ändert das Bild nicht (Prüfbild mit `ssao_strength = 0` gegen aus: 0,004 % der Pixel weichen ab).
@@ -659,7 +661,8 @@ Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Bloc
 - **Scheiben (Entscheidung 2):** in der Ebene der Scheibe aus der Weltlage: Butzen 12 cm, in Reihen versetzt, je
   Scheibe eine Wölbung und eine kleine Schräglage, Bleirute in den Zwickeln; Rauten 10 × 14 cm zwischen Bleiruten,
   jede leicht verkippt; alle mit langsamer Welligkeit. Blei ist stumpf und dunkel.
-- **Option:** `[render] window_reflections` = `off`, `low`, `medium` (Vorgabe), `high`. `off` zeichnet Glas wie jedes
+- **Option:** `[render] window_reflections` = `off`, `low`, `medium` (Vorgabe), `high`; im Menü Grafik
+  „Fensterspiegelung“ (aus/niedrig/mittel/hoch). `off` zeichnet Glas wie jedes
   Material (bytegleich zu vorher). `medium` zeichnet Stufe A mit den Reflexions-Proben (F2), `high` dazu die
   Bildraum-Spiegelung (F3).
   Der Menüeintrag kommt mit dem Abschluss-Teil.
@@ -693,7 +696,9 @@ Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Bloc
   - **Platzierung** beim Laden der Welt (nach ihrer Kollision): zuerst die Kreuzungen des Wegnetzes (≥ 3 Nachbarn),
     dann alle 20 m entlang jeder Kante, verworfen, wenn näher als 10 m an einer schon gesetzten; 2,5 m über dem Weg.
     Punkte in Räumen zählen nicht. Welten ohne Wegnetz (Testszene): ein 20-m-Raster über der Szene auf dem Boden.
-    Welts Marker `VOB_PROBE_*` (Frage 9) sind noch nicht eingebaut.
+    **Marker (Frage 9, optional, Vertrag mit welt):** Ein Vob mit dem Namen `VOB_PROBE_<frei>` (beliebiger Typ) ist
+    eine Probe genau an seiner Stelle; sie kommt vor den Wegnetz-Proben, Kreuzungen und Wegpunkte im Umkreis von
+    10 m entfallen. Mit Markern gibt es kein Raster.
   - **Einflusskasten:** je Probe Strahlen entlang ±X/±Z bis zur ersten Wand (höchstens 25 m), nach oben bis 8 m, nach
     unten bis 0,5 m unter den Weg – die Fassaden der Straße für die Parallaxen-Korrektur.
   - **Atlas** statt Cubemap-Array (das RHI kennt keine Cubemaps): RGBA16F 3072 × 768 (8 Plätze je Zeile, je 6 Seiten
@@ -728,6 +733,10 @@ Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Bloc
     Wasser geteilt (`common/ssr.glsl`, `ssrTrace`; das Wasser zeichnet bytegleich wie vorher).
   - Grenze (wie im Plan): Senkrechte Scheiben spiegeln meist, was hinter der Kamera liegt – dort gilt die Probe;
     der Strahl trifft vor allem bei schrägem Blick die Häuser und Menschen daneben.
+- **Abschluss (Menü, Passzeiten, Messung):** Menüeintrag „Fensterspiegelung“, Passzeiten `probes` (vor der Szene;
+  die Würfelseiten nutzen die Schatten des vorigen Bildes) und `glass`. Gemessen in Leonberg mit welts Glas
+  (`docs/perf/2026-11-25-fenster.md`): `medium` Pass `probes` 0,06 ms in Bildern mit einer Seite, sonst 0,001 ms;
+  `high` +0,13–0,27 ms in der Szene und 0,05 ms Kopie; `low` im Rauschen. Alle Stufen im Budget.
 - **Tests:** `tests/render/test_glass.cpp` (Stufen, Fresnel, Lighting-Block), `tests/asset/test_material.cpp`
   (Extras, Fehler → Vorgabe), `test_mesh_file.cpp` (Version 5, Version 4 ohne Glas, falsches Muster), GPU
   `test_glass.cpp` (frontal schwach, schräg stark, Muster zeichnen, `off` bytegleich, Mehrfach-Zeichnen gleich).
@@ -739,7 +748,8 @@ Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Bloc
   richtig herum und auf der richtigen Seite, `low` liest keine Proben, eine Probe 80 m weg zählt nicht),
   `test_engine_probes.cpp` (Testszene: Raster mit Kästen, erst die nächsten, dann eine Seite je Bild; `low` und eine
   Welt ohne Glas: keine). F3: GPU `test_glass_ssr.cpp` (ein Feld auf dem Bild erscheint mit `high` im Glas darunter;
-  findet der Strahl im vorigen Bild nichts, ist das Bild gleich `medium`).
+  findet der Strahl im vorigen Bild nichts, ist das Bild gleich `medium`). Abschluss: CPU Marker `VOB_PROBE_*`
+  (stehen wie gesetzt, Wegpunkte halten Abstand), `test_engine_ui.cpp` (Menüeintrag mit vier Stufen).
 
 ### Gras (M17 Teile G1–G3, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
 - **Büschel auf der GPU:** Jedes Büschel ist ein Eintrag von 16 Byte (Fuß als drei Floats, gepackte Bits: Drehung,

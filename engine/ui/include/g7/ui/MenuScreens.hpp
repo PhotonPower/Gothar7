@@ -125,6 +125,7 @@ public:
     [[nodiscard]] std::string_view name() const override { return "options"; }
     [[nodiscard]] ScreenFlags flags() const override { return {true, true, true}; }
     [[nodiscard]] usize page() const noexcept { return m_page; }
+    [[nodiscard]] const std::vector<OptionPage>& pages() const noexcept { return m_pages; }
     /// Shows the tab `page` (0-based, clamped).
     void selectPage(usize page) { showPage(page); }
     [[nodiscard]] List& options() noexcept { return *m_list; }

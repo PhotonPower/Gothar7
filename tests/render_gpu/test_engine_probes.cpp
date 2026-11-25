@@ -73,15 +73,15 @@ TEST_CASE("Engine probes GPU: a grid over the test scene, the nearest at once, t
             CHECK(glm::length(Vec2(d.x, d.z)) > 19.0f); // the grid's spacing
         }
     }
-    const u32 first = engine->probeFacesLastFrame();
-    CHECK(first > 1);
-    CHECK(first <= 4 * render::kProbeFaces);
+    // The frame that placed them drew the 4 nearest whole (the frame may lie in init()).
+    CHECK(engine->probeSchedule().slotsReady() >= 4);
+    CHECK(engine->probeFacesLastFrame() <= 4 * render::kProbeFaces);
     for (int i = 0; i < 12; ++i)
     {
         REQUIRE(engine->runFrame());
         CHECK(engine->probeFacesLastFrame() <= 1);
     }
-    CHECK(engine->probeSchedule().slotsReady() >= 1);
+    CHECK(engine->probeSchedule().slotsReady() >= 5); // 12 more faces: two more probes
     CHECK(!engine->probeSchedule().shaderProbes().empty());
 
     // Low: none (no atlas).

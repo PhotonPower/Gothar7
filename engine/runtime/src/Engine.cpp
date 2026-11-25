@@ -2187,13 +2187,42 @@ void Engine::renderScene(u32 width, u32 height)
     m_camera.aspect = height > 0 ? static_cast<f32>(width) / static_cast<f32>(height) : 1.0f;
     updateEnvironment(); // light, fog and sky at the current game time
 
+    m_meshRenderer.beginFrame(); // the batched passes of this frame (probe faces first)
+    updateCullGrid();
+    // M17 windows F2: due probe faces (with the shadows of the last frame), the finished probes for the
+    // glass.
+    const bool probes = m_probes.ready();
+    if (probes)
+    {
+        m_passTimes.begin(*m_device, "probes");
+    }
+    {
+        const bool sun = !m_cascades.empty() && m_environment.sunIntensity > 0.0f;
+        const render::ShadowFrame lastShadows{&m_shadowMap, m_cascades, &m_camera, false, 0.0f, false};
+        updateReflectionProbes(sun ? &lastShadows : nullptr);
+    }
+    if (probes)
+    {
+        m_passTimes.end(*m_device);
+    }
+
     // Scene into the linear HDR target: background, then meshes (after their shadow pass).
     m_passTimes.begin(*m_device, "scene");
     drawScene(width, height);
     m_passTimes.end(*m_device);
-    captureScreenHistory(width, height); // M17 windows F3: the next frame's glass mirrors this one
-    drawRain(width, height);             // M17 R
-    drawDistortion();                    // M17 V: offsets of spells and big fires
+    // M17 windows F3: the next frame's glass mirrors this one (high only).
+    const bool history = m_windowReflections == render::WindowReflections::High && m_probeGlass;
+    if (history)
+    {
+        m_passTimes.begin(*m_device, "glass");
+    }
+    captureScreenHistory(width, height);
+    if (history)
+    {
+        m_passTimes.end(*m_device);
+    }
+    drawRain(width, height); // M17 R
+    drawDistortion();        // M17 V: offsets of spells and big fires
 
     // Under water (M17 W3): tint, fog and wavering in the post pass; no bloom (the glow of the sun above).
     updateUnderwater();
@@ -2238,10 +2267,24 @@ void Engine::renderScene(u32 width, u32 height)
     }
 }
 
+void Engine::updateCullGrid()
+{
+    if (m_cullGridDirty)
+    {
+        std::vector<AABB> bounds;
+        bounds.reserve(m_instances.size());
+        for (const SceneInstance& instance : m_instances)
+        {
+            bounds.push_back(instance.bounds);
+        }
+        m_cullGrid.build(bounds);
+        m_cullGridDirty = false;
+    }
+}
+
 void Engine::drawScene(u32 width, u32 height)
 {
     G7_PROFILE_SCOPE("render::scene (culling, shadows, main)");
-    m_meshRenderer.beginFrame();
     // Indoors (the camera in a room, world.md "Zonen") the world outside shows only through windows and the
     // door: nothing beyond indoor_view_distance (render.md "Innenräume") - and casts no shadow -, and the
     // sun's shadows (through the windows) end at indoor_shadow_distance; beyond it the rooms get no sun.
@@ -2257,17 +2300,6 @@ void Engine::drawScene(u32 width, u32 height)
         m_frameCull.viewDistance = limited(m_frameCull.viewDistance, m_indoorViewDistance);
         m_frameShadowCull.viewDistance = m_frameCull.viewDistance;
         shadowRange = limited(m_frameCull.viewDistance, std::max(m_indoorShadowDistance, 0.1f));
-    }
-    if (m_cullGridDirty)
-    {
-        std::vector<AABB> bounds;
-        bounds.reserve(m_instances.size());
-        for (const SceneInstance& instance : m_instances)
-        {
-            bounds.push_back(instance.bounds);
-        }
-        m_cullGrid.build(bounds);
-        m_cullGridDirty = false;
     }
     updateRoomCulling(inside);
     // Shadow pass: every caster whose bounds reach a cascade's light volume (which extends towards
