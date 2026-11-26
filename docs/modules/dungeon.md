@@ -422,6 +422,11 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   (auf dem Steg), schnappt er am Ort senkrecht nach oben (`t_snap_up`) statt zu beißen. `returns = true`
   (`ai/brunnenmolch.lua`): wach und ohne Kampf geht er zurück an sein Wasser (`newt_water`, beim Spawn sein Marker),
   sinkt unter (`t_submerge`) und ruht wieder. `npc_play(npc, "listen"|"submerge")`.
+- **Leuchten** (2026-11-26): `Creatures.<art>.glow = { socket, colour, radius, intensity, holding }` setzt ein
+  Punktlicht an einen Socket der Figur (`Engine::creatureLights()`, kommt zu den Effektlichtern des Bildes; Lage aus
+  der Pose des Simulationsschritts). Tot oder verschwunden erlischt es; mit `holding = true` nur, solange die Figur
+  etwas hält (`npc_hold`). Kristallkrebs blassblau (`socket_glow`), Kellermutter orange (Schwachstelle,
+  `socket_glow`), Beinhauswart grün (Laterne, `socket_lantern`, fällt mit ihr weg).
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am
