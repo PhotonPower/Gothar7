@@ -81,7 +81,16 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 18.0,
         },
     ),
-    "labyrinth": (  # Ebene 6 (stub): the vault's sound for now
+    "grotte": (  # Ebene 7 (stub): crystal light later; the vault's sound until engine has "grotte"
+        "gewoelbe",
+        {
+            "ambient": [0.04, 0.046, 0.058],
+            "fog_color": [0.014, 0.018, 0.026],
+            "fog_start": 2.0,
+            "fog_distance": 18.0,
+        },
+    ),
+    "labyrinth": (  # Ebene 6: the vault's sound until engine has "labyrinth"
         "gewoelbe",
         {
             "ambient": [0.042, 0.045, 0.05],
@@ -899,8 +908,8 @@ class _Gen:
             self.vob("mesh", f"{name}_RING", (cx, y0, cz), ident, mesh=self.kit_mesh("teleport"))
         filt = spec.get("filter", "player")
         tele: dict[str, Any] = {}
-        if "to" in spec:
-            to = _cell(spec["to"], name)
+        if "to" in spec or spec.get("spin"):  # a spinner: its own cell, turned to ``facing``
+            to = _cell(spec["to"], name) if "to" in spec else at
             tx, tz = self.mid(to)
             look = DIRS[spec.get("facing", "S")]
             self.vob(

@@ -305,3 +305,39 @@ def test_chests_and_niches_name_their_lua_definition(number: int) -> None:
     defs = [level.entries[at][level.kind(at)]["definition"] for at in level.cells("*N")]
     assert defs and all(d.startswith(f"mob_dng_e{number}_") for d in defs)
     assert len(set(defs)) == len(defs)
+
+
+def test_level_6_labyrinth_is_complete_and_solvable() -> None:
+    """W8 D3: Ebene 6, a maze with teleporter doors, spinners and hidden walls."""
+    level = load_level(DATA, 6)
+    kinds = {name.split("_")[0] for name in level.targets()}
+    assert kinds >= {"GATE", "WALL", "LEVER", "BUTTON", "TELE", "NICHE", "SPAWN", "CHEST", "STAIRS"}
+    assert 24 <= level.width <= 32 and 24 <= level.height <= 32
+    reach = check_reach(level)
+    assert reach.unreached == [] and reach.stuck == []
+    assert len(reach.cells) >= 0.4 * level.width * level.height
+    npcs = {e["monster"]["npc"] for e in level.entries.values() if "monster" in e}
+    assert npcs == {"mon_mauerschlupfer"}  # the owner's choice: Mauerschlupfer on 4-6
+    pads = [level.entries[at]["teleport"] for at in level.cells("T")]
+    assert sum(1 for t in pads if t.get("spin") and t.get("trap")) >= 3  # spinners
+    assert sum(1 for t in pads if "to" in t and t.get("visible")) >= 4  # teleporter doors
+    assert len(level.cells("H")) >= 2
+    down = [level.entries[at]["stairs"]["world"] for at in level.cells(">")]
+    assert down == ["worlds/leonberg/dungeon/ebene_07.g7world"]
+    assert load_level(DATA, 7).theme == "grotte"
+
+
+def test_level_6_riddles_hold() -> None:
+    """The lever behind the teleporter door opens the stairs; the loose stones the hidden walls."""
+    for at, target in [((3, 22), (27, 27)), ((28, 6), (28, 2)), ((12, 5), (13, 3))]:
+        level = load_level(DATA, 6)
+        level.entries[at]["switch"]["targets"] = ["SPAWN_E06_23_3"]  # does nothing for the way
+        assert target in check_reach(level).unreached, at
+
+
+def test_a_spinner_only_turns() -> None:
+    level = parse_level("######\n#<.T.#\n######", doc(
+        {"at": [3, 1], "teleport": {"spin": True, "trap": True, "facing": "W"}}))  # fmt: skip
+    assert check_reach(level).unreached == []  # the cell behind it stays in reach
+    with pytest.raises(LevelError, match="spinner"):
+        parse_level("######\n#<.T.#\n######", doc({"at": [3, 1], "teleport": {"spin": True}}))
