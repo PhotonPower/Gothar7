@@ -1,0 +1,25 @@
+{
+ "format": "gothar-vob-ids",
+ "version": 1,
+ "nextVobId": 19,
+ "ids": {
+  "BLOCK_E06_0_0": 1,
+  "BLOCK_E06_1_0": 2,
+  "STAIRS_E06_1_1": 3,
+  "START_E06_VON_OBEN": 4,
+  "TORCH_E06_2_1_N": 5,
+  "LIGHT_E06_2_1_N": 6,
+  "TORCH_E06_6_1_N": 7,
+  "LIGHT_E06_6_1_N": 8,
+  "TORCH_E06_9_1_N": 9,
+  "LIGHT_E06_9_1_N": 10,
+  "TORCH_E06_1_4_W": 11,
+  "LIGHT_E06_1_4_W": 12,
+  "TORCH_E06_4_4_E": 13,
+  "LIGHT_E06_4_4_E": 14,
+  "TORCH_E06_10_4_E": 15,
+  "LIGHT_E06_10_4_E": 16,
+  "TORCH_E06_7_6_S": 17,
+  "LIGHT_E06_7_6_S": 18
+ }
+}

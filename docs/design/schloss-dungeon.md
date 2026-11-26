@@ -397,9 +397,36 @@ schreibt.
   - Treppenkammer: Treppe hinab nach Ebene 5 (`START_E05_VON_OBEN`), Truhe, Mauerschlupfer, Manatrank.
   - Erreichbarkeit grün; mit 4 s Verzögerung bleibt die Treppenkammer zu, ohne den losen Stein ist die Gruft eine
     Sackgasse (Tests).
-- **Ebene 5** als Stub (Thema `werkstatt`, vorerst Ambiente `gewoelbe`).
+- **Ebene 5** siehe 7e.
 - **Offen für engine:** Instanz `mon_beinhauswart` (#480; bis dahin eine Ladewarnung), Mob-Definitionen für Truhen und
   Nischen der Ebene 4.
+
+## 7e. Stand D3 (welt): Ebene 5 „Werkstätten der Erbauer“, Ebene 6 als Stub
+- **Neu im Baukasten:** `workbench` (Eichen-Werkbank mit Schraubstock und Werkzeug, füllt ihre Zelle wie ein
+  Sarkophag) und `cogwheel` (eisernes Zahnrad des Uhrwerks, 2 m Durchmesser, Nabe in 1,75 m Höhe, hängt an der Wand
+  wie eine Knochennische). Allgemein gilt jetzt: Requisiten, die ihre Zelle füllen, stehen in der Mitte; alle anderen
+  hängen an der Wand hinter der Zelle.
+- **Ebene 5** (28 × 24, 324 begehbare Zellen = 48 %, davon 5 mit Werkbank):
+  - Ankunft mit Treppe hinauf; Gang nach Osten zur Zahnradhalle (10 × 8, vier Pfeiler, Zahnräder) und zum Lager
+    (Mauerschlupfer, Truhe, Hammer).
+  - **Rätsel 1 (neu, Rücksetz-Falle):** Im Gang liegt ein unsichtbarer Teleporter (`trap`), der zurück in die Ankunft
+    setzt. Ein loser Stein kurz davor schaltet ihn ab (`off`, einmalig).
+  - Schmiede (Werkbänke, Nische, Truhe, Mauerschlupfer) südlich der Ankunft; das Gatter zur Halle öffnet nur ein
+    Hebel auf der Hallenseite (Abkürzung zurück).
+  - **Rätsel 2 (Gewicht und Hebel):** Das Gatter zur Uhrwerkskammer öffnet das Relais `RELAY_E05_GEWICHT` (`all`):
+    Ein Gegenstand muss auf der Platte in der Halle liegen (`weight any`), und der Hebel in der Schmiede muss
+    umgelegt sein. Ein **Gatterbock** steht als Statue neben dem Gatter.
+  - **Verstecktes Depot** hinter einer Geheimwand der Halle (loser Stein): Schutzring, Stärketrank, 200 Gulden,
+    Dietriche, Nische.
+  - Uhrwerkskammer (Zahnräder, Werkbank, Mauerschlupfer, Truhe, zweiter **Gatterbock** an der Tür zur
+    Treppenkammer), Gießerei (Werkbänke, Mauerschlupfer, Nische, Truhe).
+  - **Abkürzung nach oben (F6):** In der Treppenkammer schaltet ein Hebel den Teleporter zur Vorkammer von Ebene 1
+    (`START_E01_VON_OBEN`) ein; zu Beginn ist er aus.
+  - Treppe hinab nach Ebene 6 (`START_E06_VON_OBEN`).
+  - Erreichbarkeit grün; ohne den losen Stein bleiben Halle und Treppe unerreichbar, ohne den Hebel der Schmiede die
+    Uhrwerkskammer, ohne den Depot-Stein das Depot (Tests).
+- **Ebene 6** als Stub (Thema `labyrinth`, vorerst Ambiente `gewoelbe`).
+- **Offen für engine:** Ambiente `werkstatt`, Mob-Definitionen für Truhen und Nischen der Ebene 5.
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |

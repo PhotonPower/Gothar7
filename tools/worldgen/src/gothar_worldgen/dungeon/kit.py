@@ -25,6 +25,10 @@ Still pieces (``props`` of a level, W8 E4 "Beinhaus"; mesh vobs with their colli
   its middle.
 - ``bone_niche``: an ossuary shelf against the wall, origin on the floor at the wall face, the
   shelves towards +Z: ashlar posts and boards with skulls and long bones.
+- ``workbench`` (W8 E5 "Werkstatt"): an oak bench ``BENCH_L`` long along X with a vice and tools,
+  origin on the floor in its middle.
+- ``cogwheel``: an iron gear wheel of the builders' clockwork on the wall, origin on the floor at
+  the wall face, the wheel towards +Z.
 """
 
 from __future__ import annotations
@@ -70,6 +74,8 @@ BUTTON_Y = 1.2
 LEVER_Y = 1.2
 SARC_L, SARC_W, SARC_H = 2.2, 0.95, 0.95  # sarcophagus with its lid
 OSS_W, OSS_D, OSS_H = 1.9, 0.42, 2.3  # bone niche: width, depth from the wall, height
+BENCH_L, BENCH_W, BENCH_H = 2.0, 0.85, 0.85  # workbench
+COG_R, COG_Y, COG_T = 1.0, 1.75, 0.12  # cogwheel: radius (to the teeth), hub height, thickness
 
 
 @dataclass
@@ -330,7 +336,71 @@ def bone_niche() -> KitMesh:
     return m
 
 
-PROPS = {"sarcophagus": sarcophagus, "bone_niche": bone_niche}
+def workbench() -> KitMesh:
+    """An oak bench on four legs with a stretcher, a vice at one end, a hammer and tongs."""
+    m = KitMesh()
+    hl, hw, top = BENCH_L / 2, BENCH_W / 2, BENCH_H
+    m.box("oak", (-hl, top - 0.1, -hw), (hl, top, hw), grain=0)
+    for x in (-hl + 0.1, hl - 0.18):
+        for z in (-hw + 0.08, hw - 0.16):
+            m.box("oak_beam", (x, 0.0, z), (x + 0.08, top - 0.1, z + 0.08), grain=1)
+    m.box("oak_beam", (-hl + 0.1, 0.2, -0.04), (hl - 0.1, 0.28, 0.04), grain=0)
+    m.box("oak", (-hl + 0.12, 0.3, -hw + 0.1), (hl - 0.12, 0.34, hw - 0.1), grain=0)  # shelf
+    m.box("iron", (hl - 0.32, top, -0.12), (hl - 0.08, top + 0.16, 0.12))  # the vice
+    m.box("iron", (hl - 0.36, top + 0.04, -0.02), (hl - 0.32, top + 0.08, 0.02))
+    m.box("iron", (-0.5, top, 0.1), (-0.38, top + 0.06, 0.16))  # hammer head
+    m.box("oak_beam", (-0.46, top, 0.16), (-0.42, top + 0.03, 0.5), grain=2)
+    m.box("iron", (0.1, top, -0.3), (0.6, top + 0.02, -0.26))  # tongs
+    m.box("iron", (0.1, top, -0.22), (0.6, top + 0.02, -0.18))
+    m.box("iron", (-0.9, top, -0.3), (-0.7, top + 0.12, -0.12))  # a cast part
+    m.body("workbench", (-hl, 0.0, -hw), (hl, top + 0.16, hw))
+    return m
+
+
+def cogwheel() -> KitMesh:
+    """A gear of the builders' clockwork: rim with teeth, six spokes, hub and axle in the wall."""
+    m = KitMesh()
+    z0, z1 = 0.08, 0.08 + COG_T
+    b = m.b("iron")
+    n_rim = 24
+    r0, r1 = COG_R - 0.3, COG_R - 0.12  # inner and outer radius of the rim
+    for k in range(n_rim):
+        a0, a1 = 2 * math.pi * k / n_rim, 2 * math.pi * (k + 1) / n_rim
+        c0, s0, c1, s1 = math.cos(a0), math.sin(a0), math.cos(a1), math.sin(a1)
+        ring = [(r0 * c0, COG_Y + r0 * s0), (r1 * c0, COG_Y + r1 * s0),
+                (r1 * c1, COG_Y + r1 * s1), (r0 * c1, COG_Y + r0 * s1)]  # fmt: skip
+        uv = [(0, 0), (0.2, 0), (0.2, 0.2), (0, 0.2)]
+        b.polygon([(x, y, z1) for x, y in ring], uv, (0.0, 0.0, 1.0))
+        b.polygon([(x, y, z0) for x, y in reversed(ring)], uv, (0.0, 0.0, -1.0))
+        for r, sgn in ((r1, 1.0), (r0, -1.0)):  # outer and inner band
+            p, q = (r * c0, COG_Y + r * s0), (r * c1, COG_Y + r * s1)
+            want = (sgn * math.cos((a0 + a1) / 2), sgn * math.sin((a0 + a1) / 2), 0.0)
+            b.polygon([(p[0], p[1], z0), (q[0], q[1], z0), (q[0], q[1], z1), (p[0], p[1], z1)],
+                      uv, want)  # fmt: skip
+    for k in range(16):  # the teeth
+        a = 2 * math.pi * (k + 0.5) / 16
+        c, s = math.cos(a), math.sin(a)
+        mid = (COG_R - 0.06) * c, COG_Y + (COG_R - 0.06) * s
+        hx, hy = 0.07 * abs(c) + 0.06 * abs(s), 0.07 * abs(s) + 0.06 * abs(c)
+        m.box("iron", (mid[0] - hx, mid[1] - hy, z0), (mid[0] + hx, mid[1] + hy, z1))
+    for k in range(3):  # three bars crossing at the hub: six spokes
+        a = math.pi * k / 3
+        c, s = math.cos(a), math.sin(a)
+        steps = 6
+        for i in range(-steps, steps):
+            t0, t1 = (r0 - 0.02) * i / steps, (r0 - 0.02) * (i + 1) / steps
+            x0, y0 = t0 * c, COG_Y + t0 * s
+            x1, y1 = t1 * c, COG_Y + t1 * s
+            m.box("iron", (min(x0, x1) - 0.04, min(y0, y1) - 0.04, z0 + 0.02),
+                  (max(x0, x1) + 0.04, max(y0, y1) + 0.04, z1 - 0.02))  # fmt: skip
+    m.box("iron", (-0.16, COG_Y - 0.16, z0 - 0.02), (0.16, COG_Y + 0.16, z1 + 0.04))  # hub
+    m.box("iron", (-0.06, COG_Y - 0.06, 0.0), (0.06, COG_Y + 0.06, z1 + 0.08))  # axle
+    m.body("cogwheel", (-COG_R, COG_Y - COG_R, 0.0), (COG_R, COG_Y + COG_R, z1 + 0.08))
+    return m
+
+
+PROPS = {"sarcophagus": sarcophagus, "bone_niche": bone_niche, "workbench": workbench,
+         "cogwheel": cogwheel}  # fmt: skip
 
 KIT = {
     "gate": gate,

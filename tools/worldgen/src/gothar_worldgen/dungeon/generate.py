@@ -29,7 +29,7 @@ from typing import Any
 from gothar_worldgen.assemble.world import VobIds, write_world
 from gothar_worldgen.dungeon import kit
 from gothar_worldgen.dungeon.kit import KitMesh
-from gothar_worldgen.dungeon.level import DIRS, FLOOR_CHARS, Level, LevelError, _cell
+from gothar_worldgen.dungeon.level import DIRS, FLOOR_CHARS, PROPS, Level, LevelError, _cell
 from gothar_worldgen.dungeon.logic import check_reach
 from gothar_worldgen.waynet.write import tidy
 
@@ -80,7 +80,16 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 18.0,
         },
     ),
-    "werkstatt": (  # Ebene 5 (stub): the builders' workshops, the vault's sound for now
+    "labyrinth": (  # Ebene 6 (stub): the vault's sound for now
+        "gewoelbe",
+        {
+            "ambient": [0.042, 0.045, 0.05],
+            "fog_color": [0.017, 0.018, 0.021],
+            "fog_start": 2.0,
+            "fog_distance": 16.0,
+        },
+    ),
+    "werkstatt": (  # Ebene 5: the builders' workshops, the vault's sound for now
         "gewoelbe",
         {
             "ambient": [0.05, 0.047, 0.042],
@@ -744,7 +753,7 @@ class _Gen:
         for at, pr in sorted(self.lv.props.items(), key=lambda kv: (kv[0][1], kv[0][0])):
             dx, dy = DIRS[pr.get("facing", "S")]
             cx, cz = self.mid(at)
-            if pr["kind"] == "bone_niche":
+            if not PROPS[pr["kind"]]:  # on the wall behind the cell
                 cx, cz = cx - dx * self.c / 2, cz - dy * self.c / 2
             self.vob("mesh", self.lv.prop_name(at), (cx, self.y(self.floor(at)), cz),
                      _quat_front(dx, dy), mesh=self.kit_mesh(pr["kind"]))  # fmt: skip
@@ -918,7 +927,7 @@ class _Gen:
         for at in lv.cells("SN"):
             busy.add((self._faces(at), OPPOSITE[lv.facing(at)]))
         for at, pr in lv.props.items():
-            if pr["kind"] == "bone_niche":
+            if not PROPS[pr["kind"]]:
                 busy.add((at, OPPOSITE[pr.get("facing", "S")]))
         picked: list[tuple[Cell, str]] = []
         extra = [((int(t[0]), int(t[1])), str(t[2])) for t in lv.raw.get("torches", [])]

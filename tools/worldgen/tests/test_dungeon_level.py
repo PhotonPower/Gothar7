@@ -254,3 +254,45 @@ def test_a_sarcophagus_fills_its_cell() -> None:
         {"at": [3, 1], "kind": "sarcophagus", "facing": "E"}]})  # fmt: skip
     assert level.blocked == {(3, 1)}
     assert check_reach(level).unreached == [(4, 1)]
+
+
+def test_level_5_werkstatt_is_complete_and_solvable() -> None:
+    """W8 D3: Ebene 5 with Gatterbock statues, Mauerschlupfer, a reset trap, weight and lever,
+    a hidden depot and the shortcut up to Ebene 1 (plan F6)."""
+    level = load_level(DATA, 5)
+    kinds = {name.split("_")[0] for name in level.targets()}
+    assert kinds >= {"GATE", "WALL", "LEVER", "BUTTON", "PLATE", "TELE", "NICHE", "SPAWN", "DOOR",
+                     "CHEST", "STAIRS", "RELAY"}  # fmt: skip
+    assert 24 <= level.width <= 32 and 24 <= level.height <= 32
+    reach = check_reach(level)
+    assert reach.unreached == [] and reach.stuck == []
+    assert len(reach.cells) + len(level.blocked) >= 0.4 * level.width * level.height
+    npcs = [e["monster"]["npc"] for e in level.entries.values() if "monster" in e]
+    assert set(npcs) == {"mon_gatterbock", "mon_mauerschlupfer"}  # the owner's choice for E5
+    assert {p["kind"] for p in level.props.values()} == {"workbench", "cogwheel"}
+    traps = [at for at in level.cells("T") if level.entries[at]["teleport"].get("trap")]
+    assert len(traps) == 1
+    up = [level.entries[at]["teleport"] for at in level.cells("T")
+          if "world" in level.entries[at]["teleport"]]  # fmt: skip
+    assert [(t["world"], t["active"]) for t in up] == [
+        ("worlds/leonberg/dungeon/ebene_01.g7world", False)
+    ]
+    down = [level.entries[at]["stairs"]["world"] for at in level.cells(">")]
+    assert down == ["worlds/leonberg/dungeon/ebene_06.g7world"]
+    assert load_level(DATA, 6).theme == "labyrinth"
+
+
+def test_level_5_riddles_hold() -> None:
+    """Without the loose stone the trap keeps the hall shut; without the Schmiede's lever the
+    weight alone does not open the clockwork; without the depot's stone the depot stays shut."""
+    level = load_level(DATA, 5)
+    level.entries[(7, 1)]["switch"]["targets"] = ["RELAY_E05_GEWICHT"]
+    reach = check_reach(level)
+    assert (15, 9) in reach.unreached and (23, 21) in reach.unreached
+    level = load_level(DATA, 5)
+    lever = level.entries[(2, 15)]["switch"]  # still an input, but never thrown "on"
+    lever["type"], lever["action"] = "wall_button", "close"
+    assert (14, 14) in check_reach(level).unreached
+    level = load_level(DATA, 5)
+    level.entries[(19, 4)]["switch"]["targets"] = ["GATE_E05_8_12"]
+    assert (23, 9) in check_reach(level).unreached

@@ -12,8 +12,9 @@ places ``SPAWN_E01_<x>_<y>`` like ``m``, but on any floor cell, also in the wate
 Brunnenmolch lurks there), ``water`` (``depthM`` of a basin's floor below the others,
 ``edgeM`` of the water's surface below the edge; plan W8 D3) and ``props`` (still pieces of the
 kit on a plain floor cell: ``at``, ``kind``, ``facing``; vobs ``PROP_E04_<x>_<y>``). A
-``sarcophagus`` stands in the middle of its cell and blocks it (no waypoint, no way through); a
-``bone_niche`` stands against the wall behind it (opposite ``facing``) and leaves the cell free.
+``sarcophagus`` or ``workbench`` stands in the middle of its cell and blocks it (no waypoint, no
+way through); a ``bone_niche`` or ``cogwheel`` hangs on the wall behind it (opposite ``facing``)
+and leaves the cell free.
 A teleporter with ``trap: true`` is invisible and shows no ring (a trap, W8 E4).
 
 Characters (contract of the plan): ``#`` wall, ``.`` floor, ``D`` door, ``G`` gate, ``P`` trapdoor,
@@ -49,7 +50,8 @@ DIRS = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0)}
 SWITCH_TYPES = {"lever", "wall_button"}
 RELAY_MODES = {"any", "all", "count"}
 ACTIONS = {"toggle", "open", "close", "on", "off", "wake", "trigger", "lock", "unlock"}
-PROPS = {"sarcophagus": True, "bone_niche": False}  # kind -> blocks its cell
+# kind -> blocks its cell (stands in its middle); the others hang on the wall behind the cell
+PROPS = {"sarcophagus": True, "bone_niche": False, "workbench": True, "cogwheel": False}
 
 
 class LevelError(ValueError):
@@ -259,7 +261,7 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
 
 
 def _check_props(level: Level) -> None:
-    """A bone niche needs a wall behind it; a sarcophagus must not fill a cell that something
+    """A wall prop needs a wall behind it; a blocking prop must not fill a cell that something
     else needs (an arrival, a teleporter's target, an item, a monster, a switch's stand)."""
     need: set[tuple[int, int]] = {st["at"] for st in level.starts} | set(level.spawns)
     need |= {it["at"] for it in level.items}
@@ -272,8 +274,8 @@ def _check_props(level: Level) -> None:
             need.add((at[0] + dx, at[1] + dy))
     for at, pr in level.props.items():
         dx, dy = DIRS[pr.get("facing", "S")]
-        if pr["kind"] == "bone_niche" and level.is_floor(at[0] - dx, at[1] - dy):
-            raise LevelError(f"{level.prop_name(at)}: a bone niche needs a wall behind it")
+        if not PROPS[pr["kind"]] and level.is_floor(at[0] - dx, at[1] - dy):
+            raise LevelError(f"{level.prop_name(at)}: a wall prop needs a wall behind it")
         if PROPS[pr["kind"]] and at in need:
             raise LevelError(f"{level.prop_name(at)}: the cell is needed (start, target, item …)")
 
