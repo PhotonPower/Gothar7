@@ -31,6 +31,7 @@ from gothar_worldgen.dungeon import kit
 from gothar_worldgen.dungeon.kit import KitMesh
 from gothar_worldgen.dungeon.level import DIRS, FLOOR_CHARS, PROPS, Level, LevelError, _cell
 from gothar_worldgen.dungeon.logic import check_reach
+from gothar_worldgen.textures.procedural import DUNGEON_KINDS
 from gothar_worldgen.waynet.write import tidy
 
 BLOCK = 8  # cells per block side
@@ -99,6 +100,19 @@ THEMES = {  # theme -> (ambient zone, environment)
         },
     ),
 }
+# floor, ceiling, ribs every RIB_CELLS cells (ashlar arches or oak beams), inlays of planks
+# and iron plates (owner 2026-11-26: floor and ceiling unlike the walls)
+SURFACES = {
+    "gewoelbe": ("flag", "vault_brick", "ashlar", False),
+    "verlies": ("flag", "vault_rock", "oak_beam", False),
+    "zisterne": ("flag_damp", "vault_brick", "ashlar", False),
+    "beinhaus": ("flag_dust", "vault_rock", "ashlar", False),
+    "werkstatt": ("flag", "vault_brick", "oak_beam", True),
+    "labyrinth": ("flag", "vault_brick", "ashlar", False),
+}
+RIB_CELLS = 2  # a rib every 6 m
+RIB_W, RIB_D = 0.36, 0.24  # width across the boundary, depth below the ceiling
+CORBEL_D, CORBEL_H = 0.28, 0.75  # where a rib meets the wall
 MUSIC = "DUNGEON"
 KIT_PATH = "worlds/{site}/dungeon/kit/{name}.glb"
 SIDE_WANT = {"N": (0.0, 0.0, 1.0), "S": (0.0, 0.0, -1.0), "W": (1.0, 0.0, 0.0),
@@ -153,6 +167,8 @@ class _Gen:
         self.wells: dict[Cell, Cell] = {level.well(at): at for at in level.cells("<>")}
         self.shafts = {st["at"] for st in level.starts if st.get("shaft")}
         self.tag = level.tag
+        floor, ceiling, rib, inlay = SURFACES.get(level.theme, SURFACES["gewoelbe"])
+        self.floor_mat, self.ceil_mat, self.rib_mat, self.inlay = floor, ceiling, rib, inlay
 
     # --- geometry helpers ---------------------------------------------------------------------
     def x0(self, x: int) -> float:
@@ -254,6 +270,7 @@ class _Gen:
     def build(self) -> Plan:
         for at in sorted(self.walk | set(self.wells), key=lambda a: (a[1], a[0])):
             self.cell(at)
+        self.ribs()
         self.collision()
         self.merge_empty()
         self.mechanics()
@@ -261,6 +278,54 @@ class _Gen:
         self.waynet()
         self.zones()
         return self.plan
+
+    def floor_material(self, at: Cell) -> str:
+        """Flagstones; in the workshops some cells have planks or an iron plate instead."""
+        if self.inlay and self.lv.char(*at) == ".":
+            k = (at[0] * 7 + at[1] * 13) % 9
+            if k == 0:
+                return "oak"
+            if k == 4:
+                return "plate"
+        return self.floor_mat
+
+    def _ceiled(self, at: Cell) -> bool:
+        return at in self.walk and at not in self.shafts and self.ceil(at) == self.h
+
+    def ribs(self) -> None:
+        """Ribs under the ceiling every ``RIB_CELLS`` cells across the boundary of two ceiled
+        cells: cross arches in a corridor, a grid in a room; a corbel where a rib meets a wall."""
+        c, top = self.c, self.y(self.h)
+        hw = RIB_W / 2
+        for at in sorted(self.walk, key=lambda a: (a[1], a[0])):
+            for dx, dy in ((1, 0), (0, 1)):
+                nb = (at[0] + dx, at[1] + dy)
+                k = nb[0] if dx else nb[1]
+                if k % RIB_CELLS or not (self._ceiled(at) and self._ceiled(nb)):
+                    continue
+                mesh = self.mesh(at)
+                if dx:  # a rib along z on the line x = x0(nb)
+                    x = self.x0(nb[0])
+                    z0, z1 = self.z0(at[1]), self.z0(at[1]) + c
+                    mesh.box(self.rib_mat, (x - hw, top - RIB_D, z0), (x + hw, top, z1), grain=2)
+                    ends = (((at[0], at[1] - 1), (nb[0], nb[1] - 1), z0, 1.0),
+                            ((at[0], at[1] + 1), (nb[0], nb[1] + 1), z1, -1.0))  # fmt: skip
+                    for a, b, z, s in ends:
+                        if not self.open_cell(a) and not self.open_cell(b):
+                            za, zb = sorted((z, z + s * CORBEL_D))
+                            mesh.box(self.rib_mat, (x - hw, top - RIB_D - CORBEL_H, za),
+                                     (x + hw, top - RIB_D, zb), grain=1)  # fmt: skip
+                else:  # a rib along x on the line z = z0(nb)
+                    z = self.z0(nb[1])
+                    x0, x1 = self.x0(at[0]), self.x0(at[0]) + c
+                    mesh.box(self.rib_mat, (x0, top - RIB_D, z - hw), (x1, top, z + hw), grain=0)
+                    ends = (((at[0] - 1, at[1]), (nb[0] - 1, nb[1]), x0, 1.0),
+                            ((at[0] + 1, at[1]), (nb[0] + 1, nb[1]), x1, -1.0))  # fmt: skip
+                    for a, b, x, s in ends:
+                        if not self.open_cell(a) and not self.open_cell(b):
+                            xa, xb = sorted((x, x + s * CORBEL_D))
+                            mesh.box(self.rib_mat, (xa, top - RIB_D - CORBEL_H, z - hw),
+                                     (xb, top - RIB_D, z + hw), grain=1)  # fmt: skip
 
     def merge_empty(self) -> None:
         """Blocks with collision only (walls beyond the last floor) give their bodies to the
@@ -288,11 +353,11 @@ class _Gen:
         elif ch == "P":
             self.shaft_down(at)
         else:
-            self.flat(at, self.floor(at), True, "floor")
+            self.flat(at, self.floor(at), True, self.floor_material(at))
         if at in self.shafts:
             self.shaft_up(at)
         else:
-            self.flat(at, self.ceil(at), False, "rubble")
+            self.flat(at, self.ceil(at), False, self.ceil_mat)
         for side, (dx, dy) in DIRS.items():
             nb = (at[0] + dx, at[1] + dy)
             if self.connected(at, nb):
@@ -382,8 +447,8 @@ class _Gen:
             (x0, z0 + a, x0 + a, z0 + b),
             (x0 + b, z0 + a, x0 + c, z0 + b),
         ):
-            self.flat(at, 0.0, True, "floor", r)
-        self.flat(at, -SHAFT_M, True, "floor", (x0 + a, z0 + a, x0 + b, z0 + b))
+            self.flat(at, 0.0, True, self.floor_mat, r)
+        self.flat(at, -SHAFT_M, True, self.floor_mat, (x0 + a, z0 + a, x0 + b, z0 + b))
         m = self.mesh(at)
         ya, yb = self.y(-SHAFT_M), self.y(0.0)
         ring = [(x0 + a, z0 + a), (x0 + b, z0 + a), (x0 + b, z0 + b), (x0 + a, z0 + b)]
@@ -1275,5 +1340,7 @@ def generate(
         out, used = generate_level(level, site, worlds, data)
         lines += out
         kinds |= used
-    kit.write_textures(worlds.parents[1] / "furniture" / "textures", kinds)
+    shared = {k for k in kinds if k not in DUNGEON_KINDS}  # with the mobs and props
+    kit.write_textures(worlds.parents[1] / "furniture" / "textures", shared)
+    kit.write_textures(worlds / "dungeon" / "textures", kinds - shared)
     return lines

@@ -44,6 +44,12 @@ TILE_M = {  # metres covered by one texture (u, v)
     "bark": (1.0, 2.0),  # around the trunk, up it
     "slab": (0.5, 2.0),  # a gutter of flat slabs: across it (one slab wide), along it (W6)
     "ashlar": (2.0, 2.0),  # dressed stone blocks of the castle in courses (W7)
+    # the dungeon's floors and ceilings (W8, owner 2026-11-26: floor and ceiling unlike the walls)
+    "flagstone": (3.0, 3.0),
+    "flagstone_damp": (3.0, 3.0),
+    "flagstone_dust": (3.0, 3.0),
+    "brick": (1.0, 1.0),
+    "rock": (2.0, 2.0),
 }
 
 
@@ -584,6 +590,129 @@ def bark(size: int, rng: np.random.Generator) -> Texture:
     return Texture("bark", _mean_one(val), 0.8 * furrows + 0.2 * breaks, 3.0)
 
 
+def _flagstone(size: int, rng: np.random.Generator, variant: str) -> Texture:
+    """Large worn flagstones of irregular size and outline (Voronoi cells, about 40..100 cm),
+    dark open joints, smooth faces of different shade with a few cracks and worn hollows; darker
+    and smoother than the rubble walls. ``damp``: wet dark blotches and green-black algae in the
+    joints; ``dust``: grey dust lying in the hollows and along the joints."""
+    n = 5  # seeds per 3 m: slabs of about 60 cm, bigger and smaller by the jitter
+    _, edge, idx = periodic_cells((size, size), n, rng, jitter=1.0)
+    px = edge * size  # pixels to the joint
+    wobble = periodic_noise((size, size), rng, beta=2.2) - 0.5
+    chips = periodic_noise((size, size), rng, beta=1.4, low_cut=12.0) - 0.5
+    gap = px + 4.0 * wobble + 2.0 * chips
+    joint = np.clip(1.0 - (gap - 2.5) / 1.5, 0.0, 1.0)  # 1..2 cm, ragged
+    bevel = np.clip(gap / 10.0, 0.0, 1.0) ** 0.5
+    k = n * n
+    shade = rng.uniform(0.75, 1.15, k)[idx]
+    warm = rng.uniform(-0.03, 0.05, k)[idx]
+    grain = periodic_noise((size, size), rng, beta=1.6, low_cut=8.0)
+    wear = periodic_noise((size, size), rng, beta=2.6)  # trodden smooth, worn hollows
+    hollow = np.clip((wear - 0.62) / 0.2, 0.0, 1.0)
+    crack_n = periodic_noise((size, size), rng, beta=1.8, low_cut=3.0)
+    cracked = rng.uniform(0, 1, k)[idx] < 0.35  # about a third of the slabs is cracked
+    crack = np.clip(1.0 - np.abs(crack_n - 0.5) / 0.012, 0.0, 1.0) * cracked * (bevel > 0.5)
+    val = shade * (0.95 + 0.16 * (grain - 0.5)) * (0.86 + 0.14 * bevel) - 0.18 * hollow
+    val = val * (1.0 - 0.6 * crack)
+    rgb = np.stack([val * (1 + warm), val, val * (1 - warm)], axis=-1)
+    dirt = np.array([0.18, 0.165, 0.15]) * (0.8 + 0.4 * grain[:, :, None])  # dark open joints
+    rgb = rgb * (1 - joint[:, :, None]) + dirt * joint[:, :, None]
+    if variant == "damp":
+        wet = np.clip((periodic_noise((size, size), rng, beta=2.4) - 0.4) / 0.3, 0.0, 1.0)
+        rgb = rgb * (1.0 - 0.35 * wet[:, :, None])
+        algae = np.clip(joint + 0.6 * (1 - bevel), 0.0, 1.0) * (0.5 + 0.5 * wet)
+        green = np.array([0.12, 0.16, 0.1]) * 0.6
+        rgb = rgb * (1 - 0.6 * algae[:, :, None]) + green * algae[:, :, None]
+    elif variant == "dust":
+        dust = np.clip(0.8 * hollow + 0.4 * (1 - bevel), 0.0, 1.0) * (1 - joint)  # joints stay dark
+        dust = dust * (0.6 + 0.4 * periodic_noise((size, size), rng, beta=2.0))
+        grey = rgb.mean(axis=2, keepdims=True)
+        rgb = rgb * 0.6 + grey * 0.4  # a dusty grey tone everywhere
+        powder = np.array([1.25, 1.22, 1.18]) * 0.5
+        rgb = rgb * (1 - 0.5 * dust[:, :, None]) + powder * dust[:, :, None]
+    height = 0.8 * bevel * (1 - joint) + 0.06 * grain - 0.15 * hollow - 0.2 * crack
+    kind = "flagstone" if variant == "plain" else f"flagstone_{variant}"
+    return Texture(kind, _mean_one(np.clip(rgb, 0.03, None)), height - height.min(), 3.0)
+
+
+def flagstone(size: int, rng: np.random.Generator) -> Texture:
+    return _flagstone(size, rng, "plain")
+
+
+def flagstone_damp(size: int, rng: np.random.Generator) -> Texture:
+    return _flagstone(size, rng, "damp")
+
+
+def flagstone_dust(size: int, rng: np.random.Generator) -> Texture:
+    return _flagstone(size, rng, "dust")
+
+
+def brick(size: int, rng: np.random.Generator) -> Texture:
+    """Small vault bricks in running bond (about 25 x 7 cm, 1 cm lime joints), red to brown with
+    a few burnt dark ones, lighter and redder than the rubble walls; soot in patches."""
+    px_m = size / TILE_M["brick"][0]
+    rows = _courses(rng, size, int(0.065 * px_m), int(0.075 * px_m))
+    dist = np.full((size, size), 1e3)
+    shade = np.ones((size, size))
+    red = np.zeros((size, size))
+    y0 = 0
+    for h in rows:
+        widths = _courses(rng, size, int(0.22 * px_m), int(0.28 * px_m))
+        x0 = int(rng.integers(0, size))
+        ys = np.arange(y0, y0 + h)
+        ly = (ys - y0)[:, None].astype(float)
+        dy = np.minimum(ly, h - 1 - ly)
+        for w in widths:
+            cols = (x0 + np.arange(w)) % size
+            lx = np.arange(w)[None, :].astype(float)
+            sub = np.ix_(ys, cols)
+            dist[sub] = np.minimum(np.minimum(lx, w - 1 - lx), dy)
+            burnt = rng.uniform() < 0.15
+            shade[sub] = rng.uniform(0.55, 0.75) if burnt else rng.uniform(0.85, 1.15)
+            red[sub] = rng.uniform(0.15, 0.35)
+            x0 += w
+        y0 += h
+    grain = periodic_noise((size, size), rng, beta=1.2, low_cut=10.0)
+    chips = periodic_noise((size, size), rng, beta=1.4, low_cut=16.0) - 0.5
+    joint = np.clip(1.0 - (dist + 2.0 * chips - 2.0) / 1.2, 0.0, 1.0)
+    bevel = np.clip((dist + 2.0 * chips) / 4.0, 0.0, 1.0) ** 0.5
+    val = shade * (0.92 + 0.2 * (grain - 0.5)) * (0.85 + 0.15 * bevel)
+    rgb = np.stack([val * (1 + red), val, val * (1 - red)], axis=-1)
+    lime = np.array([1.1, 1.05, 0.95]) * (0.8 + 0.3 * grain[:, :, None])
+    rgb = rgb * (1 - joint[:, :, None]) + lime * joint[:, :, None]
+    soot = np.clip((periodic_noise((size, size), rng, beta=2.6) - 0.55) / 0.3, 0.0, 1.0)
+    rgb = rgb * (1.0 - 0.45 * soot[:, :, None])
+    height = 0.8 * bevel * (1 - joint) + 0.1 * grain
+    return Texture("brick", _mean_one(rgb), height - height.min(), 2.5)
+
+
+def rock(size: int, rng: np.random.Generator) -> Texture:
+    """Rough dark natural stone, hewn and not laid: broad lumps and hollows, crossing fissures,
+    soot-black stains and a few lighter mineral streaks."""
+    lumps = periodic_noise((size, size), rng, beta=2.6)
+    mid = periodic_noise((size, size), rng, beta=1.8, low_cut=4.0)
+    fine = periodic_noise((size, size), rng, beta=1.0, low_cut=16.0)
+    fis = periodic_noise((size, size), rng, beta=1.9, low_cut=2.0)
+    fissure = np.clip(1.0 - np.abs(fis - 0.5) / 0.015, 0.0, 1.0)
+    soot = np.clip((periodic_noise((size, size), rng, beta=2.8) - 0.5) / 0.3, 0.0, 1.0)
+    veins = periodic_noise((size, size), rng, beta=1.6, aniso=(1.0, 6.0))
+    streak = np.clip((veins - 0.8) / 0.1, 0.0, 1.0)
+    height = 0.55 * lumps + 0.3 * mid + 0.15 * fine - 0.3 * fissure
+    val = (0.75 + 0.8 * (height - 0.5) + 0.2 * (fine - 0.5)) * (1 - 0.6 * soot)
+    val = val * (1.0 - 0.7 * fissure) + 0.25 * streak * (1 - soot)
+    rgb = np.stack([val * 1.03, val, val * 0.96], axis=-1)
+    return Texture("rock", _mean_one(np.clip(rgb, 0.05, None)), height - height.min(), 5.0)
+
+
+# the dungeon's floors and ceilings (W8): blocks of the levels, textures in furniture/textures
+DUNGEON_KINDS = {
+    "flagstone": flagstone,
+    "flagstone_damp": flagstone_damp,
+    "flagstone_dust": flagstone_dust,
+    "brick": brick,
+    "rock": rock,
+}
+
 TERRAIN_KINDS = {"cobbles": cobbles}
 # materials of the mobs (assets/source/mobs, not tied to a place); boards and timber come from KINDS
 MOB_KINDS = {
@@ -601,7 +730,8 @@ MOB_KINDS = {
 def make(kind: str, size: int = 1024, seed: int = 7) -> Texture:
     """One texture; the seed is mixed with the kind, so kinds differ but stay reproducible."""
     rng = np.random.default_rng([seed, sum(ord(c) * 31**i for i, c in enumerate(kind)) % 2**31])
-    return (KINDS.get(kind) or TERRAIN_KINDS.get(kind) or MOB_KINDS[kind])(size, rng)
+    build = KINDS.get(kind) or TERRAIN_KINDS.get(kind) or DUNGEON_KINDS.get(kind)
+    return (build or MOB_KINDS[kind])(size, rng)
 
 
 def to_png(img: Image, path: Path, srgb: bool, scale: float = ALBEDO_SCALE) -> None:

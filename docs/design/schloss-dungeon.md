@@ -191,6 +191,25 @@ Ganzes aufschwingt.
   - Freepoints `FP_ROAM_DNG_…` für umherstreifende Monster;
   - Monsterplätze aus der Karte als Spawn-Punkte.
 
+### 3.5 Boden und Decke (Entscheidung Projektinhaber 2026-11-26)
+„Mach den Boden und die Decke anders als die Wände.“ Die Wände bleiben Bruchstein. Alle Texturen sind prozedural
+(`textures/procedural.py`, `DUNGEON_KINDS`) und liegen in `assets/source/worlds/leonberg/dungeon/textures/` (nicht im gemeinsamen Ordner der Mobs).
+- **Boden:** große, abgetretene Steinplatten unterschiedlicher Größe und Form (`flagstone`, Kachel 3 m, Platten etwa
+  40–100 cm) mit dunklen offenen Fugen, einigen Rissen und ausgetretenen Mulden; dunkler und glatter als die Wand.
+  Je Thema:
+  - Zisterne: `flagstone_damp`, feucht und dunkler, mit schwarzgrünen Algen in den Fugen;
+  - Beinhaus: `flagstone_dust`, staubgrau, Staub in den Mulden;
+  - Werkstatt: einzelne Zellen mit Dielen (`oak`) oder eingelassener Eisenplatte (`plate`).
+- **Decke:** deutlich anders als die Wand, mit Gurtbögen bzw. Balken alle 6 m (zwei Zellen) quer zu jedem Gang; in
+  Räumen ergibt das ein Raster. Wo ein Bogen auf eine Wand trifft, trägt ihn eine Konsole.
+  - kleine Ziegel (`brick`, heller und röter als die Wand, Ruß in Flecken) mit Quader-Gurtbögen: Gewölbe (E1),
+    Zisterne (E3), Labyrinth (E6); mit Eichenbalken: Werkstatt (E5);
+  - rauer dunkler Naturstein (`rock`, Klüfte, Rußflecken) mit Eichenbalken: Verlies (E2); mit Quader-Gurtbögen:
+    Beinhaus (E4).
+- Ein echtes Tonnengewölbe wäre bei freien Raumformen viel Geometrie; die flache Decke mit Bögen ist die vereinbarte
+  Mindestlösung. Rußflecken als eigene Flächen über den Fackeln wirkten wie Löcher und entfallen; der Ruß steckt in
+  den Decken-Texturen.
+
 ---
 
 ## 4. Inhalte: Monster und Schätze
