@@ -25,7 +25,7 @@
     {"id":27,"type":"mesh","name":"BLOCK_E05_2_2","pos":[48.0,0.0,48.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/dungeon/ebene_05/block_2_2.glb","category":"gameplay"},
     {"id":28,"type":"mesh","name":"BLOCK_E05_3_2","pos":[72.0,0.0,48.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/dungeon/ebene_05/block_3_2.glb","category":"gameplay"},
     {"id":29,"type":"mob","name":"BUTTON_E05_7_1","pos":[22.5,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/dungeon/kit/wall_button.glb","components":{"mob":{"definition":"wall_button","targets":["TELE_E05_9_2"],"action":"off","once":true,"hidden":true}}},
-    {"id":30,"type":"mob","name":"CHEST_E05_26_1","pos":[79.5,0.0,3.45],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"chest"}}},
+    {"id":30,"type":"mob","name":"CHEST_E05_26_1","pos":[79.5,0.0,3.45],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"mob_dng_e5_chest_lager"}}},
     {"id":31,"type":"empty","name":"TELE_E05_9_2_ZIEL","pos":[10.5,0.0,10.5],"rot":[0.0,-0.70711,0.0,0.70711]},
     {"id":32,"type":"trigger","name":"TELE_E05_9_2","pos":[28.5,1.0,7.5],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.0,1.0,1.0],"filter":"player","once":false,"teleport":{"to":"TELE_E05_9_2_ZIEL","visible":false,"filter":"player","active":true}}}},
     {"id":33,"type":"spawn","name":"SPAWN_E05_24_3","pos":[73.5,0.0,10.5],"rot":[0.0,1.0,0.0,0.0],"components":{"spawn":{"npc":"mon_mauerschlupfer","count":2,"respawn":false,"dormant":true}}},
@@ -33,9 +33,9 @@
     {"id":35,"type":"mesh","name":"PLATE_E05_15_9_STEIN","pos":[46.5,0.0,28.5],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/dungeon/kit/plate.glb"},
     {"id":36,"type":"trigger","name":"PLATE_E05_15_9","pos":[46.5,0.25,28.5],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,0.25,0.8],"filter":"any","once":false,"targets":["RELAY_E05_GEWICHT"],"action":"open","plate":{"weight":"any"}}}},
     {"id":37,"type":"mesh","name":"WALL_E05_20_9","pos":[61.5,0.0,28.5],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/dungeon/kit/secret_wall.glb","category":"gameplay","components":{"mover":{"kind":"secret_wall","open":false,"seconds":3.0,"offset":[0.0,-4.1,0.0],"crush":"stop"}}},
-    {"id":38,"type":"mob","name":"NICHE_E05_25_9","pos":[75.0,0.0,28.5],"rot":[0.0,-0.70711,0.0,0.70711],"mesh":"worlds/leonberg/dungeon/kit/niche.glb","components":{"mob":{"definition":"niche"}}},
-    {"id":39,"type":"mob","name":"CHEST_E05_1_10","pos":[4.5,0.0,30.45],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"chest"}}},
-    {"id":40,"type":"mob","name":"NICHE_E05_7_10","pos":[21.0,0.0,31.5],"rot":[0.0,-0.70711,0.0,0.70711],"mesh":"worlds/leonberg/dungeon/kit/niche.glb","components":{"mob":{"definition":"niche"}}},
+    {"id":38,"type":"mob","name":"NICHE_E05_25_9","pos":[75.0,0.0,28.5],"rot":[0.0,-0.70711,0.0,0.70711],"mesh":"worlds/leonberg/dungeon/kit/niche.glb","components":{"mob":{"definition":"mob_dng_e5_niche_depot"}}},
+    {"id":39,"type":"mob","name":"CHEST_E05_1_10","pos":[4.5,0.0,30.45],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"mob_dng_e5_chest_schmiede"}}},
+    {"id":40,"type":"mob","name":"NICHE_E05_7_10","pos":[21.0,0.0,31.5],"rot":[0.0,-0.70711,0.0,0.70711],"mesh":"worlds/leonberg/dungeon/kit/niche.glb","components":{"mob":{"definition":"mob_dng_e5_niche_schmiede"}}},
     {"id":41,"type":"spawn","name":"SPAWN_E05_4_12","pos":[13.5,0.0,37.5],"rot":[0.0,1.0,0.0,0.0],"components":{"spawn":{"npc":"mon_mauerschlupfer","count":1,"respawn":false,"dormant":true}}},
     {"id":42,"type":"mesh","name":"GATE_E05_8_12","pos":[25.5,0.0,37.5],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"worlds/leonberg/dungeon/kit/gate.glb","category":"gameplay","components":{"mover":{"kind":"gate","open":false,"seconds":2.0,"crush":"stop"}}},
     {"id":43,"type":"spawn","name":"SPAWN_E05_15_12","pos":[46.5,0.0,37.5],"rot":[0.0,1.0,0.0,0.0],"components":{"spawn":{"npc":"mon_gatterbock","count":1,"respawn":false,"dormant":true}}},
@@ -50,10 +50,10 @@
     {"id":52,"type":"mob","name":"DOOR_E05_20_17","pos":[61.5,0.0,53.0],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"mobs/door.glb","components":{"mob":{"definition":"door"}}},
     {"id":53,"type":"mob","name":"LEVER_E05_26_17","pos":[78.0,0.0,52.5],"rot":[0.0,-0.70711,0.0,0.70711],"mesh":"worlds/leonberg/dungeon/kit/lever.glb","components":{"mob":{"definition":"lever","targets":["TELE_E05_25_16"],"action":"on"}}},
     {"id":54,"type":"spawn","name":"SPAWN_E05_5_18","pos":[16.5,0.0,55.5],"rot":[0.0,1.0,0.0,0.0],"components":{"spawn":{"npc":"mon_mauerschlupfer","count":2,"respawn":false,"dormant":true}}},
-    {"id":55,"type":"mob","name":"CHEST_E05_19_19","pos":[59.55,0.0,58.5],"rot":[0.0,-0.70711,0.0,0.70711],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"chest"}}},
-    {"id":56,"type":"mob","name":"NICHE_E05_9_20","pos":[27.0,0.0,61.5],"rot":[0.0,-0.70711,0.0,0.70711],"mesh":"worlds/leonberg/dungeon/kit/niche.glb","components":{"mob":{"definition":"niche"}}},
-    {"id":57,"type":"mob","name":"CHEST_E05_2_21","pos":[6.45,0.0,64.5],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"chest"}}},
-    {"id":58,"type":"mob","name":"CHEST_E05_21_21","pos":[63.45,0.0,64.5],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"chest"}}},
+    {"id":55,"type":"mob","name":"CHEST_E05_19_19","pos":[59.55,0.0,58.5],"rot":[0.0,-0.70711,0.0,0.70711],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"mob_dng_e5_chest_uhrwerk"}}},
+    {"id":56,"type":"mob","name":"NICHE_E05_9_20","pos":[27.0,0.0,61.5],"rot":[0.0,-0.70711,0.0,0.70711],"mesh":"worlds/leonberg/dungeon/kit/niche.glb","components":{"mob":{"definition":"mob_dng_e5_niche_giesserei"}}},
+    {"id":57,"type":"mob","name":"CHEST_E05_2_21","pos":[6.45,0.0,64.5],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"mob_dng_e5_chest_giesserei"}}},
+    {"id":58,"type":"mob","name":"CHEST_E05_21_21","pos":[63.45,0.0,64.5],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"mob_dng_e5_chest_treppe"}}},
     {"id":59,"type":"trigger","name":"STAIRS_E05_23_21","pos":[70.5,-0.44,68.4],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.3,1.2,0.45],"filter":"player","once":false,"changeWorld":{"world":"worlds/leonberg/dungeon/ebene_06.g7world","start":"START_E06_VON_OBEN"}}}},
     {"id":60,"type":"start","name":"START_E05_VON_UNTEN","pos":[70.5,0.0,64.5],"rot":[0.0,0.0,0.0,1.0]},
     {"id":61,"type":"relay","name":"RELAY_E05_GEWICHT","pos":[43.5,2.0,37.5],"rot":[0.0,0.0,0.0,1.0],"components":{"relay":{"mode":"all","delay":0.0,"once":false,"invert":false,"targets":["GATE_E05_14_13"],"action":"open"}}},
@@ -1044,6 +1044,7 @@
   },
   "zones": [
     {"type":"music","value":"DUNGEON","box":{"center":[42.0,1.75,36.0],"halfExtents":[42.0,6.55,36.0],"yaw":0.0}},
-    {"type":"ambient","value":"gewoelbe","box":{"center":[42.0,1.75,36.0],"halfExtents":[42.0,6.55,36.0],"yaw":0.0}}
+    {"type":"ambient","value":"gewoelbe","box":{"center":[42.0,1.75,36.0],"halfExtents":[42.0,6.55,36.0],"yaw":0.0}},
+    {"type":"ambient","value":"werkstatt","box":{"center":[42.0,1.75,36.0],"halfExtents":[42.0,6.55,36.0],"yaw":0.0}}
   ]
 }

@@ -56,7 +56,9 @@ def test_every_mechanic_follows_the_contract() -> None:
         "action": "toggle",
     }
     assert lever["pos"][2] == pytest.approx(5 * 3.0)  # on the wall face towards the south
-    assert by["NICHE_E01_9_7"]["components"]["mob"]["definition"] == "niche"
+    assert (
+        by["NICHE_E01_9_7"]["components"]["mob"]["definition"] == "mob_dng_e1_niche"
+    )  # content from Lua (engine #491)
     door = by["DOOR_E01_13_8"]["components"]["mob"]
     assert door == {"definition": "door", "one_way": "back"}
     tele = by["TELE_E01_16_7"]["components"]["trigger"]["teleport"]

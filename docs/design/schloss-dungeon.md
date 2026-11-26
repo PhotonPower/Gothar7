@@ -364,7 +364,6 @@ schreibt.
   - Brunnenstube (Truhe, Nische, Trank), Ostkammer (Tür, Truhe), Pumpenkammer (Tür).
   - Schleusenkammer: Treppe hinab und Falltür (Platte `player`) nach Ebene 4; Treppe hinauf nach Ebene 2.
 - **Ebene 4** siehe 7d.
-- **Offen für engine:** Instanz `mon_brunnenmolch` (bis dahin drei Ladewarnungen), Ambiente `zisterne` und `beinhaus`.
 
 ## 7d. Stand D3 (welt): Ebene 4 „Beinhaus“, Ebene 5 als Stub
 - **Neu in der Karten-JSON:**
@@ -398,15 +397,13 @@ schreibt.
   - Erreichbarkeit grün; mit 4 s Verzögerung bleibt die Treppenkammer zu, ohne den losen Stein ist die Gruft eine
     Sackgasse (Tests).
 - **Ebene 5** siehe 7e.
-- **Offen für engine:** Instanz `mon_beinhauswart` (#480; bis dahin eine Ladewarnung), Mob-Definitionen für Truhen und
-  Nischen der Ebene 4.
 
 ## 7e. Stand D3 (welt): Ebene 5 „Werkstätten der Erbauer“, Ebene 6 als Stub
 - **Neu im Baukasten:** `workbench` (Eichen-Werkbank mit Schraubstock und Werkzeug, füllt ihre Zelle wie ein
   Sarkophag) und `cogwheel` (eisernes Zahnrad des Uhrwerks, 2 m Durchmesser, Nabe in 1,75 m Höhe, hängt an der Wand
   wie eine Knochennische). Allgemein gilt jetzt: Requisiten, die ihre Zelle füllen, stehen in der Mitte; alle anderen
   hängen an der Wand hinter der Zelle.
-- **Ebene 5** (28 × 24, 324 begehbare Zellen = 48 %, davon 5 mit Werkbank):
+- **Ebene 5** (Ambiente `werkstatt`; 28 × 24, 324 begehbare Zellen = 48 %, davon 5 mit Werkbank):
   - Ankunft mit Treppe hinauf; Gang nach Osten zur Zahnradhalle (10 × 8, vier Pfeiler, Zahnräder) und zum Lager
     (Mauerschlupfer, Truhe, Hammer).
   - **Rätsel 1 (neu, Rücksetz-Falle):** Im Gang liegt ein unsichtbarer Teleporter (`trap`), der zurück in die Ankunft
@@ -426,7 +423,15 @@ schreibt.
   - Erreichbarkeit grün; ohne den losen Stein bleiben Halle und Treppe unerreichbar, ohne den Hebel der Schmiede die
     Uhrwerkskammer, ohne den Depot-Stein das Depot (Tests).
 - **Ebene 6** als Stub (Thema `labyrinth`, vorerst Ambiente `gewoelbe`).
-- **Offen für engine:** Ambiente `werkstatt`, Mob-Definitionen für Truhen und Nischen der Ebene 5.
+
+## 7f. Truhen, Nischen und Ambienten (welt, nach engine #491/#494/#496/#502)
+- Alle Truhen und Nischen der Ebenen 1–5 tragen ihre Mob-Definition aus `game/scripts/mobs/dungeon.lua`
+  (`definition` in der Karten-JSON, z. B. `mob_dng_e2_chest_osthalle`, `mob_dng_e4_niche_beinhaus`); der Inhalt kommt
+  aus Lua. Die Zellen stimmen mit engines Liste überein.
+- Ambienten je Thema: Ebene 3 `zisterne`, Ebene 4 `beinhaus`, Ebene 5 `werkstatt` (Ebene 1, 2 und 6 weiter
+  `gewoelbe`).
+- Damit sind die engine-Punkte unter 7a–7e erledigt (Instanzen `mon_brunnenmolch` und `mon_beinhauswart` sind auf
+  main, die Ebenen laden ohne Warnung).
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |

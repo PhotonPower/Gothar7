@@ -296,3 +296,12 @@ def test_level_5_riddles_hold() -> None:
     level = load_level(DATA, 5)
     level.entries[(19, 4)]["switch"]["targets"] = ["GATE_E05_8_12"]
     assert (23, 9) in check_reach(level).unreached
+
+
+@pytest.mark.parametrize("number", [1, 2, 3, 4, 5])
+def test_chests_and_niches_name_their_lua_definition(number: int) -> None:
+    """engine's contents (game/scripts/mobs/dungeon.lua): one definition per chest and niche."""
+    level = load_level(DATA, number)
+    defs = [level.entries[at][level.kind(at)]["definition"] for at in level.cells("*N")]
+    assert defs and all(d.startswith(f"mob_dng_e{number}_") for d in defs)
+    assert len(set(defs)) == len(defs)

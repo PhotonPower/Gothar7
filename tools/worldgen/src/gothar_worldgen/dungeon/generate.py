@@ -62,8 +62,8 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 20.0,
         },
     ),
-    "zisterne": (  # Ebene 3 (stub): still the vault's sound until engine has "zisterne"
-        "gewoelbe",
+    "zisterne": (  # Ebene 3: engine's ambient "zisterne" (#494)
+        "zisterne",
         {
             "ambient": [0.04, 0.047, 0.055],
             "fog_color": [0.016, 0.02, 0.024],
@@ -71,7 +71,7 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 18.0,
         },
     ),
-    "beinhaus": (  # Ebene 4: engine's ambient "beinhaus" (#491)
+    "beinhaus": (  # Ebene 4: engine's ambient "beinhaus" (#494)
         "beinhaus",
         {
             "ambient": [0.045, 0.05, 0.042],
@@ -89,8 +89,8 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 16.0,
         },
     ),
-    "werkstatt": (  # Ebene 5: the builders' workshops, the vault's sound for now
-        "gewoelbe",
+    "werkstatt": (  # Ebene 5: the builders' workshops, engine's ambient "werkstatt" (#502)
+        "werkstatt",
         {
             "ambient": [0.05, 0.047, 0.042],
             "fog_color": [0.022, 0.02, 0.017],
