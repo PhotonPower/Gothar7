@@ -4,6 +4,12 @@ The search runs over (open movers, cell): walking between floor cells (closed ga
 walls block, doors open by hand), teleporters, and switches and plates that set their targets
 (a plate can be held with an item, so both of its states count). Reaching a trapdoor is a fall
 into the level below (allowed, plan F6); every other place must keep a way to the stairs up.
+
+Relays (``relays`` in the JSON) pass events on as the engine does (dungeon.md "Stand D1"): ``any``
+forwards the "on" side as its action and the "off" side as the counterpart; ``all`` fires when all
+its inputs (the senders naming it) are on and the counterpart when one goes off again; ``count``
+fires every ``count`` "on" events; ``invert`` and ``once`` as in the engine. Their inputs, counters
+and spent flags are part of the search state.
 """
 
 from __future__ import annotations
@@ -11,13 +17,19 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Any
 
 from gothar_worldgen.dungeon.level import DIRS, FLOOR_CHARS, Level, _cell
 
 BLOCKING = {"gate", "secret_wall"}
+OFF = {"close", "off", "lock"}  # the "off" side of an event (dungeon.md "Polarität")
+COUNTER = {"open": "close", "close": "open", "on": "off", "off": "on", "lock": "unlock",
+           "unlock": "lock"}  # fmt: skip
+MAX_DEPTH = 16  # relays naming relays: a cycle stops here (the engine warns about cycles)
 
 State = frozenset[str]
 Node = tuple[State, tuple[int, int]]
+Action = tuple[list[str], str, str]  # targets, action, sender
 
 
 @dataclass(frozen=True)
@@ -25,7 +37,7 @@ class Reach:
     cells: set[tuple[int, int]]  # reached in any state
     unreached: list[tuple[int, int]]  # floor cells never reached
     stuck: list[tuple[int, int]]  # cells reached in some state without a way back up
-    states: int
+    states: int  # distinct mover states seen
 
 
 def _movers(level: Level) -> dict[str, tuple[int, int]]:
@@ -41,9 +53,97 @@ def _initial(level: Level) -> State:
     return frozenset(out)
 
 
-def _actions(level: Level) -> dict[tuple[int, int], list[tuple[list[str], str]]]:
-    """Floor cell -> what can be set from there: (targets, action)."""
-    out: dict[tuple[int, int], list[tuple[list[str], str]]] = {}
+def _counter(action: str) -> str:
+    return COUNTER.get(action, action)
+
+
+def _senders(level: Level) -> list[tuple[str, dict[str, Any]]]:
+    out = [(level.name(at), level.entries[at]["switch" if level.char(*at) == "S" else "plate"])
+           for at in level.cells(set("SO"))]  # fmt: skip
+    return out + list(level.relays.items())
+
+
+def _inputs(level: Level) -> dict[str, list[str]]:
+    """Relay -> the senders naming it (switches, plates and other relays)."""
+    out: dict[str, list[str]] = {name: [] for name in level.relays}
+    for name, spec in _senders(level):
+        for t in spec.get("targets", []):
+            if t in out:
+                out[t].append(name)
+    return out
+
+
+class _Net:
+    """Sends events through movers and relays: a pure step from one state to the next."""
+
+    def __init__(self, level: Level, movers: set[str]) -> None:
+        self.level = level
+        self.movers = movers
+        self.inputs = _inputs(level)
+
+    def send(self, state: State, targets: list[str], action: str, source: str) -> State:
+        out = set(state)
+        for t in targets:
+            self._one(out, t, action, source, 0)
+        return frozenset(out)
+
+    def _one(self, s: set[str], target: str, action: str, source: str, depth: int) -> None:
+        if depth > MAX_DEPTH:
+            return
+        if target in self.movers:
+            if action in ("open", "on"):
+                s.add(target)
+            elif action in ("close", "off"):
+                s.discard(target)
+            elif action in ("toggle", "trigger"):
+                s ^= {target}
+            return
+        r = self.level.relays.get(target)
+        if r is None:
+            return
+        on = action not in OFF
+        act = str(r.get("action", "trigger"))
+        mode = r.get("mode", "any")
+        if mode == "any":
+            self._fire(s, target, r, act if on else _counter(act), depth)
+        elif mode == "all":
+            flags = [f"IN:{target}:{i}" for i in self.inputs[target]]
+            before = all(f in s for f in flags)
+            flag = f"IN:{target}:{source}"
+            if action in ("toggle", "trigger"):
+                s ^= {flag}
+            elif on:
+                s.add(flag)
+            else:
+                s.discard(flag)
+            after = all(f in s for f in flags)
+            if after and not before:
+                self._fire(s, target, r, act, depth)
+            elif before and not after:
+                self._fire(s, target, r, _counter(act), depth)
+        elif on:  # count: every ``count`` events of the "on" side
+            key = f"CNT:{target}:"
+            n = next((int(f[len(key) :]) for f in s if f.startswith(key)), 0)
+            s.discard(f"{key}{n}")
+            n += 1
+            if n >= int(r["count"]):
+                self._fire(s, target, r, act, depth)
+            else:
+                s.add(f"{key}{n}")
+
+    def _fire(self, s: set[str], name: str, r: dict[str, Any], action: str, depth: int) -> None:
+        if r.get("once"):
+            if f"SPENT:{name}" in s:
+                return
+            s.add(f"SPENT:{name}")
+        act = _counter(action) if r.get("invert") else action
+        for t in r["targets"]:
+            self._one(s, t, act, name, depth + 1)
+
+
+def _actions(level: Level) -> dict[tuple[int, int], list[Action]]:
+    """Floor cell -> what can be set from there: (targets, action, sender)."""
+    out: dict[tuple[int, int], list[Action]] = {}
     for at in level.cells(set("SO")):
         spec = level.entries[at]["switch" if level.char(*at) == "S" else "plate"]
         if level.char(*at) == "S":
@@ -51,23 +151,20 @@ def _actions(level: Level) -> dict[tuple[int, int], list[tuple[list[str], str]]]
             stand = (at[0] + dx, at[1] + dy)
         else:
             stand = at
-        out.setdefault(stand, []).append((list(spec["targets"]), spec.get("action", "trigger")))
+        out.setdefault(stand, []).append(
+            (list(spec["targets"]), spec.get("action", "trigger"), level.name(at))
+        )
     return out
 
 
-def _set(state: State, targets: list[str], action: str, movers: set[str]) -> Iterator[State]:
-    names = [t for t in targets if t in movers]
-    if not names:
-        return
-    if action in ("toggle", "trigger"):
-        yield state ^ frozenset(names)
-    if action in ("open", "on", "close", "off"):  # a plate or lever also goes back
-        yield state | frozenset(names)
-        yield state - frozenset(names)
+def _set(net: _Net, state: State, targets: list[str], action: str, sender: str
+         ) -> Iterator[State]:  # fmt: skip
+    yield net.send(state, targets, action, sender)
+    if action in COUNTER:  # a plate or lever also goes back (the counterpart)
+        yield net.send(state, targets, _counter(action), sender)
 
 
-def _passable(level: Level, at: tuple[int, int], state: State, movers: dict[str, tuple[int, int]]
-              ) -> bool:  # fmt: skip
+def _passable(level: Level, at: tuple[int, int], state: State) -> bool:
     if not level.is_floor(*at):
         return False
     if level.char(*at) in "GH":
@@ -75,8 +172,8 @@ def _passable(level: Level, at: tuple[int, int], state: State, movers: dict[str,
     return True
 
 
-def _steps(level: Level, node: Node, movers: dict[str, tuple[int, int]],
-           acts: dict[tuple[int, int], list[tuple[list[str], str]]]) -> Iterator[Node]:  # fmt: skip
+def _steps(level: Level, node: Node, acts: dict[tuple[int, int], list[Action]], net: _Net
+           ) -> Iterator[Node]:  # fmt: skip
     state, at = node
     if level.char(*at) == "P":
         return  # fell through the trapdoor
@@ -87,10 +184,10 @@ def _steps(level: Level, node: Node, movers: dict[str, tuple[int, int]],
             return
     for dx, dy in DIRS.values():
         nxt = (at[0] + dx, at[1] + dy)
-        if _passable(level, nxt, state, movers):
+        if _passable(level, nxt, state):
             yield state, nxt
-    for targets, action in acts.get(at, []):
-        for s in _set(state, targets, action, set(movers)):
+    for targets, action, sender in acts.get(at, []):
+        for s in _set(net, state, targets, action, sender):
             if s != state:
                 yield s, at
 
@@ -98,13 +195,14 @@ def _steps(level: Level, node: Node, movers: dict[str, tuple[int, int]],
 def check_reach(level: Level) -> Reach:
     movers = _movers(level)
     acts = _actions(level)
+    net = _Net(level, set(movers))
     start = (_initial(level), level.cells("<")[0])
     seen: set[Node] = {start}
     edges: dict[Node, list[Node]] = {}
     queue = deque([start])
     while queue:
         node = queue.popleft()
-        edges[node] = list(_steps(level, node, movers, acts))
+        edges[node] = list(_steps(level, node, acts, net))
         for nxt in edges[node]:
             if nxt not in seen:
                 seen.add(nxt)
@@ -124,4 +222,5 @@ def check_reach(level: Level) -> Reach:
     cells = {at for _, at in seen}
     floor = level.cells(FLOOR_CHARS)
     stuck = sorted({at for n in seen - ok for at in [n[1]] if level.char(*at) != "P"})
-    return Reach(cells, sorted(set(floor) - cells), stuck, len({s for s, _ in seen}))
+    states = {frozenset(f for f in s if f in movers) for s, _ in seen}
+    return Reach(cells, sorted(set(floor) - cells), stuck, len(states))

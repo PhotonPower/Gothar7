@@ -205,6 +205,17 @@ Ganzes aufschwingt.
   - ein Endgegner für Ebene 8.
 
   Namen und Gestalt bestimmen Projektinhaber und figuren.
+- **Wahl des Projektinhabers (Monster je Ebene):**
+
+  | Monster | Ebenen |
+  |---|---|
+  | Mauerkriecher | 1–3 |
+  | Gatterbock | 2, 5 |
+  | Brunnenmolch | 3, 7 |
+  | Beinhauswart | 4 |
+  | Mauerschlupfer | 4–6 |
+  | Kristallkrebs | 7 |
+  | Kellermutter (Endgegner) | 8, Raum mindestens 4 m hoch (sie ist 5,5 m lang) |
 - **Schätze:** Waffen, Rüstungsteile, Runen und Tränke aus dem vorhandenen Bestand (F6); dazu Schlüssel je Ebene und
   einzigartige Stücke im Hort. Die Werte macht engine/Inhalt (Lua).
 - **Verteilung:** Schätze in Nischen und Truhen; Monster an Monsterplätzen und auf Freepoints. Die Dichte steigt mit
@@ -303,10 +314,32 @@ schreibt.
     (ohne Himmel). **Keine `indoor`-Zonen:** ohne Himmel ist das Grundlicht der Welt das Licht.
   - Erreichbarkeit (`dungeon/logic.py`) vor dem Schreiben; gleiche Karte, gleiche Bytes; VobIds je Ebene in
     `ebene_NN_vob_ids.json`; Vobs, die dem Generator nicht gehören (Editor), bleiben stehen.
-- **Ebene 1** (20 × 15, alle Mechaniken) und **Ebene 2** als Stub (Ziel der Treppe und des Falls). Der Zugang: die
+- **Ebene 1** (20 × 15, alle Mechaniken). Ebene 2 ist seit D3 ausgebaut (Abschnitt 7b). Der Zugang: die
   dunkle Öffnung im hinteren Boden des Riesenfasses (`STAIRS_SCHLOSS_FASS` → `START_E01_VON_OBEN`), zurück über die
   Treppe von Ebene 1 auf `START_SCHLOSS_FASS` vor dem Fass. Die Vorkammer ist der erste Raum von Ebene 1.
 - **Offen für engine:** Musik-Thema `DUNGEON`, Ambiente `gewoelbe`, Instanz `mon_mauerkriecher` (#440).
+
+## 7b. Stand D3 (welt): Ebene 2 „Verlies“, Ebene 3 als Stub
+- **Neu in der Karten-JSON:**
+  - `relays`: unsichtbare Relais `RELAY_E02_<NAME>` (`mode` `any`/`all`/`count`, `count`, `targets`, `action`,
+    `once`, `invert`, `delay`, optional `at` für die Lage); Schalter und Platten dürfen sie als Ziel nennen. Die
+    Erreichbarkeit rechnet sie wie die Engine (Eingänge, Zähler und „verbraucht“ gehören zum Suchzustand).
+  - `items`: Item-Vobs `ITEM_E02_<x>_<y>_<k>` (`at`, `instance`, `count`) auf Bodenzellen, nebeneinander je Zelle;
+    die Funde der Depots. Truhen und Nischen bleiben vorerst leer (bloßer Typ); ihren Inhalt als Lua-`Mob`-Definition
+    liefert engine/Inhalt, welt trägt dann den Namen als `definition` ein.
+- **Ebene 2** (24 × 24, 232 begehbare Zellen = 40 %): Ankunft mit Treppe hinauf, Wachstube (Gatterbock; Hebel zum
+  Gatter der Osthalle), Osthalle (Mauerkriecher, Truhe, sichtbarer Teleporter in Zelle 3, Hebel A), Zellenflur mit
+  vier Zellen im Norden und einer im Süden (Gatter und Hebel am Flur; Zelle 1 Mauerkriecher, Zelle 2 Nische und
+  Truhe, Zelle 3 nur über den Teleporter mit Hebel B und einem Hebel für ihr Gatter, Zelle 4 Truhe), Kerkerhalle mit
+  Pfeilern (Mauerkriecher, Nische, Truhe), **zwei versteckte Depots** hinter Geheimwänden (lose Steine am Flurende und
+  in der Kerkerhalle; Ring, Tränke, Gulden bzw. Amulett und Trank).
+  - **Rätsel 1:** Die Platte vor der Schatzkammer hält das Gatter nur offen, solange etwas darauf liegt: einen
+    Gegenstand ablegen, dann durchgehen.
+  - **Rätsel 2:** Hebel A (Osthalle) und Hebel B (Zelle 3) öffnen gemeinsam über das Relais `all` das Gatter zur
+    Treppe hinab.
+  - Schatzkammer mit Gatterbock und Truhe, Falltür (Platte `player`) nach Ebene 3; Treppe hinab nach Ebene 3.
+  - Erreichbarkeit grün (keine Zelle unerreicht, keine ohne Rückweg).
+- **Ebene 3** als Stub (Thema `zisterne`, vorerst mit dem Ambiente `gewoelbe`): Ziel der Treppe und der Falltür.
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |
