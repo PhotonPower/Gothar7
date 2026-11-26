@@ -297,7 +297,20 @@ def test_werkstatt_props_and_shortcut() -> None:
     assert by["BUTTON_E05_7_1"]["components"]["mob"]["action"] == "off"
 
 
-@pytest.mark.parametrize("number", [1, 2, 3, 4, 5])
+def test_labyrinth_spinner_and_doors() -> None:
+    lv = load_level(DATA, 6)
+    by = {v["name"]: v for v in plan_level(lv, "leonberg").vobs}
+    spin = by["TELE_E06_11_9"]
+    tele = spin["components"]["trigger"]["teleport"]
+    assert tele["to"] == "TELE_E06_11_9_ZIEL" and tele["visible"] is False
+    assert "TELE_E06_11_9_RING" not in by
+    goal = by["TELE_E06_11_9_ZIEL"]
+    assert goal["pos"][0] == spin["pos"][0] and goal["pos"][2] == spin["pos"][2]  # its own cell
+    door = by["TELE_E06_9_1"]["components"]["trigger"]["teleport"]
+    assert door["visible"] is True and "TELE_E06_9_1_RING" in by
+
+
+@pytest.mark.parametrize("number", [1, 2, 3, 4, 5, 6])
 def test_floor_and_ceiling_unlike_the_walls(number: int) -> None:
     """Owner 2026-11-26: flagstones on the floor, bricks or rough rock above, ribs or beams
     every few metres; the walls stay rubble."""

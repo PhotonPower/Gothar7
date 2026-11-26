@@ -1,0 +1,13 @@
+{
+  "format": "gothar-dungeon-level",
+  "version": 1,
+  "note": "W8 D3: Ebene 7 'Kristallgrotte' (Thema grotte; Höhle statt Mauerwerk, Licht der Kristalle, Kristallkrebs, Brunnenmolch) als Stub (Ziel der Treppe aus Ebene 6); der Ausbau folgt als eigener PR.",
+  "level": 7,
+  "theme": "grotte",
+  "origin": [0.0, 0.0, 0.0],
+  "cellM": 3.0,
+  "heightM": 3.5,
+  "cells": [
+    {"at": [1, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_06.g7world", "start": "START_E06_VON_UNTEN", "facing": "S"}, "arrive": "START_E07_VON_OBEN"}
+  ]
+}

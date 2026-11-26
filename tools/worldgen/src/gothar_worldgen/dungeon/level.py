@@ -15,7 +15,8 @@ kit on a plain floor cell: ``at``, ``kind``, ``facing``; vobs ``PROP_E04_<x>_<y>
 ``sarcophagus`` or ``workbench`` stands in the middle of its cell and blocks it (no waypoint, no
 way through); a ``bone_niche`` or ``cogwheel`` hangs on the wall behind it (opposite ``facing``)
 and leaves the cell free.
-A teleporter with ``trap: true`` is invisible and shows no ring (a trap, W8 E4).
+A teleporter with ``trap: true`` is invisible and shows no ring (a trap, W8 E4); one with
+``spin: true`` keeps the hero on its cell and only turns him to ``facing`` (a spinner, W8 E6).
 
 Characters (contract of the plan): ``#`` wall, ``.`` floor, ``D`` door, ``G`` gate, ``P`` trapdoor,
 ``T`` teleporter, ``S`` wall switch (lever or button), ``O`` pressure plate, ``N`` niche, ``H``
@@ -314,8 +315,11 @@ def _check_entries(level: Level) -> None:
                 to = _cell(spec["to"], where)
                 if not level.is_floor(*to) or level.char(*to) == "T":
                     raise LevelError(f"{where}: 'to' must be a floor cell off the pads")
+            elif spec.get("spin"):
+                if spec.get("facing") not in DIRS or spec.get("world"):
+                    raise LevelError(f"{where}: a spinner needs 'facing' and no other target")
             elif not (spec.get("world") and spec.get("start")):
-                raise LevelError(f"{where}: needs 'to' or 'world' + 'start'")
+                raise LevelError(f"{where}: needs 'to', 'spin' or 'world' + 'start'")
         if kind == "stairs":
             if not (spec.get("world") and spec.get("start") and e.get("arrive")):
                 raise LevelError(f"{where}: stairs need world, start and 'arrive'")
