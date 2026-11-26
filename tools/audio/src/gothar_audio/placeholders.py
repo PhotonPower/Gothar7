@@ -418,6 +418,41 @@ def water_drop_deep(rng: random.Random) -> Samples:
     return normalise(fade(lowpass(out, 2500.0), 0.001, 0.2), 0.6)
 
 
+def amb_ossuary(rng: random.Random) -> Samples:
+    # The ossuary (dungeon level 4): dry, hollow air of a low vault and wind moaning through a shaft - a breathy
+    # whistle drifting slowly in pitch.
+    air = lowpass(noise(LOOP, rng), 120.0)
+    breath = highpass(lowpass(noise(LOOP, rng), 900.0), 500.0)
+    swell = [
+        0.35 + 0.65 * max(0.0, math.sin(2 * math.pi * i / (LOOP * RATE) * 2.0)) ** 2
+        for i in range(len(breath))
+    ]
+    whistle = tone(lambda t: 310.0 + 25.0 * math.sin(2 * math.pi * 0.3 * t), LOOP)
+    shaft = [(b * 0.8 + w * 0.06) * s for b, w, s in zip(breath, whistle, swell, strict=False)]
+    return normalise(seamless(mix((air, 1.0), (shaft, 0.6))), 0.45)
+
+
+def bone_rattle(rng: random.Random) -> Samples:
+    # A few bones settling in a niche: dry, hollow clacks in a quick, uneven run.
+    length = int(0.7 * RATE)
+    out = [0.0] * length
+    at = 0
+    for _ in range(rng.randint(5, 9)):
+        f = rng.uniform(700.0, 1400.0)
+        clack = mix(
+            (envelope(tone(f, 0.05), 0.0005, 0.012), 0.7),
+            (envelope(highpass(noise(0.04, rng), 2000.0), 0.0003, 0.006), 0.5),
+        )
+        gain = rng.uniform(0.4, 1.0)
+        for i, x in enumerate(clack):
+            if at + i < length:
+                out[at + i] += gain * x
+        at += int(rng.uniform(0.03, 0.09) * RATE)
+        if at >= length - len(clack):
+            break
+    return normalise(fade(out, 0.001, 0.1), 0.55)
+
+
 # --- Footsteps (M13 E): six materials, four variants each (footstep_<material>_<n>) --------------------------
 
 
@@ -601,6 +636,8 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "water_drip": water_drip,
     "amb_cistern": amb_cistern,
     "water_drop_deep": water_drop_deep,
+    "amb_ossuary": amb_ossuary,
+    "bone_rattle": bone_rattle,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,
     "amb_night": amb_night,

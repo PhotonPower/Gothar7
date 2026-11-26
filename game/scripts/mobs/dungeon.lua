@@ -85,3 +85,39 @@ Mob "mob_dng_e2_chest_schatz" {
         it_scroll_telekinesis = 1,
     },
 }
+
+-- Ebene 3 „Zisterne“
+-- Nordostkammer: Truhe und Nische nebeneinander.
+Mob "mob_dng_e3_chest_nord" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_gulden = 35, it_potion_heal_medium = 1, it_bolt = 15 },
+}
+
+Mob "mob_dng_e3_niche_nord" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_scroll_heal = 2, it_herb_sage = 2 },
+}
+
+-- Depot hinter der Geheimwand (die drei losen Steine), neben den Funden auf dem Boden.
+Mob "mob_dng_e3_niche_depot" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_scroll_firebolt = 2, it_potion_mana_medium = 1, it_ring_silver = 1 },
+}
+
+-- Ostkammer: verschlossen.
+Mob "mob_dng_e3_chest_ost" {
+    name = "Verschlossene Truhe",
+    type = "chest",
+    lock = "RRLRL",
+    contents = { it_gulden = 70, it_potion_strength = 1, it_scroll_sleep = 1, it_lockpick = 2 },
+}
+
+-- Schleusenkammer vor dem Abstieg nach Ebene 4: Vorrat für unten.
+Mob "mob_dng_e3_chest_schleuse" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_potion_heal_medium = 2, it_potion_heal_small = 2, it_torch = 1, it_bread = 2 },
+}
