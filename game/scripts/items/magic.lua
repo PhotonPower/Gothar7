@@ -11,10 +11,10 @@ local function rune(id, spell, name, value, mesh)
     }
 end
 
-local function scroll(id, spell, name, value)
+local function scroll(id, spell, name, value, mesh)
     Item(id) {
         name = "Spruchrolle: " .. name,
-        mesh = "items/it_scroll.glb",
+        mesh = mesh or "items/it_scroll.glb",
         category = "scroll",
         value = value,
         weight = 0.1,
@@ -28,14 +28,14 @@ rune("it_rune_sleep", "spl_sleep", "Schlaf", 300)
 rune("it_rune_transform_wolf", "spl_transform_wolf", "Wolfsgestalt", 300)
 rune("it_rune_summon_wolf", "spl_summon_wolf", "Wolf rufen", 450)
 rune("it_rune_telekinesis", "spl_telekinesis", "Telekinese", 300) -- M17 T; Modell von figuren (#405)
-rune("it_rune_light", "spl_light", "Licht", 200, "items/it_rune_heal.glb") -- Platzhalter bis figuren #508
+rune("it_rune_light", "spl_light", "Licht", 200) -- Modell von figuren (#508)
 
 scroll("it_scroll_firebolt", "spl_firebolt", "Feuerpfeil", 25)
 scroll("it_scroll_heal", "spl_heal", "Heilung", 25)
 scroll("it_scroll_sleep", "spl_sleep", "Schlaf", 50)
 scroll("it_scroll_fear", "spl_fear", "Schrecken", 40)
 scroll("it_scroll_telekinesis", "spl_telekinesis", "Telekinese", 50) -- M17 T, Entscheidung 7
-scroll("it_scroll_light", "spl_light", "Licht", 35)
+scroll("it_scroll_light", "spl_light", "Licht", 35, "items/it_scroll_light.glb") -- eigene Rolle (figuren #508)
 
 Item "it_potion_mana_small" {
     name = "Kleiner Manatrank",

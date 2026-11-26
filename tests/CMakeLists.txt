@@ -25,6 +25,7 @@ set(_g7_runtime_groups
     "fights|*test_engine_perception.cpp,*test_engine_combat.cpp"
     "dialog|*test_engine_dialog.cpp,*test_engine_weapon_sweep.cpp"
     "magic|*test_engine_magic.cpp,*test_engine_telekinesis.cpp,*test_engine_spell_glow.cpp"
+    "spell_light|*test_engine_spell_light.cpp"
     "npc_mobs|*test_engine_npc_mobs.cpp"
     "audio|*test_engine_audio.cpp,*test_engine_footsteps.cpp,*test_engine_m13_music.cpp,*test_engine_voice.cpp,*test_engine_weather.cpp"
     "leonberg|*test_engine_leonberg.cpp"
