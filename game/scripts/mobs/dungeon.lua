@@ -121,3 +121,67 @@ Mob "mob_dng_e3_chest_schleuse" {
     type = "chest",
     contents = { it_potion_heal_medium = 2, it_potion_heal_small = 2, it_torch = 1, it_bread = 2 },
 }
+
+-- Ebene 4 „Beinhaus“ (welt #495)
+-- Gräberkammer im Osten, wo der Schacht ankommt.
+Mob "mob_dng_e4_chest_graeber" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_gulden = 50, it_potion_heal_medium = 1, it_potion_mana_small = 1, it_arrow = 20 },
+}
+
+-- Gruft 1: verschlossen, und eine Nische.
+Mob "mob_dng_e4_chest_gruft1" {
+    name = "Verschlossene Truhe",
+    type = "chest",
+    lock = "LLRLR",
+    contents = { it_gulden = 80, it_amulet = 1, it_scroll_fear = 1, it_potion_heal_medium = 1 },
+}
+
+Mob "mob_dng_e4_niche_gruft1" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_ring_silver = 1, it_gulden = 30 },
+}
+
+-- Gruft 3 mit dem Depot.
+Mob "mob_dng_e4_chest_gruft3" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_gulden = 60, it_scroll_firebolt = 2, it_potion_mana_medium = 1 },
+}
+
+Mob "mob_dng_e4_niche_gruft3" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_ring_gold = 1, it_potion_strength = 1 },
+}
+
+-- Beinhaus, die Kammer des Beinhauswarts.
+Mob "mob_dng_e4_niche_beinhaus" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_scroll_sleep = 2, it_herbs_dried = 3, it_gulden = 25 },
+}
+
+-- Totengräberkammer: Werkzeug und Vorrat des Totengräbers.
+Mob "mob_dng_e4_chest_totengraeber" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_hammer = 1, it_axe = 1, it_torch = 2, it_bread = 2, it_beer = 1, it_gulden = 15 },
+}
+
+-- Treppenkammer hinter dem Zeitgatter: der Lohn der Ebene.
+Mob "mob_dng_e4_chest_treppe" {
+    name = "Verschlossene Truhe",
+    type = "chest",
+    lock = "RLRRLRL",
+    contents = {
+        it_gulden = 200,
+        it_rune_firebolt = 1,
+        it_sword_2h = 1,
+        it_potion_heal_medium = 3,
+        it_potion_speed = 1,
+        it_lockpick = 2,
+    },
+}
