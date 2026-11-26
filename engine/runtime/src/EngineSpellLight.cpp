@@ -25,9 +25,14 @@ using script::Value;
 constexpr std::string_view kHandBone = "socket_hand_l";
 constexpr std::string_view kShoulderBone = "upperarm_l";
 constexpr f32 kShoulderRate = 3.0f; ///< per second: hand <-> shoulder in about a third of a second
-/// The left forearm raised in front, the hand at chest height: the torch's carrying pose for now (figuren may
-/// give the light an open hand of its own).
-constexpr std::string_view kHoldClip = "none/a_torch_hold";
+/// The open left hand held up in front (figuren #511: none/a_light_hold with _in and _out, additive over
+/// clavicle_l against none/a_neutral); without those clips the torch's carrying pose stands in.
+constexpr std::string_view kHoldClip = "none/a_light_hold";
+constexpr std::string_view kHoldInClip = "none/a_light_hold_in";
+constexpr std::string_view kHoldOutClip = "none/a_light_hold_out";
+constexpr std::string_view kFallbackHoldClip = "none/a_torch_hold";
+constexpr std::string_view kHoldMask = "clavicle_l";
+constexpr std::string_view kHoldReference = "none/a_neutral";
 
 /// 0..1 flicker of the light at `time` (no random numbers: the same run every time).
 f32 flickerWave(f32 time) noexcept
@@ -153,9 +158,13 @@ void Engine::stopLight()
         m_audio->stop(*m_lightOrb->hum, 0.1f);
         m_spatialSounds.erase(*m_lightOrb->hum);
     }
-    if (m_lightOrb->holding && m_figure && !m_torch && m_figure->animator.overlayClip() == kHoldClip)
+    if (m_lightOrb->holding && m_figure && !m_torch)
     {
-        m_figure->animator.stopOverlay(0.3f);
+        const std::string_view overlay = m_figure->animator.overlayClip();
+        if (overlay == kHoldClip || overlay == kHoldInClip || overlay == kFallbackHoldClip)
+        {
+            m_figure->animator.stopOverlay(0.3f);
+        }
     }
     m_lightOrb.reset();
 }
@@ -214,26 +223,10 @@ void Engine::fixedUpdateLight(f32 seconds)
     // Over the open hand, or over the shoulder while the hand is busy; eased between the two.
     const bool busy = heroLeftHandBusy();
     const f32 target = busy ? 1.0f : 0.0f;
-    // The hand held up in front while it is free (as the torch's pose; a dialogue gesture may take its place
-    // for a while, then it comes back). Not while fading, nor when something else holds the arm.
-    if (m_figure && m_figure->animator.hasClip(kHoldClip))
-    {
-        const bool want = !busy && o.fade <= 0.0f && m_weaponMode != 5;
-        const std::string_view overlay = m_figure->animator.overlayClip();
-        if (want && overlay.empty())
-        {
-            m_figure->animator.playOverlay(kHoldClip, "clavicle_l", 0.3f, true, "none/a_neutral", true);
-            o.holding = true;
-        }
-        else if (!want && o.holding)
-        {
-            if (overlay == kHoldClip && !m_torch)
-            {
-                m_figure->animator.stopOverlay(0.3f);
-            }
-            o.holding = false;
-        }
-    }
+    // The open hand held up in front while it is free: raised (_in), held (looped), lowered (_out). A
+    // dialogue gesture may take its place for a while, then the hold comes back. Not while fading, nor when
+    // something else holds the arm.
+    updateLightHold(!busy && o.fade <= 0.0f && m_weaponMode != 5);
     const f32 step = kShoulderRate * seconds;
     o.shoulder += std::clamp(target - o.shoulder, -step, step);
     if (seconds == 0.0f)
@@ -286,6 +279,58 @@ void Engine::fixedUpdateLight(f32 seconds)
         else
         {
             o.hum = playSound(o.humSound, o.position);
+        }
+    }
+}
+
+void Engine::updateLightHold(bool want)
+{
+    if (!m_lightOrb || !m_figure)
+    {
+        return;
+    }
+    LightOrb& o = *m_lightOrb;
+    animation::Animator& a = m_figure->animator;
+    const bool own = a.hasClip(kHoldClip);
+    const std::string_view hold = own ? kHoldClip : kFallbackHoldClip;
+    if (!a.hasClip(hold))
+    {
+        return;
+    }
+    const std::string_view overlay = a.overlayClip();
+    const auto play = [&](std::string_view clip, bool loop)
+    { a.playOverlay(clip, kHoldMask, 0.15f, true, kHoldReference, loop); };
+    if (want)
+    {
+        if (overlay.empty() || overlay == kHoldOutClip)
+        {
+            // Raised first where there is a clip for it, then held.
+            if (own && a.hasClip(kHoldInClip) && overlay.empty() && !o.holding)
+            {
+                play(kHoldInClip, false);
+            }
+            else
+            {
+                play(hold, true);
+            }
+            o.holding = true;
+        }
+        return;
+    }
+    if (o.holding)
+    {
+        o.holding = false;
+        if (m_torch || (overlay != hold && overlay != kHoldInClip))
+        {
+            return; // something else has the arm now
+        }
+        if (own && a.hasClip(kHoldOutClip))
+        {
+            play(kHoldOutClip, false); // lowered; it ends by itself
+        }
+        else
+        {
+            a.stopOverlay(0.3f);
         }
     }
 }

@@ -1602,6 +1602,9 @@ private:
     void stopLight(); ///< at once, without the fade (level reset, load)
     [[nodiscard]] bool heroLeftHandBusy() const;
     void fixedUpdateLight(f32 seconds);
+    /// The left arm's hold pose for the orb: on (raised, held) while `want`, else lowered
+    /// (EngineSpellLight.cpp).
+    void updateLightHold(bool want);
     void bindLightFunctions();
     struct Torch
     {
