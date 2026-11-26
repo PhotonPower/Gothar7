@@ -2321,6 +2321,7 @@ private:
         Vec3 colour{1.0f};   ///< of the light
     };
     std::map<std::string, FlashRule, std::less<>> m_flashRules; // Creatures.<species>.flash (Beinhauswart)
+    std::map<std::string, f32, std::less<>> m_snapAbove; // Creatures.<species>.snap.above (Brunnenmolch)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline

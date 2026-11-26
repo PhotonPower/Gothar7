@@ -62,6 +62,18 @@ Npc "mon_beinhauswart" { -- Beinhaus (Ebene 4, monsters.md): lebender Totengräb
     inventory = { it_lantern_beinhaus = 1, it_shroud_rag = 1 }, -- Beute (die Laterne, solange er sie nicht fallen ließ)
 }
 
+Npc "mon_brunnenmolch" { -- Zisterne (Ebenen 3 und 7, monsters.md); Werte Platzhalter
+    name = "Brunnenmolch",
+    guild = "brunnenmolch",
+    level = 7,
+    species = "brunnenmolch",
+    attributes = { str = 30, dex = 10, hp = 90 },
+    damage = { edge = 15 }, -- Biss
+    protection = { edge = 5, point = 5, blunt = 10, fire = 30, magic = 0, fall = 0 }, -- an Land verletzlich
+    senses = { sight = 0, hearing = 2 }, -- blind: hört statt zu sehen (Schleichen hilft)
+    inventory = { it_newt_skin = 1, it_newt_gills = 2 }, -- Beute (Alchemie)
+}
+
 Npc "mon_mauerschlupfer" {
     name = "Mauerschlupfer",
     guild = "mauerschlupfer",
