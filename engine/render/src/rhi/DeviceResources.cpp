@@ -327,6 +327,14 @@ Result<Framebuffer> Device::createFramebuffer(const FramebufferDesc& desc)
         return Error{"framebuffer incomplete (status 0x" + std::format("{:04X}", status) + ")"};
     }
     framebuffer.m_hasStencil = desc.depth && hasStencil(desc.depth->desc().format);
+    for (const Texture* color : desc.colors)
+    {
+        framebuffer.m_attachments.push_back(color->m_handle.uid());
+    }
+    if (desc.depth)
+    {
+        framebuffer.m_attachments.push_back(desc.depth->m_handle.uid());
+    }
     framebuffer.m_width = width;
     framebuffer.m_height = height;
     return framebuffer;

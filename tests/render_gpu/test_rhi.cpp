@@ -277,6 +277,53 @@ void main() { fragColor = texture(uTexture, vUv); }
     CHECK(scene.gl.device->debugErrorCount() == 0);
 }
 
+TEST_CASE("RHI: a texture rendered into is unbound from sampling and sampled with its new contents")
+{
+    Scene scene;
+    constexpr std::string_view vs = R"(#version 450 core
+layout(location = 0) in vec3 aPosition;
+out vec2 vUv;
+void main() { vUv = aPosition.xy * 0.5 + 0.5; gl_Position = vec4(aPosition, 1.0); }
+)";
+    constexpr std::string_view fs = R"(#version 450 core
+layout(binding = 0) uniform sampler2D uTexture;
+in vec2 vUv;
+out vec4 fragColor;
+void main() { fragColor = texture(uTexture, vUv); }
+)";
+    ShaderProgram program = require(scene.gl.device->createShaderProgram({vs, fs, "textured"}));
+    PipelineDesc desc;
+    desc.program = &program;
+    desc.attributes = {{0, VertexFormat::Float3, 0}};
+    desc.vertexStride = sizeof(Vertex);
+    desc.cull = CullMode::None;
+    Pipeline pipeline = require(scene.gl.device->createPipeline(desc));
+    Buffer triangle = scene.vertices(fullscreenTriangle(0.0f, 0, 0, 0));
+    SamplerDesc samplerDesc;
+    samplerDesc.minFilter = samplerDesc.magFilter = samplerDesc.mipFilter = Filter::Nearest;
+    Sampler sampler = require(scene.gl.device->createSampler(samplerDesc));
+    Texture painted = require(scene.gl.device->createTexture({4, 4, Format::RGBA8, 1}));
+    Framebuffer paint = require(scene.gl.device->createFramebuffer({{&painted}, nullptr}));
+
+    // Paint it red, sample it; paint it green while it is still bound for sampling, sample again.
+    for (const auto& [clear, expected] : {std::pair{Vec4(1, 0, 0, 1), std::array<u8, 4>{255, 0, 0, 255}},
+                                          std::pair{Vec4(0, 1, 0, 1), std::array<u8, 4>{0, 255, 0, 255}}})
+    {
+        scene.gl.device->bindFramebuffer(&paint);
+        scene.gl.device->setViewport(0, 0, 4, 4);
+        scene.gl.device->clear(clear, std::nullopt);
+        const u32 bindsBefore = scene.gl.device->stats().textureBinds;
+        scene.begin();
+        scene.gl.device->bindPipeline(pipeline);
+        scene.gl.device->bindVertexBuffer(triangle);
+        scene.gl.device->bindTexture(0, painted, sampler);
+        CHECK(scene.gl.device->stats().textureBinds == bindsBefore + 1); // bound anew after rendering into it
+        scene.gl.device->draw(3);
+        CHECK(scene.pixel(8, 8) == expected);
+    }
+    CHECK(scene.gl.device->debugErrorCount() == 0);
+}
+
 TEST_CASE("RHI: invalid framebuffers are rejected")
 {
     GlFixture gl;

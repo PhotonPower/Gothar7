@@ -212,5 +212,7 @@ private:
     u32 m_width = 0;
     u32 m_height = 0;
     bool m_hasStencil = false;
+    std::vector<u64>
+        m_attachments; ///< uids of the textures it renders into (unbound from sampling when bound)
 };
 } // namespace g7::render::rhi
