@@ -585,7 +585,8 @@ Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
         same += other.get() != c && other->character && base == name ? 1u : 0u;
     }
     c->species = same == 0 ? std::string(name) : std::format("{}#{}", name, same + 1);
-    c->moveAcross = m_sidewaysSpecies.contains(species); // dungeon D6: a crab walks sideways
+    c->moveAcross = m_sidewaysSpecies.contains(species);               // dungeon D6: a crab walks sideways
+    c->glow = m_glowRules.contains(species) ? species : std::string(); // a light at a socket (crystals ...)
     // A capsule to walk with (M9): NPCs collide and follow the ground like the hero.
     if (m_physics.valid())
     {

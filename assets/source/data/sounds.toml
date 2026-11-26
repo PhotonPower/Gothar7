@@ -225,6 +225,32 @@ volume = 0.5
 pitch_jitter = 0.2
 max_distance = 20
 
+[amb_cistern] # Zisterne im Dungeon (Ebene 3, Platzhalter): Hall des Gewölbes, Wasser an den Stegen
+files = ["sounds/amb_cistern.wav"]
+bus = "ambient"
+loop = true
+volume = 0.45
+
+[water_drop_deep] # Tropfen in tiefes Wasser mit langem Echo (Zisterne, Platzhalter)
+files = ["sounds/water_drop_deep.wav"]
+bus = "ambient"
+volume = 0.5
+pitch_jitter = 0.15
+max_distance = 30
+
+[amb_ossuary] # Beinhaus im Dungeon (Ebene 4, Platzhalter): trockene, hohle Luft, Wind durch einen Schacht
+files = ["sounds/amb_ossuary.wav"]
+bus = "ambient"
+loop = true
+volume = 0.45
+
+[bone_rattle] # Knochen, die in einer Nische nachrutschen (Beinhaus, Platzhalter)
+files = ["sounds/bone_rattle.wav"]
+bus = "ambient"
+volume = 0.5
+pitch_jitter = 0.2
+max_distance = 20
+
 # --- Dungeon-Monster (Platzhalter aus tools/audio, Clip-Events sound:<art>_<was>)
 [gatterbock_attack]
 files = ["sounds/gatterbock_attack.wav"]

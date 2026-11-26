@@ -63,6 +63,10 @@
   - Eine ambient-Box, die kleiner ist als der Raum, geht vor: `schmiede_esse` (Feuer, Amboss), `gasthaus_stube` (Gemurmel, Krüge).
 - **Leonberg** (welts Namen): `feld` (Vorgabe), `stadt_gasse`, `stadt_markt`, `schlossgarten`, `ufer`, `wald`, `brunnen`, `stadtmauer`, dazu die Räume oben.
 - **Dungeon** (welt #458): `gewoelbe` – Raumrauschen, Tropfen (`water_drip`), selten ein Knarren; Tag und Nacht gleich.
+  `zisterne` (Ebene 3) – Hall des Gewölbes mit Wasser an den Stegen (`amb_cistern`), Tropfen in tiefes Wasser mit langem
+  Echo (`water_drop_deep`) und an den Wänden (`water_drip`).
+  `beinhaus` (Ebene 4) – trockene, hohle Luft mit Wind durch einen Schacht (`amb_ossuary`), nachrutschende Knochen
+  (`bone_rattle`), selten ein Knarren.
   - Neue Platzhalter-Schleifen (4 s): `amb_field`, `amb_town`, `amb_market`, `amb_water`, `amb_fountain`, `amb_fire`, `amb_tavern`, `amb_room`.
   - Neue Einzelklänge: `crow`, `dog_bark`, `wood_creak`, `mug_clink`, `frog`.
 - **Spruch-Klänge:** `Spell`-Feld `sounds = { cast, impact }`; das Wirken klingt an der Hand, der Einschlag am Treffpunkt.
