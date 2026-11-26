@@ -1,7 +1,7 @@
 {
   "format": "gothar-dungeon-level",
   "version": 1,
-  "note": "W8 D2: Ebene 2 'Verlies' als Stub (Ziel der Treppe und der Falltür aus Ebene 1); der Ausbau folgt mit D3.",
+  "note": "W8 D3 (docs/design/schloss-dungeon.md): Ebene 2 'Verlies'. Wachstube mit Hebel zum Gatter der Osthalle; Zellenflur mit vier Zellen im Norden und einer im Süden (Gatter, Hebel am Flur), dahinter die Kerkerhalle mit Pfeilern, Zelle 3 nur über den Teleporter der Osthalle (innen ein Hebel für ihr Gatter); zwei versteckte Depots hinter Geheimwänden (lose Steine am Flurende und in der Kerkerhalle); Rätsel 1: die Platte vor der Schatzkammer hält das Gatter nur offen, solange etwas darauf liegt (einen Gegenstand ablegen); Rätsel 2: zwei Hebel (Osthalle, Zelle 3) öffnen über ein Relais 'all' das Gatter zur Treppe hinab; Falltür in der Schatzkammer nach Ebene 3. Monster: Mauerkriecher, Gatterbock (Wahl des Projektinhabers).",
   "level": 2,
   "theme": "verlies",
   "origin": [0.0, 0.0, 0.0],
@@ -9,10 +9,61 @@
   "heightM": 3.5,
   "cells": [
     {"at": [1, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_01.g7world", "start": "START_E01_VON_UNTEN", "facing": "S"}, "arrive": "START_E02_VON_OBEN"},
-    {"at": [8, 4], "monster": {"npc": "mon_gatterbock", "count": 1}},
-    {"at": [9, 7], "chest": {"definition": "chest"}}
+    {"at": [4, 2], "door": {"definition": "door"}},
+    {"at": [8, 2], "monster": {"npc": "mon_gatterbock", "count": 1, "facing": "W"}},
+    {"at": [8, 4], "switch": {"type": "lever", "facing": "N", "targets": ["GATE_E02_11_2"], "action": "toggle"}},
+    {"at": [11, 2], "gate": {"open": false}},
+    {"at": [15, 3], "monster": {"npc": "mon_mauerkriecher", "count": 2}},
+    {"at": [17, 2], "chest": {"definition": "chest"}},
+    {"at": [21, 2], "teleport": {"to": [13, 8], "visible": true, "facing": "S"}},
+    {"at": [19, 4], "switch": {"type": "lever", "facing": "N", "targets": ["RELAY_E02_TREPPE"], "action": "open"}},
+    {"at": [5, 7], "monster": {"npc": "mon_mauerkriecher", "count": 3}},
+    {"at": [8, 6], "niche": {"definition": "niche", "facing": "S"}},
+    {"at": [9, 7], "chest": {"definition": "chest"}},
+    {"at": [13, 6], "switch": {"type": "lever", "facing": "S", "targets": ["RELAY_E02_TREPPE"], "action": "open"}},
+    {"at": [14, 7], "switch": {"type": "lever", "facing": "W", "targets": ["GATE_E02_12_9"], "action": "toggle"}},
+    {"at": [16, 7], "chest": {"definition": "chest"}},
+    {"at": [4, 9], "gate": {"open": false}},
+    {"at": [6, 9], "switch": {"type": "lever", "facing": "S", "targets": ["GATE_E02_4_9"], "action": "toggle"}},
+    {"at": [8, 9], "gate": {"open": false}},
+    {"at": [10, 9], "switch": {"type": "lever", "facing": "S", "targets": ["GATE_E02_8_9"], "action": "toggle"}},
+    {"at": [12, 9], "gate": {"open": false}},
+    {"at": [16, 9], "gate": {"open": false}},
+    {"at": [18, 9], "switch": {"type": "lever", "facing": "S", "targets": ["GATE_E02_16_9"], "action": "toggle"}},
+    {"at": [19, 9], "switch": {"type": "wall_button", "facing": "S", "hidden": true, "once": true, "targets": ["WALL_E02_21_10"], "action": "open"}},
+    {"at": [4, 10], "monster": {"npc": "mon_mauerkriecher", "count": 2, "facing": "E"}},
+    {"at": [21, 10], "secret_wall": {"open": false}},
+    {"at": [22, 9], "niche": {"definition": "niche", "facing": "S"}},
+    {"at": [6, 11], "gate": {"open": false}},
+    {"at": [8, 11], "switch": {"type": "lever", "facing": "N", "targets": ["GATE_E02_6_11"], "action": "toggle"}},
+    {"at": [7, 13], "chest": {"definition": "chest"}},
+    {"at": [20, 12], "plate": {"weight": "any", "targets": ["GATE_E02_20_14"], "action": "open"}},
+    {"at": [20, 14], "gate": {"open": false}},
+    {"at": [21, 15], "chest": {"definition": "chest"}},
+    {"at": [17, 16], "monster": {"npc": "mon_gatterbock", "count": 1, "facing": "N"}},
+    {"at": [6, 14], "niche": {"definition": "niche", "facing": "S"}},
+    {"at": [10, 14], "switch": {"type": "wall_button", "facing": "S", "hidden": true, "once": true, "targets": ["WALL_E02_12_17"], "action": "open"}},
+    {"at": [12, 17], "secret_wall": {"open": false}},
+    {"at": [6, 18], "monster": {"npc": "mon_mauerkriecher", "count": 2}},
+    {"at": [10, 21], "chest": {"definition": "chest"}},
+    {"at": [15, 18], "trapdoor": {"open": false, "plate": "player", "fall": {"world": "worlds/leonberg/dungeon/ebene_03.g7world", "start": "START_E03_SCHACHT"}}},
+    {"at": [16, 19], "gate": {"open": false}},
+    {"at": [16, 21], "stairs": {"world": "worlds/leonberg/dungeon/ebene_03.g7world", "start": "START_E03_VON_OBEN", "facing": "N"}, "arrive": "START_E02_VON_UNTEN"}
+  ],
+  "relays": [
+    {"name": "TREPPE", "at": [16, 18], "mode": "all", "targets": ["GATE_E02_16_19"], "action": "open", "once": false}
+  ],
+  "items": [
+    {"at": [22, 10], "instance": "it_ring_silver"},
+    {"at": [22, 10], "instance": "it_potion_heal_medium", "count": 2},
+    {"at": [22, 10], "instance": "it_gulden", "count": 60},
+    {"at": [13, 7], "instance": "it_potion_mana_small"},
+    {"at": [18, 16], "instance": "it_sword_old"},
+    {"at": [6, 12], "instance": "it_arrow", "count": 15},
+    {"at": [13, 17], "instance": "it_amulet"},
+    {"at": [13, 17], "instance": "it_potion_strength"}
   ],
   "starts": [
-    {"name": "START_E02_SCHACHT", "at": [8, 2], "facing": "S", "shaft": true}
+    {"name": "START_E02_SCHACHT", "at": [12, 10], "facing": "S", "shaft": true}
   ]
 }

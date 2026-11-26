@@ -416,6 +416,14 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `socket_lantern` (`arm_warden`, beim Spawn von selbst), nach dem Erwachen erst drohen (`zs_mm_threaten`), im Kampf
   alle `flash.every` (10 s) wieder; unter `lantern_drop` (die Hälfte) seines Lebens fällt die Laterne zu Boden
   (Rasend-Phase, danach nur der Spaten). Noch nicht: grünes Licht der Laterne, Klänge `beinhauswart_*`.
+- **Brunnenmolch** (figuren #472): schwimmt nicht (Projektinhaber 2026-11-24). Graph wie der Mauerkriecher (Erwachen
+  `t_wake`; Aktionen 12 `t_snap_up`, 13 `t_submerge`, 14 `t_listen`), liegende Kapsel r 0,3 / h 0,7, Instanz
+  `mon_brunnenmolch` (blind: `senses = { sight = 0, hearing = 2 }`; Beute `it_newt_skin`, 2 × `it_newt_gills`). Er
+  lauert halb untergetaucht am Spawn-Marker im seichten Wasser (`zs_dormant`, die Pose macht der Clip) und taucht auf,
+  wenn er den Helden hört. Mechanik `Creatures.<art>.snap = { above }`: Steht der Held mehr als `above` (0,4 m) höher
+  (auf dem Steg), schnappt er am Ort senkrecht nach oben (`t_snap_up`) statt zu beißen. `returns = true`
+  (`ai/brunnenmolch.lua`): wach und ohne Kampf geht er zurück an sein Wasser (`newt_water`, beim Spawn sein Marker),
+  sinkt unter (`t_submerge`) und ruht wieder. `npc_play(npc, "listen"|"submerge")`.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am

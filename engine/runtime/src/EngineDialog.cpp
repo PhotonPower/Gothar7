@@ -108,7 +108,9 @@ Result<void> Engine::startDialog(u32 npcId)
             c->figure->animator.enter("move", 0.25f);
         }
     }
-    m_dialog.emplace();
+    // Assigned, not emplace(): clang with libstdc++ rejects emplace() of a nested struct with member initialisers
+    // (its default-constructibility is decided while Engine is still incomplete).
+    m_dialog = Dialog{};
     m_dialog->npc = npcId;
     m_dialog->npcName = c->species;
     const script::Value args[] = {c->species};

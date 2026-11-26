@@ -16,7 +16,7 @@
     {"id":8,"type":"start","name":"START_E01_VON_OBEN","pos":[4.5,0.0,4.5],"rot":[0.0,1.0,0.0,0.0]},
     {"id":9,"type":"mob","name":"DOOR_E01_5_2","pos":[16.5,0.0,8.0],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"mobs/door.glb","components":{"mob":{"definition":"door"}}},
     {"id":10,"type":"mesh","name":"GATE_E01_11_2","pos":[34.5,0.0,7.5],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"worlds/leonberg/dungeon/kit/gate.glb","category":"gameplay","components":{"mover":{"kind":"gate","open":false,"seconds":2.0,"crush":"stop"}}},
-    {"id":11,"type":"spawn","name":"SPAWN_E01_15_2","pos":[46.5,0.0,7.5],"rot":[0.0,1.0,0.0,0.0],"components":{"spawn":{"npc":"mon_gatterbock","count":1,"respawn":false,"dormant":true}}},
+    {"id":11,"type":"spawn","name":"SPAWN_E01_15_2","pos":[46.5,0.0,7.5],"rot":[0.0,1.0,0.0,0.0],"components":{"spawn":{"npc":"mon_mauerkriecher","count":2,"respawn":false,"dormant":true}}},
     {"id":12,"type":"mob","name":"CHEST_E01_14_3","pos":[43.5,0.0,10.5],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/chest.glb","components":{"mob":{"definition":"chest"}}},
     {"id":13,"type":"mob","name":"LEVER_E01_6_4","pos":[19.5,0.0,15.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/dungeon/kit/lever.glb","components":{"mob":{"definition":"lever","targets":["GATE_E01_11_2"],"action":"toggle"}}},
     {"id":14,"type":"mesh","name":"PLATE_E01_17_5_STEIN","pos":[52.5,0.0,16.5],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/dungeon/kit/plate.glb"},

@@ -181,6 +181,7 @@ void Engine::loadAnimalBodies()
     m_animalBodies.clear();
     m_sidewaysSpecies.clear();
     m_flashRules.clear();
+    m_snapAbove.clear();
     m_curlRules.clear();
     m_grabRules.clear();
     m_reflectShares.clear();
@@ -294,6 +295,15 @@ void Engine::loadAnimalBodies()
             number(curl, "damage_factor", rule.damageFactor);
             number(curl, "belly_degrees", rule.bellyDegrees);
             m_curlRules.insert_or_assign(species, rule);
+        }
+        if (const script::Value* snap = field(def.asTable(), "snap");
+            snap != nullptr && snap->asTable() != nullptr)
+        {
+            // snap = { above }: the hero this high above it (on a jetty) is snapped at straight up
+            // (t_snap_up).
+            const script::Value* above = field(snap->asTable(), "above");
+            m_snapAbove.insert_or_assign(
+                species, above != nullptr && above->isNumber() ? static_cast<f32>(above->asNumber()) : 0.4f);
         }
         const script::Value* body = field(def.asTable(), "body");
         if (body == nullptr)
@@ -537,6 +547,14 @@ bool Engine::startFight(Combatant& c, std::string_view move, AttackKind kind)
             if (roll < it->second.chance)
             {
                 c.creature->action = 7;
+            }
+        }
+        // Brunnenmolch: the hero above it on a jetty - it snaps straight up out of the water instead.
+        if (const auto it = m_snapAbove.find(c.species); it != m_snapAbove.end())
+        {
+            if (const auto hero = combatant(kHeroId); hero && hero->position.y - c.position.y > it->second)
+            {
+                c.creature->action = 12;
             }
         }
     }

@@ -611,6 +611,49 @@ TEST_CASE("Engine dungeon monsters: the Beinhauswart drops its lantern at half i
     CHECK_FALSE(blinded(engine, warden, 4.0f));
 }
 
+TEST_CASE(
+    "Engine dungeon monsters: the Brunnenmolch lurks, wakes, and sinks back at its water after the fight")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::string newt(run(engine, "insert_npc('mon_brunnenmolch', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("newt_water('{}', 'WP_MONSTER_OST')", newt));
+    run(engine, std::format("npc_set_dormant('{}', true)", newt));
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", newt));
+    frames(engine, 30);
+    CHECK(run(engine, std::format("npc_state('{}').animation", newt)).asString() == "dormant");
+    // Blind, it listens (t_listen) ...
+    run(engine, std::format("npc_clear('{}') npc_play('{}', 'listen')", newt, newt));
+    bool listened = false;
+    for (int i = 0; i < 60 && !listened; ++i)
+    {
+        frames(engine, 1);
+        listened = run(engine, std::format("npc_state('{}').animation", newt)).asString() == "listen";
+    }
+    CHECK(listened);
+    // ... wakes (t_wake), and with nobody to fight goes back to its water and sinks under (t_submerge).
+    run(engine, "teleport(-30, 0, -30)"); // far away: it cannot hear him
+    run(engine, std::format("wake('{}')", newt));
+    frames(engine, 10);
+    CHECK_FALSE(dormant(engine, newt));
+    bool submerged = false;
+    bool resting = false;
+    for (int i = 0; i < 1200 && !resting; ++i)
+    {
+        frames(engine, 1);
+        const std::string anim(run(engine, std::format("npc_state('{}').animation", newt)).asString());
+        submerged = submerged || anim == "submerge";
+        resting = dormant(engine, newt) && anim == "dormant";
+    }
+    CHECK(submerged);
+    CHECK(resting);
+    // Its loot: skin and gills (figuren #475).
+    CHECK(run(engine, std::format("npc_item_count('{}', 'it_newt_skin')", newt)).asInteger() == 1);
+    CHECK(run(engine, std::format("npc_item_count('{}', 'it_newt_gills')", newt)).asInteger() == 2);
+    CHECK(engine.scripts()->callErrors() == 0);
+}
+
 TEST_CASE("Engine dungeon monsters: the Kellermutter sweeps her scythes in from the side (t_scythe_l/r)")
 {
     Engine engine(monstersConfig());
@@ -631,4 +674,49 @@ TEST_CASE("Engine dungeon monsters: the Kellermutter sweeps her scythes in from 
     CHECK(swept);
     frames(engine, 60);
     CHECK(run(engine, "stat('hp')").asInteger() < 5000); // the sweep hits
+}
+
+TEST_CASE(
+    "Engine dungeon monsters: on ebene_03 the Brunnenmolch snaps straight up at the hero on the basin edge")
+{
+    EngineConfig config = monstersConfig();
+    config.world = fs::fromUtf8("worlds/leonberg/dungeon/ebene_03.g7world");
+    config.start = "START_E03_VON_OBEN";
+    Engine engine(config);
+    REQUIRE(engine.init().ok());
+    engine.setRandomSource([] { return 0.99f; });
+    frames(engine, 5);
+    run(engine, "set_stat('hp_max', 5000) set_stat('hp', 5000)");
+    const script::Value names = run(engine, "spawn_npcs('SPAWN_E03_10_9')");
+    REQUIRE(names.asTable() != nullptr);
+    REQUIRE_FALSE(names.asTable()->array.empty());
+    const std::string newt(names.asTable()->array[0].asString());
+    const auto at = [&](std::string_view who, std::string_view key)
+    {
+        return static_cast<f32>(run(engine, who == "hero" ? std::format("where().{}", key)
+                                                          : std::format("npc_state('{}').{}", who, key))
+                                    .asNumber());
+    };
+    const Vec3 water(at(newt, "x"), at(newt, "y"), at(newt, "z"));
+    // The hero on the edge (or the jetty) above it: the first spot around it at least 0.4 m higher.
+    bool above = false;
+    for (int i = 0; i < 64 && !above; ++i)
+    {
+        const f32 angle = glm::two_pi<f32>() * static_cast<f32>(i % 16) / 16.0f;
+        const f32 radius = 1.5f + 1.5f * static_cast<f32>(i / 16); // 1.5, 3, 4.5, 6 m
+        run(engine, std::format("teleport({}, {}, {})", water.x + radius * std::cos(angle), water.y + 1.5f,
+                                water.z + radius * std::sin(angle)));
+        frames(engine, 40); // lands
+        above = at("hero", "y") - water.y > 0.4f;
+    }
+    REQUIRE(above);
+    run(engine, std::format("wake('{}')", newt));
+    bool snapped = false;
+    for (int i = 0; i < 900 && !snapped; ++i)
+    {
+        frames(engine, 1);
+        snapped = run(engine, std::format("npc_state('{}').animation", newt)).asString() == "snap_up";
+    }
+    CHECK(snapped); // straight up from the water instead of biting ahead
+    CHECK(engine.scripts()->callErrors() == 0);
 }

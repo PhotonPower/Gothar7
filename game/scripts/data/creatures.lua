@@ -104,6 +104,18 @@ Creatures = {
         lantern = "it_lantern_beinhaus",
         lantern_drop = 0.5,
     },
+    brunnenmolch = { -- lauert halb untergetaucht im seichten Wasser, schwimmt nicht; blind, hört (Npc senses)
+        territory = 6, -- bleibt beim Wasser
+        attack_distance = 15,
+        wake_seconds = 1.2,
+        chase_gait = "run", -- an Land langsam (0,6 / 1,8 m/s)
+        body = { shape = "lying", radius = 0.3, length = 2.6, offset = { 0, 0.3, 0.2 } },
+        -- Steht der Held höher als above m über ihm (auf dem Steg), schnappt er am Ort senkrecht nach oben
+        -- (t_snap_up) statt vorn bzw. seitlich zu beißen.
+        snap = { above = 0.4 },
+        -- Nach dem Kampf geht er zurück an sein Wasser und sinkt wieder unter (t_submerge, ai/brunnenmolch.lua).
+        returns = true,
+    },
 }
 
 --- Die Werte des Tieres aus Creatures; nil für Menschen (Npc ohne `species`).

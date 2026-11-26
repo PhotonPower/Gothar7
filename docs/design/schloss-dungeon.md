@@ -205,6 +205,17 @@ Ganzes aufschwingt.
   - ein Endgegner für Ebene 8.
 
   Namen und Gestalt bestimmen Projektinhaber und figuren.
+- **Wahl des Projektinhabers (Monster je Ebene):**
+
+  | Monster | Ebenen |
+  |---|---|
+  | Mauerkriecher | 1–3 |
+  | Gatterbock | 2, 5 |
+  | Brunnenmolch | 3, 7 |
+  | Beinhauswart | 4 |
+  | Mauerschlupfer | 4–6 |
+  | Kristallkrebs | 7 |
+  | Kellermutter (Endgegner) | 8, Raum mindestens 4 m hoch (sie ist 5,5 m lang) |
 - **Schätze:** Waffen, Rüstungsteile, Runen und Tränke aus dem vorhandenen Bestand (F6); dazu Schlüssel je Ebene und
   einzigartige Stücke im Hort. Die Werte macht engine/Inhalt (Lua).
 - **Verteilung:** Schätze in Nischen und Truhen; Monster an Monsterplätzen und auf Freepoints. Die Dichte steigt mit
@@ -303,10 +314,57 @@ schreibt.
     (ohne Himmel). **Keine `indoor`-Zonen:** ohne Himmel ist das Grundlicht der Welt das Licht.
   - Erreichbarkeit (`dungeon/logic.py`) vor dem Schreiben; gleiche Karte, gleiche Bytes; VobIds je Ebene in
     `ebene_NN_vob_ids.json`; Vobs, die dem Generator nicht gehören (Editor), bleiben stehen.
-- **Ebene 1** (20 × 15, alle Mechaniken) und **Ebene 2** als Stub (Ziel der Treppe und des Falls). Der Zugang: die
+- **Ebene 1** (20 × 15, alle Mechaniken). Ebene 2 ist seit D3 ausgebaut (Abschnitt 7b). Der Zugang: die
   dunkle Öffnung im hinteren Boden des Riesenfasses (`STAIRS_SCHLOSS_FASS` → `START_E01_VON_OBEN`), zurück über die
   Treppe von Ebene 1 auf `START_SCHLOSS_FASS` vor dem Fass. Die Vorkammer ist der erste Raum von Ebene 1.
 - **Offen für engine:** Musik-Thema `DUNGEON`, Ambiente `gewoelbe`, Instanz `mon_mauerkriecher` (#440).
+
+## 7b. Stand D3 (welt): Ebene 2 „Verlies“, Ebene 3 als Stub
+- **Neu in der Karten-JSON:**
+  - `relays`: unsichtbare Relais `RELAY_E02_<NAME>` (`mode` `any`/`all`/`count`, `count`, `targets`, `action`,
+    `once`, `invert`, `delay`, optional `at` für die Lage); Schalter und Platten dürfen sie als Ziel nennen. Die
+    Erreichbarkeit rechnet sie wie die Engine (Eingänge, Zähler und „verbraucht“ gehören zum Suchzustand).
+  - `items`: Item-Vobs `ITEM_E02_<x>_<y>_<k>` (`at`, `instance`, `count`) auf Bodenzellen, nebeneinander je Zelle;
+    die Funde der Depots. Truhen und Nischen bleiben vorerst leer (bloßer Typ); ihren Inhalt als Lua-`Mob`-Definition
+    liefert engine/Inhalt, welt trägt dann den Namen als `definition` ein.
+- **Ebene 2** (24 × 24, 232 begehbare Zellen = 40 %): Ankunft mit Treppe hinauf, Wachstube (Gatterbock; Hebel zum
+  Gatter der Osthalle), Osthalle (Mauerkriecher, Truhe, sichtbarer Teleporter in Zelle 3, Hebel A), Zellenflur mit
+  vier Zellen im Norden und einer im Süden (Gatter und Hebel am Flur; Zelle 1 Mauerkriecher, Zelle 2 Nische und
+  Truhe, Zelle 3 nur über den Teleporter mit Hebel B und einem Hebel für ihr Gatter, Zelle 4 Truhe), Kerkerhalle mit
+  Pfeilern (Mauerkriecher, Nische, Truhe), **zwei versteckte Depots** hinter Geheimwänden (lose Steine am Flurende und
+  in der Kerkerhalle; Ring, Tränke, Gulden bzw. Amulett und Trank).
+  - **Rätsel 1:** Die Platte vor der Schatzkammer hält das Gatter nur offen, solange etwas darauf liegt: einen
+    Gegenstand ablegen, dann durchgehen.
+  - **Rätsel 2:** Hebel A (Osthalle) und Hebel B (Zelle 3) öffnen gemeinsam über das Relais `all` das Gatter zur
+    Treppe hinab.
+  - Schatzkammer mit Gatterbock und Truhe, Falltür (Platte `player`) nach Ebene 3; Treppe hinab nach Ebene 3.
+  - Erreichbarkeit grün (keine Zelle unerreicht, keine ohne Rückweg).
+- **Ebene 3** siehe 7c.
+
+## 7c. Stand D3 (welt): Ebene 3 „Zisterne“, Ebene 4 als Stub
+- **Neu in der Karten-JSON:**
+  - `water`: `depthM` (Beckenboden unter dem Umgang, Vorgabe 1,0) und `edgeM` (Wasserspiegel unter dem Rand,
+    Vorgabe 0,2); je Zeilenlauf ein Wasser-Vob statt je Zelle.
+  - `spawns`: Monsterplätze `SPAWN_E03_<x>_<y>` auf beliebigen Boden- und Wasserzellen (der Brunnenmolch lauert im
+    Wasser).
+  - Teleporter mit `active: false` lassen sich per Ereignis einschalten; die Erreichbarkeit rechnet das mit, dazu
+    `release_action` der Platten und `once` der Schalter. `check_reach(level, water=False)` prüft zusätzlich ohne
+    Waten: Die Rätsel müssen jede trockene Zelle öffnen.
+- **Ebene 3** (28 × 26, 341 begehbare Zellen = 47 %, davon 109 Wasser):
+  - Zisternenhalle mit Umgang um ein flaches Becken (Boden 0,9 m tief, Wasser **0,45 m unter dem Rand**, also gut
+    0,45 m tief), Steg ins Becken, Insel mit Brunnenschacht (Pfeiler mit Hebel, drei Fackeln). Drei Brunnenmolche
+    im Wasser (schwimmen nicht, schnappen vom Wasser nach dem Umgang); Mauerkriecher in Ankunft, Ostkammer und
+    Schleusenkammer.
+  - **Rätsel 1 (neu, Teleporter einschalten):** Der Hebel in der Pumpenkammer schaltet den Teleporter dort ein; er
+    bringt zur Insel. Der Hebel am Brunnenschacht öffnet das Gatter zur Schleusenkammer. Zurück über den Teleporter
+    der Insel auf den Umgang. Wer durchs Wasser watet und auf die Insel klettert, kommt auch hin – an den Molchen
+    vorbei.
+  - **Rätsel 2 (neu, Zählrelais):** drei lose Steine an den Hallenwänden (je einmal), ein Relais `count` 3 öffnet
+    erst beim dritten die Geheimwand zum Depot (Goldring, Manatränke, Gulden).
+  - Brunnenstube (Truhe, Nische, Trank), Ostkammer (Tür, Truhe), Pumpenkammer (Tür).
+  - Schleusenkammer: Treppe hinab und Falltür (Platte `player`) nach Ebene 4; Treppe hinauf nach Ebene 2.
+- **Ebene 4** als Stub (Thema `beinhaus`, vorerst Ambiente `gewoelbe`).
+- **Offen für engine:** Instanz `mon_brunnenmolch` (bis dahin drei Ladewarnungen), Ambiente `zisterne` und `beinhaus`.
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |

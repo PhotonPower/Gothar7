@@ -64,7 +64,7 @@ Result<void> Engine::openTrade()
     {
         return Error{"nobody to trade with"};
     }
-    m_trade.emplace();
+    m_trade = Trade{}; // not emplace(): see Engine::startDialog (clang + libstdc++)
     m_trade->npc = m_dialog->npc;
     return {};
 }
