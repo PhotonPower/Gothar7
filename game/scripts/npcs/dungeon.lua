@@ -48,6 +48,18 @@ Npc "mon_kellermutter" { -- Boss im Hort (Ebene 8, monsters.md); Werte Platzhalt
     inventory = { it_scythe_claw = 2, it_brood_gland = 1 }, -- Beute
 }
 
+Npc "mon_beinhauswart" { -- Beinhaus (Ebene 4, monsters.md): lebender Totengräber, kein Untoter; Werte Platzhalter
+    name = "Beinhauswart",
+    guild = "beinhauswart",
+    level = 9,
+    species = "beinhauswart",
+    attributes = { str = 35, dex = 15, hp = 110 },
+    damage = { blunt = 18 }, -- Spaten
+    protection = { edge = 10, point = 10, blunt = 5, fire = 0, magic = 5, fall = 0 },
+    senses = { angle = 150 },
+    inventory = { it_lantern_beinhaus = 1, it_shroud_rag = 1 }, -- Beute (die Laterne, solange er sie nicht fallen ließ)
+}
+
 Npc "mon_mauerschlupfer" {
     name = "Mauerschlupfer",
     guild = "mauerschlupfer",

@@ -80,6 +80,12 @@
       "context": "data/guilds.lua",
       "status": "entwurf"
     },
+    "data.guilds.name_14": {
+      "de": "Beinhauswarte",
+      "text": "Charnel wardens",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
     "data.teaching.attribute_names_01": {
       "de": "Stärke",
       "text": "Strength",
@@ -1190,6 +1196,12 @@
       "context": "items/tools.lua",
       "status": "entwurf"
     },
+    "it_lantern_beinhaus.name": {
+      "de": "Grüne Laterne",
+      "text": "Green lantern",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
     "it_letter_council.name": {
       "de": "Versiegelter Brief an den Rat",
       "text": "Sealed Letter to the Council",
@@ -1358,6 +1370,12 @@
       "context": "items/goods.lua",
       "status": "entwurf"
     },
+    "it_shroud_rag.name": {
+      "de": "Grabtuchfetzen",
+      "text": "Shroud rag",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
     "it_sword_2h.name": {
       "de": "Zweihänder",
       "text": "Two-Handed Sword",
@@ -1446,6 +1464,12 @@
       "de": "Nische",
       "text": "Niche",
       "context": "mobs/testdungeon.lua",
+      "status": "entwurf"
+    },
+    "mon_beinhauswart.name": {
+      "de": "Beinhauswart",
+      "text": "Charnel Warden",
+      "context": "npcs/dungeon.lua",
       "status": "entwurf"
     },
     "mon_gatterbock.name": {

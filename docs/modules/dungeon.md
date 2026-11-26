@@ -405,6 +405,15 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `Creatures.<art>.weak = { degrees, factor, stagger_share }`: offen zählen Nahkampf und Geschosse von hinten (Brutsack,
   bis 60° neben der Gegenrichtung) doppelt, ab 5 % ihres Lebens taumelt sie (`t_stagger`). Lua: `npc_set_weak`,
   `npc_weak`, `boss_phase`, `brood_alive`. Noch nicht: `t_scythe_l/r`, Leuchten an `socket_glow`, Klänge.
+- **Beinhauswart** (figuren #461): Graph wie der Gatterbock (Erwachen `t_wake`, Drohen = Laterne entgegenstoßen
+  `t_threaten`, Aktion 4), Kapsel stehend r 0,35 / h 2,0, Instanz `mon_beinhauswart` (Beute `it_lantern_beinhaus`,
+  `it_shroud_rag`). Mechanik `Creatures.<art>.flash = { distance, degrees, seconds, colour }`: Beim
+  Clip-Event `flash` wird der Held geblendet (Bildschirm `colour`, `seconds` abklingend, kurzes Taumeln), wenn er bis
+  `distance` (7 m) vor ihm steht und zu ihm schaut (bis `degrees` 60° neben seiner Blickrichtung) – nur, solange er
+  etwas in der Hand hält (`npc_hold`). Lua-Ereignis `hero_blinded(npc)`. Ablauf in `ai/beinhauswart.lua`: Laterne an
+  `socket_lantern` (`arm_warden`, beim Spawn von selbst), nach dem Erwachen erst drohen (`zs_mm_threaten`), im Kampf
+  alle `flash.every` (10 s) wieder; unter `lantern_drop` (die Hälfte) seines Lebens fällt die Laterne zu Boden
+  (Rasend-Phase, danach nur der Spaten). Noch nicht: grünes Licht der Laterne, Klänge `beinhauswart_*`.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am

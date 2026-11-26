@@ -448,6 +448,10 @@ void Engine::creatureClipEvent(Creature& c, std::string_view clip, std::string_v
     {
         c.fighter.onEvent(event); // the combat clips time the blow (M11)
     }
+    if (event == "flash")
+    {
+        creatureFlash(c); // Beinhauswart: the lantern flares
+    }
     if (event == "grab")
     {
         creatureGrab(c); // Kristallkrebs: the pincer closes
