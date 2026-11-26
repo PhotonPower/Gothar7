@@ -4,6 +4,11 @@
 south (row 0 = north edge). ``ebene_NN.json``: what a character does not say, per cell ``at``
 [x, y] (targets, locks, teleport targets, monsters, the stairs' worlds).
 
+Top level of the JSON besides ``cells``: ``starts`` (extra arrivals), ``relays`` (invisible relays
+``RELAY_E01_<name>`` with ``mode`` any/all/count, ``targets``, ``action``, ``once``, ``invert``,
+``delay``; switches and plates may name them) and ``items`` (item vobs ``ITEM_E01_<x>_<y>_<k>`` on a
+floor cell: ``at``, ``instance``, ``count``; the finds of the hidden depots).
+
 Characters (contract of the plan): ``#`` wall, ``.`` floor, ``D`` door, ``G`` gate, ``P`` trapdoor,
 ``T`` teleporter, ``S`` wall switch (lever or button), ``O`` pressure plate, ``N`` niche, ``H``
 secret wall, ``<`` stairs up, ``>`` stairs down, ``~`` water, ``*`` treasure, ``m`` monster place.
@@ -35,6 +40,7 @@ PREFIX = {"gate": "GATE", "secret_wall": "WALL", "trapdoor": "TRAP", "switch": "
           "monster": "SPAWN", "door": "DOOR", "chest": "CHEST", "stairs": "STAIRS"}  # fmt: skip
 DIRS = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0)}
 SWITCH_TYPES = {"lever", "wall_button"}
+RELAY_MODES = {"any", "all", "count"}
 ACTIONS = {"toggle", "open", "close", "on", "off", "wake", "trigger", "lock", "unlock"}
 
 
@@ -52,6 +58,8 @@ class Level:
     origin: tuple[float, float, float]
     entries: dict[tuple[int, int], dict[str, Any]] = field(default_factory=dict)
     starts: list[dict[str, Any]] = field(default_factory=list)  # extra arrivals (``starts``)
+    relays: dict[str, dict[str, Any]] = field(default_factory=dict)  # vob name -> spec
+    items: list[dict[str, Any]] = field(default_factory=list)  # item vobs (``items``)
     raw: dict[str, Any] = field(default_factory=dict)  # the JSON (environment, torches …)
 
     @property
@@ -131,6 +139,10 @@ class Level:
     def names(self) -> dict[str, tuple[int, int]]:
         return {self.name(at): at for at in self.cells(set(ENTRY))}
 
+    def targets(self) -> set[str]:
+        """Every name a switch, plate or relay may send to: the map's vobs and the relays."""
+        return set(self.names()) | set(self.relays)
+
 
 def _cell(raw: Any, what: str) -> tuple[int, int]:  # noqa: ANN401
     if not (isinstance(raw, list) and len(raw) == 2 and all(isinstance(v, int) for v in raw)):
@@ -163,6 +175,20 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
         if st.get("facing", "S") not in DIRS:
             raise LevelError(f"starts[{i}]: facing must be N, E, S or W")
         level.starts.append({**st, "at": at})
+    for i, r in enumerate(doc.get("relays", [])):
+        if not r.get("name") or not str(r["name"]).replace("_", "").isalnum():
+            raise LevelError(f"relays[{i}]: needs a 'name' (letters, digits, _)")
+        name = f"RELAY_{level.tag}_{str(r['name']).upper()}"
+        if name in level.relays:
+            raise LevelError(f"relays[{i}]: {name} twice")
+        level.relays[name] = r
+    for i, it in enumerate(doc.get("items", [])):
+        at = _cell(it.get("at"), f"items[{i}]")
+        if not it.get("instance") or not level.is_floor(*at) or level.char(*at) in "GHPT<>":
+            raise LevelError(f"items[{i}]: needs 'instance' and a plain floor cell")
+        if not 1 <= int(it.get("count", 1)) <= 1_000_000:
+            raise LevelError(f"items[{i}]: count 1..1000000")
+        level.items.append({**it, "at": at})
     for i, e in enumerate(doc.get("cells", [])):
         at = _cell(e.get("at"), f"cells[{i}]")
         c = level.char(*at)
@@ -184,7 +210,16 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
 
 
 def _check_entries(level: Level) -> None:
-    names = level.names()
+    names = level.targets()
+    for name, r in level.relays.items():
+        if r.get("mode", "any") not in RELAY_MODES:
+            raise LevelError(f"{name}: mode must be any, all or count")
+        if r.get("mode") == "count" and int(r.get("count", 0)) < 1:
+            raise LevelError(f"{name}: mode count needs count >= 1")
+        if r.get("action", "trigger") not in ACTIONS:
+            raise LevelError(f"{name}: unknown action {r.get('action')!r}")
+        if not r.get("targets") or any(t not in names or t == name for t in r["targets"]):
+            raise LevelError(f"{name}: targets must name vobs on the map or other relays")
     for at, e in level.entries.items():
         kind = level.kind(at)
         spec = e[ENTRY[level.char(*at)]]

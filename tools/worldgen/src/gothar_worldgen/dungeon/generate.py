@@ -41,6 +41,7 @@ WATER_D = 1.0  # a water cell's floor below the others
 SINK_M = 0.6  # an open secret wall sinks this far below the floor (clear of the floor slab)
 SLAB = 0.3  # thickness of the collision slabs
 TORCHES_PER_BLOCK = 8  # plan 3.4: the engine picks the nearest lights
+ITEM_SPREAD_M = 0.4  # items on one cell lie this far apart
 TORCH_GAP_CELLS = 3  # torches at least this many cells apart (Chebyshev)
 LIGHT_TORCH = {"color": [1.0, 0.6, 0.3], "range": 7.0, "intensity": 2.0, "flicker": 0.35}
 THEMES = {  # theme -> (ambient zone, environment)
@@ -60,6 +61,15 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_color": [0.018, 0.018, 0.02],
             "fog_start": 2.0,
             "fog_distance": 20.0,
+        },
+    ),
+    "zisterne": (  # Ebene 3 (stub): still the vault's sound until engine has "zisterne"
+        "gewoelbe",
+        {
+            "ambient": [0.04, 0.047, 0.055],
+            "fog_color": [0.016, 0.02, 0.024],
+            "fog_start": 2.0,
+            "fog_distance": 18.0,
         },
     ),
 }
@@ -685,6 +695,42 @@ class _Gen:
             look = DIRS[st.get("facing", "S")]
             y = self.h + 1.0 if st.get("shaft") else self.floor(at)
             self.vob("start", st["name"], (cx, self.y(y), cz), _quat_look(look[0], look[1]))
+        self.relays()
+        self.items()
+
+    def relays(self) -> None:
+        """Invisible relays (``relays``): above their cell ``at`` (else the level's origin)."""
+        for name, r in sorted(self.lv.relays.items()):
+            if "at" in r:
+                cx, cz = self.mid(_cell(r["at"], name))
+            else:
+                cx, cz = self.lv.origin[0], self.lv.origin[2]
+            relay: dict[str, Any] = {"mode": r.get("mode", "any")}
+            if relay["mode"] == "count":
+                relay["count"] = int(r["count"])
+            relay["delay"] = tidy(float(r.get("delay", 0.0)))
+            relay["once"] = bool(r.get("once", False))
+            relay["invert"] = bool(r.get("invert", False))
+            relay["targets"] = list(r["targets"])
+            relay["action"] = r.get("action", "trigger")
+            self.vob("relay", name, (cx, self.y(2.0), cz), [0.0, 0.0, 0.0, 1.0],
+                     components={"relay": relay})  # fmt: skip
+
+    def items(self) -> None:
+        """Item vobs (``items``, the depots' finds): side by side across the cell's middle."""
+        per_cell: dict[Cell, int] = {}
+        for it in self.lv.items:
+            at = it["at"]
+            k = per_cell.get(at, 0)
+            per_cell[at] = k + 1
+            cx, cz = self.mid(at)
+            off = ITEM_SPREAD_M * ((k + 1) // 2) * (1 if k % 2 else -1)
+            item: dict[str, Any] = {"instance": it["instance"]}
+            if int(it.get("count", 1)) != 1:
+                item["count"] = int(it["count"])
+            self.vob("item", f"ITEM_{self.tag}_{at[0]}_{at[1]}_{k}",
+                     (cx + off, self.y(self.floor(at) + 0.05), cz), [0.0, 0.0, 0.0, 1.0],
+                     components={"item": item})  # fmt: skip
 
     def door(self, at: Cell, name: str, spec: dict[str, Any]) -> None:
         cx, cz = self.mid(at)
@@ -1031,6 +1077,10 @@ def _components(kind: str, comps: dict[str, Any]) -> dict[str, Any]:
         out["mover"] = mover
     if "spawn" in comps:
         out["spawn"] = comps["spawn"]
+    if "relay" in comps:
+        out["relay"] = comps["relay"]
+    if "item" in comps:
+        out["item"] = comps["item"]
     if "water" in comps:
         w = comps["water"]
         out["water"] = {"halfExtents": [tidy(v) for v in w["halfExtents"]], "kind": w["kind"]}

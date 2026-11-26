@@ -205,3 +205,24 @@ def test_fog_zone_in_the_engine_layout() -> None:
         '"halfExtents":[4.0,1.5,4.0],"yaw":0.0},"color":[0.4,0.42,0.45],'
         '"distance":8.0,"start":0.5,"fade":3.0}'
     )
+
+
+def test_relays_and_items_in_the_engine_layout() -> None:
+    by = {v["name"]: v for v in plan_level(load_level(DATA, 2), "leonberg").vobs}
+    relay = by["RELAY_E02_TREPPE"]
+    assert relay["type"] == "relay"
+    assert relay["components"]["relay"] == {"mode": "all", "delay": 0.0, "once": False,
+                                            "invert": False, "targets": ["GATE_E02_16_19"],
+                                            "action": "open"}  # fmt: skip
+    gulden = by["ITEM_E02_22_10_2"]
+    assert gulden["type"] == "item" and gulden["components"]["item"] == {"instance": "it_gulden",
+                                                                         "count": 60}  # fmt: skip
+    assert by["ITEM_E02_22_10_0"]["components"]["item"] == {"instance": "it_ring_silver"}
+    xs = sorted(by[f"ITEM_E02_22_10_{k}"]["pos"][0] for k in range(3))
+    assert xs[1] - xs[0] == pytest.approx(0.4) and xs[2] - xs[1] == pytest.approx(0.4)
+    button = by["BUTTON_E02_19_9"]["components"]["mob"]
+    assert button["hidden"] is True and button["targets"] == ["WALL_E02_21_10"]
+    lv = load_level(DATA, 2)
+    world = json.loads(world_text(build_world(lv, plan_level(lv, "leonberg"), "leonberg",
+                                              VobIds({}, 1), None)))  # fmt: skip
+    assert [v["type"] for v in world["vobs"] if v["name"] == "RELAY_E02_TREPPE"] == ["relay"]

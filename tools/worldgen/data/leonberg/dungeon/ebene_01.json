@@ -22,7 +22,7 @@
     {"at": [9, 10], "trapdoor": {"open": false, "plate": "player", "fall": {"world": "worlds/leonberg/dungeon/ebene_02.g7world", "start": "START_E02_SCHACHT"}}},
     {"at": [17, 12], "stairs": {"world": "worlds/leonberg/dungeon/ebene_02.g7world", "start": "START_E02_VON_OBEN", "facing": "S"}, "arrive": "START_E01_VON_UNTEN"},
     {"at": [4, 7], "monster": {"npc": "mon_mauerkriecher", "count": 2}},
-    {"at": [15, 2], "monster": {"npc": "mon_gatterbock", "count": 1}},
+    {"at": [15, 2], "monster": {"npc": "mon_mauerkriecher", "count": 2}},
     {"at": [16, 10], "monster": {"npc": "mon_mauerkriecher", "count": 3}}
   ]
 }

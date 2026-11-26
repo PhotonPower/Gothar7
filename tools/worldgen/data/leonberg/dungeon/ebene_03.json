@@ -1,0 +1,16 @@
+{
+  "format": "gothar-dungeon-level",
+  "version": 1,
+  "note": "W8 D3: Ebene 3 'Zisterne' als Stub (Ziel der Treppe und der Falltür aus Ebene 2); der Ausbau folgt als eigener PR.",
+  "level": 3,
+  "theme": "zisterne",
+  "origin": [0.0, 0.0, 0.0],
+  "cellM": 3.0,
+  "heightM": 3.5,
+  "cells": [
+    {"at": [1, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_02.g7world", "start": "START_E02_VON_UNTEN", "facing": "S"}, "arrive": "START_E03_VON_OBEN"}
+  ],
+  "starts": [
+    {"name": "START_E03_SCHACHT", "at": [8, 3], "facing": "S", "shaft": true}
+  ]
+}
