@@ -248,6 +248,11 @@ def build_schloss(blender: Path, spec_path: Path, rules_path: Path, out_glb: Pat
                         rules_path, out_glb, out_blend)  # fmt: skip
 
 
+def glass_spec(spec: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """A model spec's ``glass`` block (material -> pattern, tint, doubleSided) without its note."""
+    return {k: v for k, v in spec.get("glass", {}).items() if isinstance(v, dict)}
+
+
 SCHLOSS_TEXTURE_ROOT = "../../generated/textures"  # from handmade/schloss/ (like the houses')
 
 
@@ -256,6 +261,7 @@ def texture_schloss(spec: dict[str, Any], out_glb: Path) -> list[Path]:
     and the images of ``schloss.json`` ``textures`` (palette material -> kind); the cellar's
     rooms (``cellar.rooms`` prefix) with their own kinds and darker. Writes the images that
     are missing into ``generated/textures`` (the buildings step writes them all)."""
+    from gothar_worldgen.buildings.gltf import with_glass
     from gothar_worldgen.textures.apply import write_textures
     from gothar_worldgen.textures.models import ModelStyle, texture_model
 
@@ -272,10 +278,14 @@ def texture_schloss(spec: dict[str, Any], out_glb: Path) -> list[Path]:
     dark = ModelStyle({**tex["kinds"], **cellar.get("kinds", {})}, float(cellar.get("dark", 1.0)),
                       str(cellar.get("suffix", "")), axis, "schloss")  # fmt: skip
     prefix = f"schloss_{cellar['rooms']}" if cellar.get("rooms") else None
+    glass = glass_spec(spec)  # M17: the panes as window glass (facade and the rooms' niches)
     out = []
     for path in sorted(out_glb.parent.glob("schloss*.glb")):
         style = dark if prefix and path.name.startswith(prefix) else plain
-        path.write_bytes(texture_model(path.read_bytes(), style, SCHLOSS_TEXTURE_ROOT))
+        data = texture_model(path.read_bytes(), style, SCHLOSS_TEXTURE_ROOT)
+        if glass:
+            data = with_glass(data, glass, require=path == out_glb)
+        path.write_bytes(data)
         out.append(path)
     images = out_glb.parents[2] / "generated" / "textures"
     needed = {k for k in [*tex["kinds"].values(), *cellar.get("kinds", {}).values()] if k}

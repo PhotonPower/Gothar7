@@ -275,3 +275,48 @@ def test_houses_far_from_the_origin_keep_their_roof_slopes():
             n /= np.linalg.norm(n, axis=1, keepdims=True)
             slopes += int(((n[:, 1] > 0.3) & (n[:, 1] < 0.95)).sum())  # pitched, facing up
         assert slopes >= 4, house["id"]
+
+
+# --- M17 window glass (contract "Fensterglas") ----------------------------------------------
+
+
+def test_closed_windows_are_glass_doors_stay_frame():
+    r = build_house(HOUSE, -0.3, (5.0, -3.5), RULES, STREET_SOUTH, TIMBERED)
+    glass = [p for p in r.primitives if p.material == "window_glass"]
+    assert len(glass) == 1 and glass[0].mesh.triangle_count > 0
+    g = RULES.data["glass"]
+    pattern = g["styles"]["handwerkerhaus"]
+    assert glass[0].extras == {"glass": True, "glass_pattern": pattern,
+                               "glass_tint": g["tints"][pattern]}  # fmt: skip
+    assert any(p.material == "frame" for p in r.primitives)  # the door and the reveals
+    # every pane faces out of the house (its normal away from the footprint's centre)
+    m = glass[0].mesh
+    centre = np.zeros(3)  # positions are relative to the origin (the footprint's centre)
+    out = (m.positions - centre)[:, [0, 2]]
+    assert np.all(np.sum(out * m.normals[:, [0, 2]], axis=1) > 0)
+    doc, _ = read_glb(glb_bytes_multi(r.primitives, "H1"))
+    mat = next(x for x in doc["materials"] if x["name"] == "window_glass")
+    assert mat["extras"]["glass"] is True and mat["extras"]["glass_pattern"] == pattern
+
+
+def test_glass_pattern_per_style():
+    g = RULES.data["glass"]
+    assert RULES.glass("buergerhaus")["glass_pattern"] == "diamond"
+    assert RULES.glass("kirche")["glass_pattern"] == "bullseye"
+    assert RULES.glass("scheune")["glass_pattern"] == g["pattern"] == "plain"
+    assert set(g["tints"]) == {"bullseye", "diamond", "plain"}
+    assert RULES.glass("amtshaus")["glass_tint"] == g["tints"]["diamond"]
+
+
+def test_lod1_panes_are_glass_lod2_panels_are_frame():
+    from gothar_worldgen.buildings.batch import lod2_panels
+
+    h1 = build_house(HOUSE, -0.3, (5.0, -3.5), RULES, STREET_SOUTH, TIMBERED, lod=1)
+    glass = [p for p in h1.primitives if p.material == "window_glass"]
+    frame = [p for p in h1.primitives if p.material == "frame"]
+    assert glass and glass[0].extras and glass[0].extras["glass"]
+    panels = lod2_panels(h1.primitives, RULES.color("frame"))
+    assert [p.material for p in panels] == ["frame"] and panels[0].extras is None
+    tris = sum(p.mesh.triangle_count for p in [*glass, *frame])
+    assert panels[0].mesh.triangle_count == tris
+    assert panels[0].mesh.indices.max() < len(panels[0].mesh.positions)
