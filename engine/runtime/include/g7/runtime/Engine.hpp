@@ -1817,6 +1817,7 @@ private:
     [[nodiscard]] bool hiddenInRoom(const SceneInstance& instance) const noexcept;
     void updateUnderwater();
     void drawScene(u32 width, u32 height);
+    void updateCullGrid(); ///< the instances' culling grid anew when they changed
     void addDebugOverlay(u32 width, u32 height);
     /// `allowMouse` / `allowKeyboard` false while the debug UI uses them.
     void updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard);
