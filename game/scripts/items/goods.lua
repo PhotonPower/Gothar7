@@ -126,6 +126,47 @@ Item "it_shroud_rag" { -- Beute des Beinhauswarts (Dungeon)
     weight = 0.1,
 }
 
+-- Beute der Dungeon-Monster (IDs mit figuren abgestimmt 2026-11-25; Modelle figuren #475).
+Item "it_crawler_plate" { -- Mauerkriecher
+    name = "Kriecherplatte",
+    mesh = "items/it_crawler_plate.glb",
+    category = "misc",
+    value = 6,
+    weight = 0.3,
+}
+
+Item "it_ember_eye" { -- Gatterbock
+    name = "Glutauge",
+    mesh = "items/it_ember_eye.glb",
+    category = "misc",
+    value = 40,
+    weight = 0.2,
+}
+
+Item "it_bat_ear" { -- Mauerschlupfer
+    name = "Schlupferohr",
+    mesh = "items/it_bat_ear.glb",
+    category = "misc",
+    value = 8,
+    weight = 0.05,
+}
+
+Item "it_newt_skin" { -- Brunnenmolch
+    name = "Molchhaut",
+    mesh = "items/it_newt_skin.glb",
+    category = "misc",
+    value = 20,
+    weight = 0.8,
+}
+
+Item "it_newt_gills" { -- Brunnenmolch
+    name = "Molchkiemen",
+    mesh = "items/it_newt_gills.glb",
+    category = "misc",
+    value = 15,
+    weight = 0.2,
+}
+
 Item "it_lute" { -- der Musiker spielt sie (zs_play_lute); Wert und Gewicht Platzhalter
     name = "Laute",
     mesh = "items/it_lute.glb",
