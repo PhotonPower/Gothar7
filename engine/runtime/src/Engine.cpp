@@ -2280,7 +2280,9 @@ void Engine::drawScene(u32 width, u32 height)
     // anything; terrain can (hills shade valleys).
     updateGrass(); // M17 G1: new tiles around the camera (high: they cast shadows)
     render::ShadowFrame shadowFrame;
-    if ((!m_instances.empty() || m_hasTerrain) && m_environment.sunIntensity > 0.0f)
+    const bool sunShadows = (!m_instances.empty() || m_hasTerrain) && m_environment.sunIntensity > 0.0f;
+    prepareCreaturePoses(sunShadows); // M17 perf C2: poses and skinning palettes of the figures, in parallel
+    if (sunShadows)
     {
         m_cascades = render::computeCascades(m_camera, m_environment.sunDirection, m_shadowMap.settings());
         if (m_cascadesDrawn.size() != m_cascades.size())

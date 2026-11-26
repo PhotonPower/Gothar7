@@ -4,6 +4,7 @@
 
 #include "PlayerFigure.hpp"
 
+#include <g7/core/Crc32.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/Profiler.hpp>
 #include <g7/gameplay/Movement.hpp>
@@ -238,6 +239,7 @@ void Engine::fixedUpdateCreatures(f32 seconds)
     const Vec3 eye = m_player.valid() ? m_player.feet() : m_camera.transform.position;
     // By index: a script state may insert NPCs while this runs (they move next step).
     const usize creatureCount = m_creatures.size();
+    m_animatedCreatures.clear();
     for (usize index = 0; index < creatureCount; ++index)
     {
         Creature& c = *m_creatures[index];
@@ -352,52 +354,62 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         a.setBool("dormant", c.rest);                // dungeon D6: its resting loop (s_dormant)
         a.setBool("curled", c.curledSeconds > 0.0f); // rolled up after a heavy hit (Mauerkriecher)
         a.setBool("dead", c.dead);
-        a.update(seconds,
-                 [&](std::string_view clip, std::string_view event)
-                 {
-                     handEvent(c, event); // broom, mug (M9 part B)
-                     if (event.starts_with("sound:"))
-                     {
-                         (void)playSound(event.substr(6), c.position + Vec3(0.0f, 0.8f, 0.0f)); // M13
-                     }
-                     if ((event == "footstep_l" || event == "footstep_r") && c.body &&
-                         nearListener(c.position))
-                     {
-                         footstep(c.position, c.speed); // M13 E: people (animals' steps follow)
-                     }
-                     if (event == "cast" && c.cast && !c.cast->acted)
-                     {
-                         applyNpcSpell(c); // the spell leaves its hand (M12 part D)
-                     }
-                     if (event.starts_with("hit_") || event.starts_with("combo_"))
-                     {
-                         c.fighter.onEvent(event); // the combat clips time the blow (M11)
-                     }
-                     if (event == "grab")
-                     {
-                         creatureGrab(c); // Kristallkrebs: the pincer closes
-                     }
-                     else if (event == "release" && m_heroHeld && m_heroHeld->by == c.id)
-                     {
-                         releaseHero("release");
-                     }
-                     else if (event == "reflect")
-                     {
-                         throwSpellBack(c); // Kristallkrebs: its crystals flare
-                     }
-                     creatureScriptEvent(c, event); // steal, emerge, grab ... (dungeon D6)
-                     f.events.push_front(std::format(
-                         "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));
-                     if (f.events.size() > kShownEvents)
-                     {
-                         f.events.pop_back();
-                     }
-                 });
+        m_animatedCreatures.push_back(index);
+    }
+
+    // Phase 2 (M17 perf part C2), in parallel per figure: sample and blend its clips, look-at, face - each
+    // job touches only its own figure; the clip events are collected (no Lua, no sounds, no random numbers
+    // here).
+    const std::optional<Vec3> heroHead =
+        m_player.valid() ? std::optional<Vec3>(m_player.feet() + Vec3(0.0f, 1.6f, 0.0f)) : std::nullopt;
+    {
+        G7_PROFILE_SCOPE("creatures: animation (parallel)");
+        m_jobs->parallelFor(m_animatedCreatures.size(), 0,
+                            [&](usize begin, usize end)
+                            {
+                                for (usize k = begin; k < end; ++k)
+                                {
+                                    Creature& c = *m_creatures[m_animatedCreatures[k]];
+                                    AnimatedFigure& f = *c.figure;
+                                    c.pendingEvents.clear();
+                                    f.animator.update(seconds,
+                                                      [&c](std::string_view clip, std::string_view event)
+                                                      { c.pendingEvents.emplace_back(clip, event); });
+                                    f.posePrevious = std::move(f.poseNow);
+                                    f.poseNow = f.animator.pose();
+                                    // Talking (M10): the head towards the player, the mouth moving; the face
+                                    // blinks always (its own random numbers, per figure).
+                                    if (f.lookAt.valid())
+                                    {
+                                        std::optional<Vec3> target;
+                                        if (c.talking && heroHead)
+                                        {
+                                            target = Vec3(glm::inverse(creatureMatrix(c.position, c.yaw)) *
+                                                          Vec4(*heroHead, 1.0f));
+                                        }
+                                        f.lookAt.setTarget(target);
+                                        f.lookAt.update(seconds, f.skeleton, f.poseNow);
+                                    }
+                                    f.face.update(seconds);
+                                }
+                            });
+    }
+
+    // Phase 3, serial in creature order: the clip events, then root motion.
+    for (const usize index : m_animatedCreatures)
+    {
+        Creature& c = *m_creatures[index];
+        for (const auto& [clip, event] : c.pendingEvents)
+        {
+            creatureClipEvent(c, clip, event);
+        }
+        c.pendingEvents.clear();
         c.action = 0; // a trigger: one step
 
         // Root motion: turn first, then the movement in the turned frame (model -> world). NPCs with a
-        // capsule move by it instead (their head and face below still move: M13 D found them still).
-        if (!c.body && !animationOnly)
+        // capsule move by it instead (their head and face still move: M13 D found them still).
+        const animation::Animator& a = c.figure->animator;
+        if (!c.body && !c.animationOnly)
         {
             c.yaw = std::remainder(c.yaw + a.rootMotionYaw(), 2.0f * glm::pi<f32>());
             const Vec3 ahead = Vec3(creatureMatrix(Vec3(0.0f), c.yaw) * Vec4(a.rootMotion(), 0.0f));
@@ -413,23 +425,130 @@ void Engine::fixedUpdateCreatures(f32 seconds)
                 }
             }
         }
-        f.posePrevious = std::move(f.poseNow);
-        f.poseNow = a.pose();
-        // Talking (M10): the head towards the player, the mouth moving; the face blinks always.
-        if (f.lookAt.valid())
-        {
-            std::optional<Vec3> target;
-            if (c.talking && m_player.valid())
-            {
-                const Vec3 head = m_player.feet() + Vec3(0.0f, 1.6f, 0.0f);
-                target = Vec3(glm::inverse(creatureMatrix(c.position, c.yaw)) * Vec4(head, 1.0f));
-            }
-            f.lookAt.setTarget(target);
-            f.lookAt.update(seconds, f.skeleton, f.poseNow);
-        }
-        f.face.update(seconds);
     }
     m_routineMinute = m_gameTime.totalMinutes(); // routines are checked once per game minute (M9 part B)
+}
+
+void Engine::creatureClipEvent(Creature& c, std::string_view clip, std::string_view event)
+{
+    handEvent(c, event); // broom, mug (M9 part B)
+    if (event.starts_with("sound:"))
+    {
+        (void)playSound(event.substr(6), c.position + Vec3(0.0f, 0.8f, 0.0f)); // M13
+    }
+    if ((event == "footstep_l" || event == "footstep_r") && c.body && nearListener(c.position))
+    {
+        footstep(c.position, c.speed); // M13 E: people (animals' steps follow)
+    }
+    if (event == "cast" && c.cast && !c.cast->acted)
+    {
+        applyNpcSpell(c); // the spell leaves its hand (M12 part D)
+    }
+    if (event.starts_with("hit_") || event.starts_with("combo_"))
+    {
+        c.fighter.onEvent(event); // the combat clips time the blow (M11)
+    }
+    if (event == "grab")
+    {
+        creatureGrab(c); // Kristallkrebs: the pincer closes
+    }
+    else if (event == "release" && m_heroHeld && m_heroHeld->by == c.id)
+    {
+        releaseHero("release");
+    }
+    else if (event == "reflect")
+    {
+        throwSpellBack(c); // Kristallkrebs: its crystals flare
+    }
+    creatureScriptEvent(c, event); // steal, emerge, grab ... (dungeon D6)
+    AnimatedFigure& f = *c.figure;
+    f.events.push_front(
+        std::format("{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));
+    if (f.events.size() > kShownEvents)
+    {
+        f.events.pop_back();
+    }
+}
+
+void Engine::prepareCreaturePoses(bool shadows)
+{
+    G7_PROFILE_SCOPE("render::figure poses");
+    const f32 alpha = static_cast<f32>(m_fixedStep.alpha());
+    const Frustum view = m_camera.frustum();
+    const Vec3 eye = m_camera.transform.position;
+    // The reaches of drawCreatures: in view (main pass), or near enough to cast a shadow into some cascade.
+    const auto reachOf = [](f32 limit, f32 frame) { return frame > 0.0f ? std::min(limit, frame) : limit; };
+    const f32 viewReach = reachOf(m_figureCull.distance, m_frameCull.viewDistance);
+    const f32 shadowReach = reachOf(m_figureCull.shadowDistance, m_frameShadowCull.viewDistance);
+    m_poseCreatures.clear();
+    for (const auto& owned : m_creatures)
+    {
+        Creature& c = *owned;
+        if (!c.figure->uploaded || c.vanished || c.figure->drawnFrame == m_frameCount)
+        {
+            continue;
+        }
+        const AABB box{c.position - Vec3(kFigureHalfWidth, 0.0f, kFigureHalfWidth),
+                       c.position + Vec3(kFigureHalfWidth, kFigureHeight, kFigureHalfWidth)};
+        const Vec3 nearest = glm::clamp(eye, box.min, box.max);
+        if (render::figureInView(box, eye, view, viewReach) ||
+            (shadows && glm::length(nearest - eye) <= shadowReach))
+        {
+            m_poseCreatures.push_back(&c);
+        }
+    }
+    m_jobs->parallelFor(m_poseCreatures.size(), 0,
+                        [&](usize begin, usize end)
+                        {
+                            for (usize k = begin; k < end; ++k)
+                            {
+                                computeFigurePose(*m_poseCreatures[k]->figure, alpha, m_frameCount);
+                            }
+                        });
+    for (Creature* c : m_poseCreatures)
+    {
+        c->figure->mesh.setMorphWeights(c->figure->face.weights()); // GL: on this thread
+    }
+}
+
+u32 Engine::creatureDigest() const
+{
+    u32 crc = 0;
+    const auto add = [&crc](const void* data, usize size)
+    { crc = crc32(std::span(static_cast<const u8*>(data), size), crc); };
+    const auto addText = [&add](std::string_view text)
+    {
+        add(text.data(), text.size());
+        add("|", 1);
+    };
+    for (const auto& owned : m_creatures)
+    {
+        const Creature& c = *owned;
+        const AnimatedFigure& f = *c.figure;
+        add(&c.id, sizeof(c.id));
+        add(&c.position, sizeof(c.position));
+        add(&c.yaw, sizeof(c.yaw));
+        add(&c.speed, sizeof(c.speed));
+        add(&c.turn, sizeof(c.turn));
+        const u8 flags[] = {c.dead, c.simulated, c.animationOnly, c.vanished};
+        add(flags, sizeof(flags));
+        addText(f.animator.state());
+        add(f.poseNow.data(), f.poseNow.size() * sizeof(animation::BoneTransform));
+        add(f.posePrevious.data(), f.posePrevious.size() * sizeof(animation::BoneTransform));
+        add(f.face.weights().data(), f.face.weights().size_bytes());
+        const auto fight = static_cast<u32>(c.fighter.state());
+        add(&fight, sizeof(fight));
+        if (c.character)
+        {
+            const i32 hp = c.character->attribute("hp");
+            add(&hp, sizeof(hp));
+        }
+        for (const std::string& event : f.events)
+        {
+            addText(event);
+        }
+    }
+    return crc;
 }
 
 void Engine::drawCreatures(bool shadow, u32 cascade)
