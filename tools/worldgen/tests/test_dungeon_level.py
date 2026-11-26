@@ -161,3 +161,147 @@ def test_spawns_and_water_are_checked() -> None:
         parse_level("#####\n#<..#\n#####", {**doc(), "spawns": [{"at": [0, 0], "npc": "m"}]})
     with pytest.raises(LevelError, match="edgeM"):
         parse_level("#####\n#<..#\n#####", {**doc(), "water": {"depthM": 0.3, "edgeM": 0.5}})
+
+
+def test_level_4_beinhaus_is_complete_and_solvable() -> None:
+    """W8 D3: Ebene 4 with crypts, the Beinhauswart once, a time gate, a teleport trap, a depot."""
+    level = load_level(DATA, 4)
+    kinds = {name.split("_")[0] for name in level.targets()}
+    assert kinds >= {"GATE", "WALL", "BUTTON", "TELE", "NICHE", "SPAWN", "DOOR", "CHEST", "STAIRS",
+                     "RELAY"}  # fmt: skip
+    assert 24 <= level.width <= 32 and 20 <= level.height <= 32
+    reach = check_reach(level)
+    assert reach.unreached == [] and reach.stuck == []
+    assert len(reach.cells) + len(level.blocked) >= 0.4 * level.width * level.height
+    npcs = [e["monster"] for e in level.entries.values() if "monster" in e]
+    assert [m["npc"] for m in npcs].count("mon_beinhauswart") == 1
+    assert [m["count"] for m in npcs if m["npc"] == "mon_beinhauswart"] == [1]  # exactly one
+    assert {m["npc"] for m in npcs} == {"mon_beinhauswart", "mon_mauerschlupfer"}
+    assert {p["kind"] for p in level.props.values()} == {"sarcophagus", "bone_niche"}
+    traps = [at for at in level.cells("T") if level.entries[at]["teleport"].get("trap")]
+    assert len(traps) == 1
+    assert level.relays["RELAY_E04_ZEITGATTER"]["delay"] > 0
+    assert {it["at"] for it in level.items} >= {(12, 16)}  # the depot's finds
+    down = [level.entries[at]["stairs"]["world"] for at in level.cells(">")]
+    assert down == ["worlds/leonberg/dungeon/ebene_05.g7world"]
+    assert load_level(DATA, 5).theme == "werkstatt"
+
+
+def test_level_4_riddles_hold() -> None:
+    """A shorter time gate shuts before the hero is through; without the loose stone the
+    forgotten crypt is a dead end; without the depot's stone the depot stays shut."""
+    level = load_level(DATA, 4)
+    level.relays["RELAY_E04_ZEITGATTER"]["delay"] = 4.0
+    assert (22, 19) in check_reach(level).unreached  # the stairs down
+    level = load_level(DATA, 4)
+    level.entries[(11, 5)]["switch"]["targets"] = ["RELAY_E04_ZEITGATTER"]
+    reach = check_reach(level)
+    assert (7, 6) in reach.stuck and reach.unreached == [(8, 7)]
+    level = load_level(DATA, 4)
+    level.entries[(9, 12)]["switch"]["targets"] = ["RELAY_E04_ZEITGATTER"]
+    assert (12, 16) in check_reach(level).unreached
+
+
+@pytest.mark.parametrize(("gap", "through"), [(2, True), (8, True), (9, False)])
+def test_a_time_gate_is_open_only_for_a_few_cells(gap: int, through: bool) -> None:
+    """Button at the west end, gate ``gap`` cells further; the relay shuts it after its delay
+    (8 s: (8 - 2) * 4 / 3 = 8 cells)."""
+    w = gap + 6
+    gate = f"GATE_E01_{gap + 2}_2"
+    rows = ["#" * w, "##S" + "#" * (w - 3), "#<" + "." * gap + "G..#",
+            "#" * (gap + 4) + "S#", "#" * w]  # fmt: skip
+    button = {"type": "wall_button", "facing": "S", "targets": [gate, "RELAY_E01_ZEIT"],
+              "action": "open"}  # fmt: skip
+    back = {**button, "facing": "N"}  # the way back from the far side
+    relay = {"name": "zeit", "mode": "any", "delay": 8.0, "targets": [gate], "action": "close"}
+    d = doc({"at": [gap + 2, 2], "gate": {"open": False}}, {"at": [2, 1], "switch": button},
+            {"at": [gap + 4, 3], "switch": back})  # fmt: skip
+    d["cells"][0] = {**UP, "at": [1, 2]}
+    level = parse_level("\n".join(rows), {**d, "relays": [relay]})
+    reach = check_reach(level)
+    assert ((gap + 3, 2) in reach.cells) is through
+    assert reach.stuck == []
+
+
+def test_a_wall_button_only_sends_its_action() -> None:
+    """A button that closes never opens (no counterpart, unlike a lever)."""
+    text = "#######\n#<..G.#\n###S###\n#######"
+    button = {"type": "wall_button", "targets": ["GATE_E01_4_1"], "action": "close"}
+    level = parse_level(text, doc({"at": [4, 1], "gate": {"open": False}},
+                                  {"at": [3, 2], "switch": button}))  # fmt: skip
+    assert check_reach(level).unreached == [(4, 1), (5, 1)]
+    button["type"] = "lever"
+    assert check_reach(level).unreached == []
+
+
+@pytest.mark.parametrize(
+    ("props", "message"),
+    [
+        ([{"at": [2, 1], "kind": "urn"}], "kind"),
+        ([{"at": [1, 1], "kind": "sarcophagus"}], "plain floor"),
+        ([{"at": [2, 1], "kind": "bone_niche", "facing": "E"}], "wall behind"),
+        ([{"at": [3, 1], "kind": "sarcophagus"}], "needed"),
+    ],
+)
+def test_props_are_checked(props: list, message: str) -> None:
+    d = {**doc(), "props": props, "items": [{"at": [3, 1], "instance": "it_gulden"}]}
+    with pytest.raises(LevelError, match=message):
+        parse_level("#####\n#<..#\n#####", d)
+
+
+def test_a_sarcophagus_fills_its_cell() -> None:
+    level = parse_level("######\n#<...#\n######", {**doc(), "props": [
+        {"at": [3, 1], "kind": "sarcophagus", "facing": "E"}]})  # fmt: skip
+    assert level.blocked == {(3, 1)}
+    assert check_reach(level).unreached == [(4, 1)]
+
+
+def test_level_5_werkstatt_is_complete_and_solvable() -> None:
+    """W8 D3: Ebene 5 with Gatterbock statues, Mauerschlupfer, a reset trap, weight and lever,
+    a hidden depot and the shortcut up to Ebene 1 (plan F6)."""
+    level = load_level(DATA, 5)
+    kinds = {name.split("_")[0] for name in level.targets()}
+    assert kinds >= {"GATE", "WALL", "LEVER", "BUTTON", "PLATE", "TELE", "NICHE", "SPAWN", "DOOR",
+                     "CHEST", "STAIRS", "RELAY"}  # fmt: skip
+    assert 24 <= level.width <= 32 and 24 <= level.height <= 32
+    reach = check_reach(level)
+    assert reach.unreached == [] and reach.stuck == []
+    assert len(reach.cells) + len(level.blocked) >= 0.4 * level.width * level.height
+    npcs = [e["monster"]["npc"] for e in level.entries.values() if "monster" in e]
+    assert set(npcs) == {"mon_gatterbock", "mon_mauerschlupfer"}  # the owner's choice for E5
+    assert {p["kind"] for p in level.props.values()} == {"workbench", "cogwheel"}
+    traps = [at for at in level.cells("T") if level.entries[at]["teleport"].get("trap")]
+    assert len(traps) == 1
+    up = [level.entries[at]["teleport"] for at in level.cells("T")
+          if "world" in level.entries[at]["teleport"]]  # fmt: skip
+    assert [(t["world"], t["active"]) for t in up] == [
+        ("worlds/leonberg/dungeon/ebene_01.g7world", False)
+    ]
+    down = [level.entries[at]["stairs"]["world"] for at in level.cells(">")]
+    assert down == ["worlds/leonberg/dungeon/ebene_06.g7world"]
+    assert load_level(DATA, 6).theme == "labyrinth"
+
+
+def test_level_5_riddles_hold() -> None:
+    """Without the loose stone the trap keeps the hall shut; without the Schmiede's lever the
+    weight alone does not open the clockwork; without the depot's stone the depot stays shut."""
+    level = load_level(DATA, 5)
+    level.entries[(7, 1)]["switch"]["targets"] = ["RELAY_E05_GEWICHT"]
+    reach = check_reach(level)
+    assert (15, 9) in reach.unreached and (23, 21) in reach.unreached
+    level = load_level(DATA, 5)
+    lever = level.entries[(2, 15)]["switch"]  # still an input, but never thrown "on"
+    lever["type"], lever["action"] = "wall_button", "close"
+    assert (14, 14) in check_reach(level).unreached
+    level = load_level(DATA, 5)
+    level.entries[(19, 4)]["switch"]["targets"] = ["GATE_E05_8_12"]
+    assert (23, 9) in check_reach(level).unreached
+
+
+@pytest.mark.parametrize("number", [1, 2, 3, 4, 5])
+def test_chests_and_niches_name_their_lua_definition(number: int) -> None:
+    """engine's contents (game/scripts/mobs/dungeon.lua): one definition per chest and niche."""
+    level = load_level(DATA, number)
+    defs = [level.entries[at][level.kind(at)]["definition"] for at in level.cells("*N")]
+    assert defs and all(d.startswith(f"mob_dng_e{number}_") for d in defs)
+    assert len(set(defs)) == len(defs)

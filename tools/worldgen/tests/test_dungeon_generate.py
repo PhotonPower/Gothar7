@@ -56,7 +56,9 @@ def test_every_mechanic_follows_the_contract() -> None:
         "action": "toggle",
     }
     assert lever["pos"][2] == pytest.approx(5 * 3.0)  # on the wall face towards the south
-    assert by["NICHE_E01_9_7"]["components"]["mob"]["definition"] == "niche"
+    assert (
+        by["NICHE_E01_9_7"]["components"]["mob"]["definition"] == "mob_dng_e1_niche"
+    )  # content from Lua (engine #491)
     door = by["DOOR_E01_13_8"]["components"]["mob"]
     assert door == {"definition": "door", "one_way": "back"}
     tele = by["TELE_E01_16_7"]["components"]["trigger"]["teleport"]
@@ -247,3 +249,49 @@ def test_cistern_water_boxes_and_molch_spawns() -> None:
     assert tele["active"] is False and tele["to"] == "TELE_E03_2_12_ZIEL"
     relay = by["RELAY_E03_STEINE"]["components"]["relay"]
     assert list(relay)[:2] == ["mode", "count"] and relay["count"] == 3 and relay["once"] is True
+
+
+def test_beinhaus_props_trap_and_time_gate() -> None:
+    lv = load_level(DATA, 4)
+    plan = plan_level(lv, "leonberg")
+    by = {v["name"]: v for v in plan.vobs}
+    sarc = by["PROP_E04_22_10"]
+    assert sarc["type"] == "mesh" and sarc["mesh"] == "worlds/leonberg/dungeon/kit/sarcophagus.glb"
+    assert sarc["pos"] == [67.5, 0.0, 31.5]  # in the middle of its cell
+    niche = by["PROP_E04_18_11"]  # facing E: against the west wall of its cell
+    assert niche["mesh"].endswith("bone_niche.glb") and niche["pos"] == [54.0, 0.0, 34.5]
+    points = {p["name"] for p in plan.points}
+    assert "WP_DNG_E04_22_10" not in points and "WP_DNG_E04_18_11" in points
+    assert not any("WP_DNG_E04_22_10" in e[:2] for e in plan.edges)
+    trap = by["TELE_E04_10_2"]["components"]["trigger"]["teleport"]
+    assert trap["visible"] is False and "TELE_E04_10_2_RING" not in by
+    relay = by["RELAY_E04_ZEITGATTER"]["components"]["relay"]
+    assert relay["delay"] == 8.0 and relay["action"] == "close"
+    assert any(z["type"] == "ambient" and z["value"] == "beinhaus" for z in plan.zones)
+    assert not any(name.startswith("TORCH_E04_18_11_W") for name in by)  # the niche's wall
+
+
+def test_kit_props_stand_on_the_floor() -> None:
+    from gothar_worldgen.dungeon import kit
+
+    for build in kit.PROPS.values():
+        m = build()
+        assert m.collision and 0 < m.triangles() < 3000
+
+
+def test_werkstatt_props_and_shortcut() -> None:
+    lv = load_level(DATA, 5)
+    plan = plan_level(lv, "leonberg")
+    by = {v["name"]: v for v in plan.vobs}
+    cog = by["PROP_E05_10_9"]  # facing E: on the west wall of its cell
+    assert cog["mesh"].endswith("cogwheel.glb") and cog["pos"] == [30.0, 0.0, 28.5]
+    bench = by["PROP_E05_12_18"]
+    assert bench["mesh"].endswith("workbench.glb") and bench["pos"] == [37.5, 0.0, 55.5]
+    points = {p["name"] for p in plan.points}
+    assert "WP_DNG_E05_12_18" not in points and "WP_DNG_E05_10_9" in points
+    tele = by["TELE_E05_25_16"]["components"]["trigger"]["teleport"]
+    assert tele["world"].endswith("ebene_01.g7world") and tele["start"] == "START_E01_VON_OBEN"
+    assert tele["active"] is False and tele["visible"] is True
+    trap = by["TELE_E05_9_2"]["components"]["trigger"]["teleport"]
+    assert trap["visible"] is False and trap["to"] == "TELE_E05_9_2_ZIEL"
+    assert by["BUTTON_E05_7_1"]["components"]["mob"]["action"] == "off"

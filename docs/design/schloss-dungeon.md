@@ -363,8 +363,75 @@ schreibt.
     erst beim dritten die Geheimwand zum Depot (Goldring, Manatränke, Gulden).
   - Brunnenstube (Truhe, Nische, Trank), Ostkammer (Tür, Truhe), Pumpenkammer (Tür).
   - Schleusenkammer: Treppe hinab und Falltür (Platte `player`) nach Ebene 4; Treppe hinauf nach Ebene 2.
-- **Ebene 4** als Stub (Thema `beinhaus`, vorerst Ambiente `gewoelbe`).
-- **Offen für engine:** Instanz `mon_brunnenmolch` (bis dahin drei Ladewarnungen), Ambiente `zisterne` und `beinhaus`.
+- **Ebene 4** siehe 7d.
+
+## 7d. Stand D3 (welt): Ebene 4 „Beinhaus“, Ebene 5 als Stub
+- **Neu in der Karten-JSON:**
+  - `props`: Requisiten aus dem Baukasten auf einer freien Bodenzelle `.` (`at`, `kind`, `facing`), Mesh-Vobs
+    `PROP_E04_<x>_<y>` mit Kollision im glb. `sarcophagus` (Steinsarg mit Deckel und Kreuz, 2,2 × 0,95 m, längs zu
+    `facing`) steht in der Zellmitte und **füllt die Zelle**: kein Wegpunkt, kein Weg hindurch, nicht auf Ankünften,
+    Teleporter-Zielen, Funden, Monsterplätzen oder vor Schaltern. `bone_niche` (Beinhaus-Regal mit Schädeln und
+    Knochen, 1,9 m breit, 0,42 m tief) steht an der Wand hinter der Zelle (gegenüber `facing`) und lässt sie frei;
+    an dieser Wand hängt keine Fackel.
+  - Teleporter mit `trap: true`: unsichtbar und ohne Steinring (Falle).
+  - Relais mit `delay` rechnet die Erreichbarkeit als **Zeitfenster**: Das verzögerte Ereignis kommt an, nachdem der
+    Held `(delay − 2 s) × 4 m/s ÷ 3 m` Zellen gelaufen ist (2 s für den Knopfdruck und die Fahrt des Gatters). Was
+    weiter weg liegt, bleibt zu.
+  - Ein Wandknopf schickt nur seine `action` (kein Gegenstück wie Hebel oder Platte), wie in der Engine.
+- **Ebene 4** (28 × 22, 283 begehbare Zellen = 46 %, davon 10 mit Sarkophag):
+  - Ankunft mit Treppe hinauf; Gang nach Osten zur Gräberkammer (Sarkophage, Mauerschlupfer, Truhe,
+    Schacht-Ankunft `START_E04_SCHACHT` aus der Falltür von Ebene 3).
+  - **Rätsel 1 (neu, Teleport-Falle):** Mitten im Gang liegt ein unsichtbarer Teleporter. Er setzt in die
+    Vergessene Gruft (zwei Sarkophage, Mauerschlupfer, eine Fackel als Fund). Hinaus führt nur ein loser Stein; er
+    öffnet die Geheimwand zum Gruftgang.
+  - Gruftgang mit Knochennischen; daran Gruft 1 (zwei Sarkophage, Nische, Truhe, Tür zur Totengräberkammer mit
+    Sarkophagen, Mauerschlupfern und Truhe) und Gruft 3 (Sarkophag, Nische, Truhe, Mauerschlupfer).
+  - **Verstecktes Depot** hinter einer Geheimwand in Gruft 3 (loser Stein): altes Amulett, Goldkette, Heiltränke,
+    Gulden.
+  - **Beinhaus** (8 × 8 mit vier Pfeilern, großer Sarkophag, Knochennischen an allen Wänden, Nische): der
+    **Beinhauswart genau einmal** als Zwischengegner.
+  - **Rätsel 2 (neu, Zeitgatter):** Der Knopf an der Westwand des Beinhauses öffnet das Gatter zur Treppenkammer;
+    das Relais `RELAY_E04_ZEITGATTER` (`any`, `delay` 8 s, `close`) schließt es wieder. Der Weg führt quer durch das
+    Beinhaus am Wart vorbei (6 Zellen, Fenster 8). Ein Knopf in der Treppenkammer öffnet es für den Rückweg.
+  - Treppenkammer: Treppe hinab nach Ebene 5 (`START_E05_VON_OBEN`), Truhe, Mauerschlupfer, Manatrank.
+  - Erreichbarkeit grün; mit 4 s Verzögerung bleibt die Treppenkammer zu, ohne den losen Stein ist die Gruft eine
+    Sackgasse (Tests).
+- **Ebene 5** siehe 7e.
+
+## 7e. Stand D3 (welt): Ebene 5 „Werkstätten der Erbauer“, Ebene 6 als Stub
+- **Neu im Baukasten:** `workbench` (Eichen-Werkbank mit Schraubstock und Werkzeug, füllt ihre Zelle wie ein
+  Sarkophag) und `cogwheel` (eisernes Zahnrad des Uhrwerks, 2 m Durchmesser, Nabe in 1,75 m Höhe, hängt an der Wand
+  wie eine Knochennische). Allgemein gilt jetzt: Requisiten, die ihre Zelle füllen, stehen in der Mitte; alle anderen
+  hängen an der Wand hinter der Zelle.
+- **Ebene 5** (Ambiente `werkstatt`; 28 × 24, 324 begehbare Zellen = 48 %, davon 5 mit Werkbank):
+  - Ankunft mit Treppe hinauf; Gang nach Osten zur Zahnradhalle (10 × 8, vier Pfeiler, Zahnräder) und zum Lager
+    (Mauerschlupfer, Truhe, Hammer).
+  - **Rätsel 1 (neu, Rücksetz-Falle):** Im Gang liegt ein unsichtbarer Teleporter (`trap`), der zurück in die Ankunft
+    setzt. Ein loser Stein kurz davor schaltet ihn ab (`off`, einmalig).
+  - Schmiede (Werkbänke, Nische, Truhe, Mauerschlupfer) südlich der Ankunft; das Gatter zur Halle öffnet nur ein
+    Hebel auf der Hallenseite (Abkürzung zurück).
+  - **Rätsel 2 (Gewicht und Hebel):** Das Gatter zur Uhrwerkskammer öffnet das Relais `RELAY_E05_GEWICHT` (`all`):
+    Ein Gegenstand muss auf der Platte in der Halle liegen (`weight any`), und der Hebel in der Schmiede muss
+    umgelegt sein. Ein **Gatterbock** steht als Statue neben dem Gatter.
+  - **Verstecktes Depot** hinter einer Geheimwand der Halle (loser Stein): Schutzring, Stärketrank, 200 Gulden,
+    Dietriche, Nische.
+  - Uhrwerkskammer (Zahnräder, Werkbank, Mauerschlupfer, Truhe, zweiter **Gatterbock** an der Tür zur
+    Treppenkammer), Gießerei (Werkbänke, Mauerschlupfer, Nische, Truhe).
+  - **Abkürzung nach oben (F6):** In der Treppenkammer schaltet ein Hebel den Teleporter zur Vorkammer von Ebene 1
+    (`START_E01_VON_OBEN`) ein; zu Beginn ist er aus.
+  - Treppe hinab nach Ebene 6 (`START_E06_VON_OBEN`).
+  - Erreichbarkeit grün; ohne den losen Stein bleiben Halle und Treppe unerreichbar, ohne den Hebel der Schmiede die
+    Uhrwerkskammer, ohne den Depot-Stein das Depot (Tests).
+- **Ebene 6** als Stub (Thema `labyrinth`, vorerst Ambiente `gewoelbe`).
+
+## 7f. Truhen, Nischen und Ambienten (welt, nach engine #491/#494/#496/#502)
+- Alle Truhen und Nischen der Ebenen 1–5 tragen ihre Mob-Definition aus `game/scripts/mobs/dungeon.lua`
+  (`definition` in der Karten-JSON, z. B. `mob_dng_e2_chest_osthalle`, `mob_dng_e4_niche_beinhaus`); der Inhalt kommt
+  aus Lua. Die Zellen stimmen mit engines Liste überein.
+- Ambienten je Thema: Ebene 3 `zisterne`, Ebene 4 `beinhaus`, Ebene 5 `werkstatt` (Ebene 1, 2 und 6 weiter
+  `gewoelbe`).
+- Damit sind die engine-Punkte unter 7a–7e erledigt (Instanzen `mon_brunnenmolch` und `mon_beinhauswart` sind auf
+  main, die Ebenen laden ohne Warnung).
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |

@@ -5,6 +5,8 @@
 #include <g7/core/Assert.hpp>
 #include <g7/render/Device.hpp>
 
+#include <algorithm>
+
 namespace g7::render
 {
 using namespace rhi;
@@ -13,6 +15,24 @@ void Device::bindFramebuffer(const Framebuffer* framebuffer)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer->m_handle.id() : 0);
     m_framebufferHasStencil = framebuffer == nullptr || framebuffer->m_hasStencil;
+    if (framebuffer == nullptr)
+    {
+        return;
+    }
+    // A texture rendered into is not left bound for sampling: no feedback loop, and the next bindTexture
+    // binds it anew, so the driver sees the new contents (llvmpipe sampled a rain map in the vertex shader
+    // before the clear that wrote it had run when the binding had not changed - flaky test_rain under Mesa
+    // 25).
+    for (u32 unit = 0; unit < kMaxTextureUnits; ++unit)
+    {
+        BoundTexture& bound = m_cache.textures[unit];
+        if (bound.texture != 0 &&
+            std::ranges::find(framebuffer->m_attachments, bound.texture) != framebuffer->m_attachments.end())
+        {
+            glBindTextureUnit(unit, 0);
+            bound.texture = 0;
+        }
+    }
 }
 
 void Device::setViewport(i32 x, i32 y, u32 width, u32 height)

@@ -9,8 +9,13 @@ Top level of the JSON besides ``cells``: ``starts`` (extra arrivals), ``relays``
 ``delay``; switches and plates may name them) and ``items`` (item vobs ``ITEM_E01_<x>_<y>_<k>`` on a
 floor cell: ``at``, ``instance``, ``count``; the finds of the hidden depots), ``spawns`` (monster
 places ``SPAWN_E01_<x>_<y>`` like ``m``, but on any floor cell, also in the water ``~``: the
-Brunnenmolch lurks there) and ``water`` (``depthM`` of a basin's floor below the others,
-``edgeM`` of the water's surface below the edge; plan W8 D3).
+Brunnenmolch lurks there), ``water`` (``depthM`` of a basin's floor below the others,
+``edgeM`` of the water's surface below the edge; plan W8 D3) and ``props`` (still pieces of the
+kit on a plain floor cell: ``at``, ``kind``, ``facing``; vobs ``PROP_E04_<x>_<y>``). A
+``sarcophagus`` or ``workbench`` stands in the middle of its cell and blocks it (no waypoint, no
+way through); a ``bone_niche`` or ``cogwheel`` hangs on the wall behind it (opposite ``facing``)
+and leaves the cell free.
+A teleporter with ``trap: true`` is invisible and shows no ring (a trap, W8 E4).
 
 Characters (contract of the plan): ``#`` wall, ``.`` floor, ``D`` door, ``G`` gate, ``P`` trapdoor,
 ``T`` teleporter, ``S`` wall switch (lever or button), ``O`` pressure plate, ``N`` niche, ``H``
@@ -45,6 +50,8 @@ DIRS = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0)}
 SWITCH_TYPES = {"lever", "wall_button"}
 RELAY_MODES = {"any", "all", "count"}
 ACTIONS = {"toggle", "open", "close", "on", "off", "wake", "trigger", "lock", "unlock"}
+# kind -> blocks its cell (stands in its middle); the others hang on the wall behind the cell
+PROPS = {"sarcophagus": True, "bone_niche": False, "workbench": True, "cogwheel": False}
 
 
 class LevelError(ValueError):
@@ -64,6 +71,12 @@ class Level:
     relays: dict[str, dict[str, Any]] = field(default_factory=dict)  # vob name -> spec
     items: list[dict[str, Any]] = field(default_factory=list)  # item vobs (``items``)
     spawns: dict[tuple[int, int], dict[str, Any]] = field(default_factory=dict)  # ``spawns``
+    props: dict[tuple[int, int], dict[str, Any]] = field(default_factory=dict)  # ``props``
+
+    @property
+    def blocked(self) -> set[tuple[int, int]]:
+        """Floor cells a prop fills (a sarcophagus): no waypoint, no way through."""
+        return {at for at, p in self.props.items() if PROPS[p["kind"]]}
 
     @property
     def water_depth(self) -> float:
@@ -160,6 +173,9 @@ class Level:
     def spawn_name(self, at: tuple[int, int]) -> str:
         return f"{PREFIX['monster']}_{self.tag}_{at[0]}_{at[1]}"
 
+    def prop_name(self, at: tuple[int, int]) -> str:
+        return f"PROP_{self.tag}_{at[0]}_{at[1]}"
+
 
 def _cell(raw: Any, what: str) -> tuple[int, int]:  # noqa: ANN401
     if not (isinstance(raw, list) and len(raw) == 2 and all(isinstance(v, int) for v in raw)):
@@ -226,14 +242,42 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
         if at in level.entries:
             raise LevelError(f"cells[{i}] {list(at)}: twice")
         level.entries[at] = e
+    for i, pr in enumerate(doc.get("props", [])):
+        at = _cell(pr.get("at"), f"props[{i}]")
+        if pr.get("kind") not in PROPS or pr.get("facing", "S") not in DIRS:
+            raise LevelError(f"props[{i}]: kind {sorted(PROPS)}, facing N, E, S or W")
+        if level.char(*at) != FLOOR or at in level.props:
+            raise LevelError(f"props[{i}]: needs a plain floor cell '.', once")
+        level.props[at] = {**pr, "at": at}
     missing = [list(at) for at in level.cells(REQUIRED) if at not in level.entries]
     if missing:
         raise LevelError(f"cells without an entry: {missing}")
     if len(level.cells("<")) < 1:
         raise LevelError("every level needs stairs up ('<', plan F6)")
     _check_entries(level)
+    _check_props(level)
     check_wells(level)
     return level
+
+
+def _check_props(level: Level) -> None:
+    """A wall prop needs a wall behind it; a blocking prop must not fill a cell that something
+    else needs (an arrival, a teleporter's target, an item, a monster, a switch's stand)."""
+    need: set[tuple[int, int]] = {st["at"] for st in level.starts} | set(level.spawns)
+    need |= {it["at"] for it in level.items}
+    for at in level.cells(set(ENTRY)):
+        spec = level.entries.get(at, {})
+        if "teleport" in spec and "to" in spec["teleport"]:
+            need.add(_cell(spec["teleport"]["to"], "teleport"))
+        if level.char(*at) in IN_WALL:
+            dx, dy = DIRS[level.facing(at)]
+            need.add((at[0] + dx, at[1] + dy))
+    for at, pr in level.props.items():
+        dx, dy = DIRS[pr.get("facing", "S")]
+        if not PROPS[pr["kind"]] and level.is_floor(at[0] - dx, at[1] - dy):
+            raise LevelError(f"{level.prop_name(at)}: a wall prop needs a wall behind it")
+        if PROPS[pr["kind"]] and at in need:
+            raise LevelError(f"{level.prop_name(at)}: the cell is needed (start, target, item …)")
 
 
 def _check_entries(level: Level) -> None:

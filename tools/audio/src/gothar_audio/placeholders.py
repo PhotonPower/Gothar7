@@ -384,6 +384,118 @@ def water_drip(rng: random.Random) -> Samples:
     return normalise(out, 0.6)
 
 
+def amb_cistern(rng: random.Random) -> Samples:
+    # The cistern (dungeon level 3): the hollow hum of a big vault and water lapping slowly at the walkways, both
+    # smeared by the long echo of the stone.
+    hum = lowpass(noise(LOOP, rng), 90.0)
+    lap = lowpass(highpass(noise(LOOP, rng), 150.0), 700.0)
+    lapping = [
+        x * (0.5 + 0.5 * math.sin(2 * math.pi * 0.45 * i / RATE + math.sin(i / 14000.0)))
+        for i, x in enumerate(lap)
+    ]
+    out = mix((hum, 1.0), (lapping, 0.5))
+    for delay, gain in ((0.21, 0.35), (0.47, 0.22), (0.83, 0.12)):
+        d = int(delay * RATE)
+        out = [x + gain * out[i - d] if i >= d else x for i, x in enumerate(out)]
+    return normalise(seamless(out), 0.5)
+
+
+def water_drop_deep(rng: random.Random) -> Samples:
+    # A drop falling from the vault into deep water: a low "bloop" and a long trail of echoes through the cistern.
+    start = 380.0 + 120.0 * rng.random()
+    length = int(1.4 * RATE)
+    drop = int(0.14 * RATE)
+    out = [0.0] * length
+    phase = 0.0
+    for i in range(drop):
+        t = i / RATE
+        phase += 2.0 * math.pi * start * (1.0 + 4.0 * t) / RATE
+        out[i] = math.sin(phase) * math.exp(-t * 28.0)
+    for delay, gain in ((0.19, 0.45), (0.41, 0.3), (0.67, 0.2), (0.98, 0.12)):
+        d = int(delay * RATE)
+        for i in range(drop):
+            out[i + d] += gain * out[i]
+    return normalise(fade(lowpass(out, 2500.0), 0.001, 0.2), 0.6)
+
+
+def amb_ossuary(rng: random.Random) -> Samples:
+    # The ossuary (dungeon level 4): dry, hollow air of a low vault and wind moaning through a shaft - a breathy
+    # whistle drifting slowly in pitch.
+    air = lowpass(noise(LOOP, rng), 120.0)
+    breath = highpass(lowpass(noise(LOOP, rng), 900.0), 500.0)
+    swell = [
+        0.35 + 0.65 * max(0.0, math.sin(2 * math.pi * i / (LOOP * RATE) * 2.0)) ** 2
+        for i in range(len(breath))
+    ]
+    whistle = tone(lambda t: 310.0 + 25.0 * math.sin(2 * math.pi * 0.3 * t), LOOP)
+    shaft = [(b * 0.8 + w * 0.06) * s for b, w, s in zip(breath, whistle, swell, strict=False)]
+    return normalise(seamless(mix((air, 1.0), (shaft, 0.6))), 0.45)
+
+
+def bone_rattle(rng: random.Random) -> Samples:
+    # A few bones settling in a niche: dry, hollow clacks in a quick, uneven run.
+    length = int(0.7 * RATE)
+    out = [0.0] * length
+    at = 0
+    for _ in range(rng.randint(5, 9)):
+        f = rng.uniform(700.0, 1400.0)
+        clack = mix(
+            (envelope(tone(f, 0.05), 0.0005, 0.012), 0.7),
+            (envelope(highpass(noise(0.04, rng), 2000.0), 0.0003, 0.006), 0.5),
+        )
+        gain = rng.uniform(0.4, 1.0)
+        for i, x in enumerate(clack):
+            if at + i < length:
+                out[at + i] += gain * x
+        at += int(rng.uniform(0.03, 0.09) * RATE)
+        if at >= length - len(clack):
+            break
+    return normalise(fade(out, 0.001, 0.1), 0.55)
+
+
+def amb_workshop(rng: random.Random) -> Samples:
+    # The workshop (dungeon level 5): the low air of a stone hall and, far off, an old clockwork still ticking -
+    # a slow, uneven tick-tock with the echo of the vault.
+    out = lowpass(noise(LOOP, rng), 110.0)
+    length = len(out)
+    beat = 0.75
+    at = 0.0
+    n = 0
+    while at < LOOP - 0.2:
+        f = 1900.0 if n % 2 == 0 else 1500.0
+        tick = mix(
+            (envelope(tone(f, 0.04), 0.0005, 0.008), 0.6),
+            (envelope(highpass(noise(0.03, rng), 2500.0), 0.0003, 0.005), 0.4),
+        )
+        start = int(at * RATE)
+        for delay, gain in ((0.0, 0.12), (0.17, 0.05), (0.39, 0.025)):
+            d = start + int(delay * RATE)
+            for i, x in enumerate(tick):
+                out[(d + i) % length] += gain * x
+        at += beat + rng.uniform(-0.03, 0.03)
+        n += 1
+    return normalise(seamless(out), 0.45)
+
+
+def metal_clang_far(rng: random.Random) -> Samples:
+    # Somewhere further in the workshop a piece of iron falls or a hammer strikes: a dull ring, muffled by
+    # distance, with its echo.
+    partials = [
+        (rng.uniform(380.0, 460.0), 1.0),
+        (rng.uniform(950.0, 1100.0), 0.5),
+        (rng.uniform(1700.0, 1900.0), 0.3),
+    ]
+    ring = mix(
+        *[(envelope(tone(f, 1.2), 0.003, 0.3 / (1 + i * 0.5)), g) for i, (f, g) in enumerate(partials)]
+    )
+    out = lowpass(ring, 1400.0) + [0.0] * int(0.6 * RATE)
+    for delay, gain in ((0.23, 0.35), (0.51, 0.18)):
+        d = int(delay * RATE)
+        for i in range(len(ring)):
+            out[i + d] += gain * ring[i] * 0.5
+    return normalise(fade(out, 0.002, 0.3), 0.55)
+
+
 # --- Footsteps (M13 E): six materials, four variants each (footstep_<material>_<n>) --------------------------
 
 
@@ -565,6 +677,12 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "lute_play": lute_play,
     "frog": frog,
     "water_drip": water_drip,
+    "amb_cistern": amb_cistern,
+    "water_drop_deep": water_drop_deep,
+    "amb_ossuary": amb_ossuary,
+    "bone_rattle": bone_rattle,
+    "amb_workshop": amb_workshop,
+    "metal_clang_far": metal_clang_far,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,
     "amb_night": amb_night,

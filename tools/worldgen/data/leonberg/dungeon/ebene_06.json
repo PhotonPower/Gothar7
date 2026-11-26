@@ -1,0 +1,13 @@
+{
+  "format": "gothar-dungeon-level",
+  "version": 1,
+  "note": "W8 D3: Ebene 6 'Labyrinth' (Thema labyrinth; Geheimwände, Drehteleporter, Mauerschlupfer) als Stub (Ziel der Treppe aus Ebene 5); der Ausbau folgt als eigener PR.",
+  "level": 6,
+  "theme": "labyrinth",
+  "origin": [0.0, 0.0, 0.0],
+  "cellM": 3.0,
+  "heightM": 3.5,
+  "cells": [
+    {"at": [1, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_05.g7world", "start": "START_E05_VON_UNTEN", "facing": "S"}, "arrive": "START_E06_VON_OBEN"}
+  ]
+}

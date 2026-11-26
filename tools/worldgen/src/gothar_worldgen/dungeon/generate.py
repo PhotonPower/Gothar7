@@ -29,7 +29,7 @@ from typing import Any
 from gothar_worldgen.assemble.world import VobIds, write_world
 from gothar_worldgen.dungeon import kit
 from gothar_worldgen.dungeon.kit import KitMesh
-from gothar_worldgen.dungeon.level import DIRS, FLOOR_CHARS, Level, LevelError, _cell
+from gothar_worldgen.dungeon.level import DIRS, FLOOR_CHARS, PROPS, Level, LevelError, _cell
 from gothar_worldgen.dungeon.logic import check_reach
 from gothar_worldgen.waynet.write import tidy
 
@@ -62,8 +62,8 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 20.0,
         },
     ),
-    "zisterne": (  # Ebene 3 (stub): still the vault's sound until engine has "zisterne"
-        "gewoelbe",
+    "zisterne": (  # Ebene 3: engine's ambient "zisterne" (#494)
+        "zisterne",
         {
             "ambient": [0.04, 0.047, 0.055],
             "fog_color": [0.016, 0.02, 0.024],
@@ -71,13 +71,31 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 18.0,
         },
     ),
-    "beinhaus": (  # Ebene 4 (stub): still the vault's sound until engine has "beinhaus"
-        "gewoelbe",
+    "beinhaus": (  # Ebene 4: engine's ambient "beinhaus" (#494)
+        "beinhaus",
         {
             "ambient": [0.045, 0.05, 0.042],
             "fog_color": [0.02, 0.022, 0.018],
             "fog_start": 2.0,
             "fog_distance": 18.0,
+        },
+    ),
+    "labyrinth": (  # Ebene 6 (stub): the vault's sound for now
+        "gewoelbe",
+        {
+            "ambient": [0.042, 0.045, 0.05],
+            "fog_color": [0.017, 0.018, 0.021],
+            "fog_start": 2.0,
+            "fog_distance": 16.0,
+        },
+    ),
+    "werkstatt": (  # Ebene 5: the builders' workshops, engine's ambient "werkstatt" (#502)
+        "werkstatt",
+        {
+            "ambient": [0.05, 0.047, 0.042],
+            "fog_color": [0.022, 0.02, 0.017],
+            "fog_start": 2.0,
+            "fog_distance": 20.0,
         },
     ),
 }
@@ -727,6 +745,18 @@ class _Gen:
             )
         self.relays()
         self.items()
+        self.props()
+
+    def props(self) -> None:
+        """Still pieces (``props``): a sarcophagus in the middle of its cell, a bone niche
+        against the wall behind it; mesh vobs ``PROP_E04_<x>_<y>`` with their collision."""
+        for at, pr in sorted(self.lv.props.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+            dx, dy = DIRS[pr.get("facing", "S")]
+            cx, cz = self.mid(at)
+            if not PROPS[pr["kind"]]:  # on the wall behind the cell
+                cx, cz = cx - dx * self.c / 2, cz - dy * self.c / 2
+            self.vob("mesh", self.lv.prop_name(at), (cx, self.y(self.floor(at)), cz),
+                     _quat_front(dx, dy), mesh=self.kit_mesh(pr["kind"]))  # fmt: skip
 
     def relays(self) -> None:
         """Invisible relays (``relays``): above their cell ``at`` (else the level's origin)."""
@@ -800,7 +830,8 @@ class _Gen:
         cx, cz = self.mid(at)
         ident = [0.0, 0.0, 0.0, 1.0]
         y0 = self.y(self.floor(at))
-        self.vob("mesh", f"{name}_RING", (cx, y0, cz), ident, mesh=self.kit_mesh("teleport"))
+        if not spec.get("trap"):  # a trap shows nothing: no ring, no column
+            self.vob("mesh", f"{name}_RING", (cx, y0, cz), ident, mesh=self.kit_mesh("teleport"))
         filt = spec.get("filter", "player")
         tele: dict[str, Any] = {}
         if "to" in spec:
@@ -816,7 +847,7 @@ class _Gen:
             tele["to"] = f"{name}_ZIEL"
         else:
             tele["world"], tele["start"] = spec["world"], spec["start"]
-        tele["visible"] = bool(spec.get("visible", True))
+        tele["visible"] = bool(spec.get("visible", True)) and not spec.get("trap")
         tele["filter"] = filt
         tele["active"] = bool(spec.get("active", True))
         self.vob(
@@ -895,6 +926,9 @@ class _Gen:
         busy = set()  # wall faces with something on them
         for at in lv.cells("SN"):
             busy.add((self._faces(at), OPPOSITE[lv.facing(at)]))
+        for at, pr in lv.props.items():
+            if not PROPS[pr["kind"]]:
+                busy.add((at, OPPOSITE[pr.get("facing", "S")]))
         picked: list[tuple[Cell, str]] = []
         extra = [((int(t[0]), int(t[1])), str(t[2])) for t in lv.raw.get("torches", [])]
         for at, side in extra:
@@ -944,19 +978,20 @@ class _Gen:
         return f"WP_DNG_{self.tag}_{at[0]}_{at[1]}"
 
     def waynet(self) -> None:
-        for at in sorted(self.walk, key=lambda a: (a[1], a[0])):
+        walk = self.walk - self.lv.blocked  # a sarcophagus fills its cell
+        for at in sorted(walk, key=lambda a: (a[1], a[0])):
             cx, cz = self.mid(at)
             self.plan.points.append(
                 {"name": self.wp(at), "pos": [cx, self.y(self.floor(at)), cz], "owner": "worldgen"}
             )
             for dx, dy in ((1, 0), (0, 1)):
                 nb = (at[0] + dx, at[1] + dy)
-                if nb in self.walk:
+                if nb in walk:
                     self.plan.edges.append([self.wp(at), self.wp(nb), "worldgen"])
         roam = set(self.lv.cells("m"))
-        for at in self.walk:  # room cells: all eight neighbours walkable
+        for at in walk:  # room cells: all eight neighbours walkable
             if self.lv.char(*at) == "." and all(
-                (at[0] + i, at[1] + j) in self.walk for i in (-1, 0, 1) for j in (-1, 0, 1)
+                (at[0] + i, at[1] + j) in walk for i in (-1, 0, 1) for j in (-1, 0, 1)
             ):
                 roam.add(at)
         for at in sorted(roam, key=lambda a: (a[1], a[0])):

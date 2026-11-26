@@ -27,6 +27,30 @@ randoms = ["water_drip", "water_drip", "wood_creak"]
 interval = [4, 12]
 distance = [3, 12]
 
+# Ebene 3 des Dungeons (welt, Thema „zisterne“): Hall und Wasser an den Stegen, Tropfen in tiefes Wasser und an den
+# Wänden. Tag und Nacht gleich; Platzhalter.
+[zisterne]
+loop = "amb_cistern"
+randoms = ["water_drop_deep", "water_drop_deep", "water_drip"]
+interval = [3, 9]
+distance = [4, 18]
+
+# Ebene 4 des Dungeons (welt, Thema „beinhaus“): trocken und hohl, Wind durch einen Schacht, ab und zu rutschen
+# Knochen nach. Tag und Nacht gleich; Platzhalter.
+[beinhaus]
+loop = "amb_ossuary"
+randoms = ["bone_rattle", "bone_rattle", "wood_creak"]
+interval = [6, 16]
+distance = [3, 12]
+
+# Ebene 5 des Dungeons (welt, Thema „werkstatt“): fern ein tickendes Uhrwerk, Tropfen, knarrendes Gebälk, ab und zu
+# fernes Metall. Tag und Nacht gleich; Platzhalter.
+[werkstatt]
+loop = "amb_workshop"
+randoms = ["metal_clang_far", "water_drip", "wood_creak", "wood_creak"]
+interval = [4, 12]
+distance = [4, 20]
+
 # Leonberg (Zonen von welt: world.md „Zonen“) - feld ist die Vorgabe-Box über die Welt.
 [feld]
 loop = "amb_field"
