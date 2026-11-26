@@ -185,3 +185,59 @@ Mob "mob_dng_e4_chest_treppe" {
         it_lockpick = 2,
     },
 }
+
+-- Ebene 5 „Werkstatt“ (welt #501). Bewusst maßvoll: das Depot hält schon Ring, Trank, 200 Gulden und Dietriche.
+Mob "mob_dng_e5_chest_lager" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_gulden = 40, it_potion_heal_medium = 1, it_bolt = 20, it_torch = 1 },
+}
+
+-- Schmiede: Werkzeug und ein Stück Arbeit, das liegen blieb.
+Mob "mob_dng_e5_chest_schmiede" {
+    name = "Verschlossene Truhe",
+    type = "chest",
+    lock = "LRLLR",
+    contents = { it_hammer = 1, it_blank_hot = 2, it_sword_old = 1, it_gulden = 30 },
+}
+
+Mob "mob_dng_e5_niche_schmiede" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_potion_heal_small = 2, it_gulden = 20 },
+}
+
+-- Uhrwerkskammer.
+Mob "mob_dng_e5_chest_uhrwerk" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_scroll_telekinesis = 1, it_potion_mana_medium = 1, it_gulden = 35 },
+}
+
+-- Gießerei.
+Mob "mob_dng_e5_chest_giesserei" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_ladle = 1, it_potion_heal_medium = 1, it_gulden = 25 },
+}
+
+Mob "mob_dng_e5_niche_giesserei" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_scroll_firebolt = 1, it_herbs_dried = 2 },
+}
+
+-- Depot: nur eine Kleinigkeit neben den Funden auf dem Boden.
+Mob "mob_dng_e5_niche_depot" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_potion_mana_small = 1, it_scroll_heal = 1 },
+}
+
+-- Treppenkammer: verschlossen, der Lohn der Ebene (maßvoller als in Ebene 4).
+Mob "mob_dng_e5_chest_treppe" {
+    name = "Verschlossene Truhe",
+    type = "chest",
+    lock = "RLRLLR",
+    contents = { it_gulden = 90, it_potion_heal_medium = 2, it_potion_speed = 1, it_scroll_sleep = 1 },
+}

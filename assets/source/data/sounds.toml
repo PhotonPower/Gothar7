@@ -251,6 +251,19 @@ volume = 0.5
 pitch_jitter = 0.2
 max_distance = 20
 
+[amb_workshop] # Werkstatt im Dungeon (Ebene 5, Platzhalter): Hallenluft, fern ein tickendes Uhrwerk
+files = ["sounds/amb_workshop.wav"]
+bus = "ambient"
+loop = true
+volume = 0.45
+
+[metal_clang_far] # fernes Eisen, das fällt oder angeschlagen wird (Werkstatt, Platzhalter)
+files = ["sounds/metal_clang_far.wav"]
+bus = "ambient"
+volume = 0.5
+pitch_jitter = 0.15
+max_distance = 35
+
 # --- Dungeon-Monster (Platzhalter aus tools/audio, Clip-Events sound:<art>_<was>)
 [gatterbock_attack]
 files = ["sounds/gatterbock_attack.wav"]

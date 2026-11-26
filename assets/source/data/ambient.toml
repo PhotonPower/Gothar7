@@ -43,6 +43,14 @@ randoms = ["bone_rattle", "bone_rattle", "wood_creak"]
 interval = [6, 16]
 distance = [3, 12]
 
+# Ebene 5 des Dungeons (welt, Thema „werkstatt“): fern ein tickendes Uhrwerk, Tropfen, knarrendes Gebälk, ab und zu
+# fernes Metall. Tag und Nacht gleich; Platzhalter.
+[werkstatt]
+loop = "amb_workshop"
+randoms = ["metal_clang_far", "water_drip", "wood_creak", "wood_creak"]
+interval = [4, 12]
+distance = [4, 20]
+
 # Leonberg (Zonen von welt: world.md „Zonen“) - feld ist die Vorgabe-Box über die Welt.
 [feld]
 loop = "amb_field"

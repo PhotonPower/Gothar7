@@ -453,6 +453,49 @@ def bone_rattle(rng: random.Random) -> Samples:
     return normalise(fade(out, 0.001, 0.1), 0.55)
 
 
+def amb_workshop(rng: random.Random) -> Samples:
+    # The workshop (dungeon level 5): the low air of a stone hall and, far off, an old clockwork still ticking -
+    # a slow, uneven tick-tock with the echo of the vault.
+    out = lowpass(noise(LOOP, rng), 110.0)
+    length = len(out)
+    beat = 0.75
+    at = 0.0
+    n = 0
+    while at < LOOP - 0.2:
+        f = 1900.0 if n % 2 == 0 else 1500.0
+        tick = mix(
+            (envelope(tone(f, 0.04), 0.0005, 0.008), 0.6),
+            (envelope(highpass(noise(0.03, rng), 2500.0), 0.0003, 0.005), 0.4),
+        )
+        start = int(at * RATE)
+        for delay, gain in ((0.0, 0.12), (0.17, 0.05), (0.39, 0.025)):
+            d = start + int(delay * RATE)
+            for i, x in enumerate(tick):
+                out[(d + i) % length] += gain * x
+        at += beat + rng.uniform(-0.03, 0.03)
+        n += 1
+    return normalise(seamless(out), 0.45)
+
+
+def metal_clang_far(rng: random.Random) -> Samples:
+    # Somewhere further in the workshop a piece of iron falls or a hammer strikes: a dull ring, muffled by
+    # distance, with its echo.
+    partials = [
+        (rng.uniform(380.0, 460.0), 1.0),
+        (rng.uniform(950.0, 1100.0), 0.5),
+        (rng.uniform(1700.0, 1900.0), 0.3),
+    ]
+    ring = mix(
+        *[(envelope(tone(f, 1.2), 0.003, 0.3 / (1 + i * 0.5)), g) for i, (f, g) in enumerate(partials)]
+    )
+    out = lowpass(ring, 1400.0) + [0.0] * int(0.6 * RATE)
+    for delay, gain in ((0.23, 0.35), (0.51, 0.18)):
+        d = int(delay * RATE)
+        for i in range(len(ring)):
+            out[i + d] += gain * ring[i] * 0.5
+    return normalise(fade(out, 0.002, 0.3), 0.55)
+
+
 # --- Footsteps (M13 E): six materials, four variants each (footstep_<material>_<n>) --------------------------
 
 
@@ -638,6 +681,8 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "water_drop_deep": water_drop_deep,
     "amb_ossuary": amb_ossuary,
     "bone_rattle": bone_rattle,
+    "amb_workshop": amb_workshop,
+    "metal_clang_far": metal_clang_far,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,
     "amb_night": amb_night,
