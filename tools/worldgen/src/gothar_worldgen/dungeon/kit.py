@@ -19,6 +19,12 @@ Axes of the kit files (contract with engine, dungeon.md): Y up, metres, the fron
   floor at ``NICHE_Y``; origin on the floor at the wall face, the hollow towards -Z.
 - ``plate``: a pressure plate, a flat slab ``PLATE_W`` square, origin on the floor in its middle.
 - ``teleport``: a ring of dark stones in the floor, origin in its middle.
+
+Still pieces (``props`` of a level, W8 E4 "Beinhaus"; mesh vobs with their collision):
+- ``sarcophagus``: an ashlar coffer with a lid, ``SARC_L`` long along Z, origin on the floor in
+  its middle.
+- ``bone_niche``: an ossuary shelf against the wall, origin on the floor at the wall face, the
+  shelves towards +Z: ashlar posts and boards with skulls and long bones.
 """
 
 from __future__ import annotations
@@ -49,6 +55,7 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "iron": ("iron", (0.05, 0.05, 0.055)),
     "dark": ("stone", (0.012, 0.011, 0.01)),  # the stairs' far end: darkness
     "rune": ("stone", (0.05, 0.045, 0.06)),  # the teleporter's ring
+    "bone": ("stone", (0.36, 0.33, 0.26)),  # skulls and bones: yellowed, a little dusty
 }
 CELL_M = 3.0
 WALL_H = 3.5
@@ -61,6 +68,8 @@ NICHE_W, NICHE_H, NICHE_D, NICHE_Y = 1.0, 0.8, 0.6, 0.9
 PLATE_W, PLATE_T = 1.6, 0.03
 BUTTON_Y = 1.2
 LEVER_Y = 1.2
+SARC_L, SARC_W, SARC_H = 2.2, 0.95, 0.95  # sarcophagus with its lid
+OSS_W, OSS_D, OSS_H = 1.9, 0.42, 2.3  # bone niche: width, depth from the wall, height
 
 
 @dataclass
@@ -267,6 +276,62 @@ def teleport() -> KitMesh:
     return m
 
 
+def _skull(m: KitMesh, x: float, y: float, z: float, turn: float = 0.0) -> None:
+    """A skull of four boxes on a shelf at height ``y``, face towards +Z."""
+    dx = turn * 0.02
+    m.box("bone", (x - 0.075, y + 0.02, z - 0.09), (x + 0.075, y + 0.17, z + 0.08))  # cranium
+    m.box("bone", (x - 0.06 + dx, y, z - 0.02), (x + 0.06 + dx, y + 0.05, z + 0.1))  # jaw
+    m.box("dark", (x - 0.055 + dx, y + 0.08, z + 0.08), (x - 0.012 + dx, y + 0.12, z + 0.083))
+    m.box("dark", (x + 0.012 + dx, y + 0.08, z + 0.08), (x + 0.055 + dx, y + 0.12, z + 0.083))
+
+
+def sarcophagus() -> KitMesh:
+    """An ashlar coffer on a plinth, the lid overhanging with a ridge and a carved cross."""
+    m = KitMesh()
+    hl, hw = SARC_L / 2, SARC_W / 2
+    m.box("ashlar", (-hw - 0.05, 0.0, -hl - 0.05), (hw + 0.05, 0.12, hl + 0.05))  # plinth
+    m.box("ashlar", (-hw + 0.04, 0.12, -hl + 0.04), (hw - 0.04, SARC_H - 0.16, hl - 0.04))
+    m.box("ashlar", (-hw, SARC_H - 0.16, -hl), (hw, SARC_H - 0.06, hl), grain=2)  # lid
+    m.box("ashlar", (-0.18, SARC_H - 0.06, -hl + 0.06), (0.18, SARC_H, hl - 0.06), grain=2)
+    m.box("dark", (-0.03, SARC_H, -0.5), (0.03, SARC_H + 0.008, 0.6))  # the carved cross
+    m.box("dark", (-0.26, SARC_H, 0.18), (0.26, SARC_H + 0.008, 0.24))
+    m.box("dark", (-hw + 0.04, SARC_H - 0.16, -hl + 0.04), (hw - 0.04, SARC_H - 0.15, -hl + 0.05))
+    m.body("sarcophagus", (-hw - 0.05, 0.0, -hl - 0.05), (hw + 0.05, SARC_H, hl + 0.05))
+    return m
+
+
+def bone_niche() -> KitMesh:
+    """An ossuary shelf: three ashlar posts, four boards, skulls in rows, long bones stacked."""
+    m = KitMesh()
+    hw, d = OSS_W / 2, OSS_D
+    m.box("dark", (-hw, 0.0, 0.0), (hw, OSS_H, 0.02))  # the soot-black wall behind
+    for x in (-hw, -0.06, hw - 0.12):
+        m.box("ashlar", (x, 0.0, 0.0), (x + 0.12, OSS_H, d), grain=0)
+    shelves = (0.0, 0.62, 1.24, 1.86)
+    for y in shelves:
+        m.box("ashlar", (-hw, y, 0.0), (hw, y + 0.08, d))
+    m.box("ashlar", (-hw - 0.04, OSS_H - 0.1, 0.0), (hw + 0.04, OSS_H, d + 0.04))  # lintel
+    for k, y in enumerate(shelves):
+        y0 = y + 0.08
+        for side, (a, b) in enumerate(((-hw + 0.12, -0.06), (0.06, hw - 0.12))):
+            if (k + side) % 2 == 0:  # a row of skulls
+                n = 3
+                for i in range(n):
+                    x = a + (i + 0.5) * (b - a) / n
+                    _skull(m, x, y0, d * 0.5, turn=((i + k) % 3) - 1)
+            else:  # long bones stacked, ends towards the room
+                for row in range(3):
+                    for i in range(5):
+                        x = a + 0.06 + i * (b - a - 0.12) / 4
+                        yy = y0 + row * 0.07
+                        m.box("bone", (x - 0.03, yy, 0.04), (x + 0.03, yy + 0.06, d - 0.03))
+                        m.box("bone", (x - 0.042, yy, d - 0.06), (x + 0.042, yy + 0.07, d - 0.02))
+    m.body("bone_niche", (-hw - 0.04, 0.0, 0.0), (hw + 0.04, OSS_H, d + 0.04))
+    return m
+
+
+PROPS = {"sarcophagus": sarcophagus, "bone_niche": bone_niche}
+
 KIT = {
     "gate": gate,
     "secret_wall": secret_wall,
@@ -276,6 +341,7 @@ KIT = {
     "niche": niche,
     "plate": plate,
     "teleport": teleport,
+    **PROPS,
 }
 
 

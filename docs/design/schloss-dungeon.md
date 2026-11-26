@@ -363,8 +363,43 @@ schreibt.
     erst beim dritten die Geheimwand zum Depot (Goldring, Manatränke, Gulden).
   - Brunnenstube (Truhe, Nische, Trank), Ostkammer (Tür, Truhe), Pumpenkammer (Tür).
   - Schleusenkammer: Treppe hinab und Falltür (Platte `player`) nach Ebene 4; Treppe hinauf nach Ebene 2.
-- **Ebene 4** als Stub (Thema `beinhaus`, vorerst Ambiente `gewoelbe`).
+- **Ebene 4** siehe 7d.
 - **Offen für engine:** Instanz `mon_brunnenmolch` (bis dahin drei Ladewarnungen), Ambiente `zisterne` und `beinhaus`.
+
+## 7d. Stand D3 (welt): Ebene 4 „Beinhaus“, Ebene 5 als Stub
+- **Neu in der Karten-JSON:**
+  - `props`: Requisiten aus dem Baukasten auf einer freien Bodenzelle `.` (`at`, `kind`, `facing`), Mesh-Vobs
+    `PROP_E04_<x>_<y>` mit Kollision im glb. `sarcophagus` (Steinsarg mit Deckel und Kreuz, 2,2 × 0,95 m, längs zu
+    `facing`) steht in der Zellmitte und **füllt die Zelle**: kein Wegpunkt, kein Weg hindurch, nicht auf Ankünften,
+    Teleporter-Zielen, Funden, Monsterplätzen oder vor Schaltern. `bone_niche` (Beinhaus-Regal mit Schädeln und
+    Knochen, 1,9 m breit, 0,42 m tief) steht an der Wand hinter der Zelle (gegenüber `facing`) und lässt sie frei;
+    an dieser Wand hängt keine Fackel.
+  - Teleporter mit `trap: true`: unsichtbar und ohne Steinring (Falle).
+  - Relais mit `delay` rechnet die Erreichbarkeit als **Zeitfenster**: Das verzögerte Ereignis kommt an, nachdem der
+    Held `(delay − 2 s) × 4 m/s ÷ 3 m` Zellen gelaufen ist (2 s für den Knopfdruck und die Fahrt des Gatters). Was
+    weiter weg liegt, bleibt zu.
+  - Ein Wandknopf schickt nur seine `action` (kein Gegenstück wie Hebel oder Platte), wie in der Engine.
+- **Ebene 4** (28 × 22, 283 begehbare Zellen = 46 %, davon 10 mit Sarkophag):
+  - Ankunft mit Treppe hinauf; Gang nach Osten zur Gräberkammer (Sarkophage, Mauerschlupfer, Truhe,
+    Schacht-Ankunft `START_E04_SCHACHT` aus der Falltür von Ebene 3).
+  - **Rätsel 1 (neu, Teleport-Falle):** Mitten im Gang liegt ein unsichtbarer Teleporter. Er setzt in die
+    Vergessene Gruft (zwei Sarkophage, Mauerschlupfer, eine Fackel als Fund). Hinaus führt nur ein loser Stein; er
+    öffnet die Geheimwand zum Gruftgang.
+  - Gruftgang mit Knochennischen; daran Gruft 1 (zwei Sarkophage, Nische, Truhe, Tür zur Totengräberkammer mit
+    Sarkophagen, Mauerschlupfern und Truhe) und Gruft 3 (Sarkophag, Nische, Truhe, Mauerschlupfer).
+  - **Verstecktes Depot** hinter einer Geheimwand in Gruft 3 (loser Stein): altes Amulett, Goldkette, Heiltränke,
+    Gulden.
+  - **Beinhaus** (8 × 8 mit vier Pfeilern, großer Sarkophag, Knochennischen an allen Wänden, Nische): der
+    **Beinhauswart genau einmal** als Zwischengegner.
+  - **Rätsel 2 (neu, Zeitgatter):** Der Knopf an der Westwand des Beinhauses öffnet das Gatter zur Treppenkammer;
+    das Relais `RELAY_E04_ZEITGATTER` (`any`, `delay` 8 s, `close`) schließt es wieder. Der Weg führt quer durch das
+    Beinhaus am Wart vorbei (6 Zellen, Fenster 8). Ein Knopf in der Treppenkammer öffnet es für den Rückweg.
+  - Treppenkammer: Treppe hinab nach Ebene 5 (`START_E05_VON_OBEN`), Truhe, Mauerschlupfer, Manatrank.
+  - Erreichbarkeit grün; mit 4 s Verzögerung bleibt die Treppenkammer zu, ohne den losen Stein ist die Gruft eine
+    Sackgasse (Tests).
+- **Ebene 5** als Stub (Thema `werkstatt`, vorerst Ambiente `gewoelbe`).
+- **Offen für engine:** Instanz `mon_beinhauswart` (#480; bis dahin eine Ladewarnung), Mob-Definitionen für Truhen und
+  Nischen der Ebene 4.
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |
