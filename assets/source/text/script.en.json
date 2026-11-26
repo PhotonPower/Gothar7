@@ -1394,6 +1394,12 @@
       "context": "items/goods.lua",
       "status": "entwurf"
     },
+    "it_scroll_light.name": {
+      "de": "Spruchrolle: Licht",
+      "text": "Scroll: Light",
+      "context": "items/magic.lua",
+      "status": "entwurf"
+    },
     "it_scythe_claw.name": {
       "de": "Sensenklaue",
       "text": "Scythe claw",
