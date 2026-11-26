@@ -235,6 +235,13 @@ TEST_CASE("audio: occlusion - a muffled 3D sound loses its highs")
     audio.update(0.1f);
     audio.update(0.1f);
     CHECK(audio.lastPeak() > open * 0.8f);
+    // Several changes between two mixes: the filter (set on the mixing thread) takes the last one.
+    audio.setMuffle(id.value(), 0.3f);
+    audio.setMuffle(id.value(), 0.0f);
+    audio.setMuffle(id.value(), 1.0f);
+    audio.update(0.1f);
+    audio.update(0.1f);
+    CHECK(audio.lastPeak() < open * 0.2f);
 }
 
 TEST_CASE("audio: ambiences as data and their errors")
@@ -282,6 +289,12 @@ TEST_CASE("audio: a muffled bus loses its highs, open again it sounds as before 
     audio.update(0.1f);
     audio.update(0.1f);
     CHECK(audio.lastPeak() < open * 0.2f);
+    // Less muffled while it stays in the graph (its cutoff changes on the mixing thread): more highs again.
+    const f32 muffled = audio.lastPeak();
+    audio.setBusMuffle(Bus::Music, 0.4f);
+    audio.update(0.1f);
+    audio.update(0.1f);
+    CHECK(audio.lastPeak() > muffled * 1.5f);
     audio.setBusMuffle(Bus::Music, 0.0f);
     audio.update(0.1f);
     audio.update(0.1f);

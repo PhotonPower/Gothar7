@@ -11,9 +11,11 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <format>
 #include <random>
+#include <type_traits>
 #include <unordered_map>
 
 namespace g7::audio
@@ -30,12 +32,86 @@ struct Clip
     u64 frames = 0;
 };
 
+/// A low-pass node (occlusion, muffled buses) whose cutoff the main thread may change while the audio thread
+/// mixes: the main thread only stores the wanted cutoff (atomic); the filter is reconfigured in the node's
+/// own process callback on the audio thread, never while it runs (ma_lpf_node_reinit from the main thread
+/// raced with ma_lpf_process_pcm_frames - TSan on main d4ebb9ad).
+struct MuffleNode
+{
+    ma_node_base base; ///< first: miniaudio treats a MuffleNode* as its ma_node*
+    ma_lpf lpf;
+    std::atomic<f64> cutoff{20000.0}; ///< wanted, Hz (main thread writes, audio thread reads)
+    f64 applied = 20000.0;            ///< what `lpf` is set to (audio thread only after init)
+    ma_uint32 channels = 2;
+    ma_uint32 sampleRate = 48000;
+    bool ready = false;
+};
+
+static_assert(std::is_standard_layout_v<MuffleNode>, "MuffleNode must start with its ma_node_base");
+
+constexpr ma_uint32 kMuffleOrder = 2;
+
+void processMuffle(ma_node* node, const float** framesIn, ma_uint32* /*frameCountIn*/, float** framesOut,
+                   ma_uint32* frameCountOut)
+{
+    auto* m = reinterpret_cast<MuffleNode*>(node);
+    const f64 wanted = m->cutoff.load(std::memory_order_relaxed);
+    if (wanted != m->applied)
+    {
+        const ma_lpf_config c =
+            ma_lpf_config_init(ma_format_f32, m->channels, m->sampleRate, wanted, kMuffleOrder);
+        if (ma_lpf_reinit(&c, &m->lpf) == MA_SUCCESS) // same order and channels: no allocation, state kept
+        {
+            m->applied = wanted;
+        }
+    }
+    ma_lpf_process_pcm_frames(&m->lpf, framesOut[0], framesIn[0], *frameCountOut);
+}
+
+const ma_node_vtable kMuffleVtable = {processMuffle, nullptr, 1, 1, 0};
+
+/// Sets up `m` with `cutoff` (main thread, before it is attached anywhere).
+ma_result initMuffle(ma_node_graph* graph, ma_uint32 channels, ma_uint32 sampleRate, f64 cutoff,
+                     MuffleNode& m)
+{
+    m.channels = channels;
+    m.sampleRate = sampleRate;
+    m.applied = cutoff;
+    m.cutoff.store(cutoff, std::memory_order_relaxed);
+    const ma_lpf_config c = ma_lpf_config_init(ma_format_f32, channels, sampleRate, cutoff, kMuffleOrder);
+    if (const ma_result r = ma_lpf_init(&c, nullptr, &m.lpf); r != MA_SUCCESS)
+    {
+        return r;
+    }
+    ma_node_config nc = ma_node_config_init();
+    nc.vtable = &kMuffleVtable;
+    nc.pInputChannels = &m.channels;
+    nc.pOutputChannels = &m.channels;
+    if (const ma_result r = ma_node_init(graph, &nc, nullptr, &m.base); r != MA_SUCCESS)
+    {
+        ma_lpf_uninit(&m.lpf, nullptr);
+        return r;
+    }
+    m.ready = true;
+    return MA_SUCCESS;
+}
+
+void uninitMuffle(MuffleNode& m)
+{
+    if (m.ready)
+    {
+        ma_node_uninit(&m.base, nullptr); // detaches it; the audio thread no longer reads it afterwards
+        ma_lpf_uninit(&m.lpf, nullptr);
+        m.ready = false;
+    }
+}
+
 struct Voice
 {
     std::unique_ptr<ma_audio_buffer_ref> source;
     std::unique_ptr<ma_sound> sound;
     std::shared_ptr<const Clip> clip; ///< kept while it plays
-    std::unique_ptr<ma_lpf_node> lpf; ///< 3D sounds: between the sound and its bus (occlusion)
+    std::unique_ptr<MuffleNode> lpf;  ///< 3D sounds: between the sound and its bus (occlusion)
     f32 muffle = 0.0f;
     u64 startFrame = 0;     ///< on the mixer's clock: before it, a delayed sound waits
     u64 playedFrom = 0;     ///< the mixer's clock when play() was called (sounds without a delay)
@@ -177,7 +253,7 @@ struct AudioSystem::Impl
     usize groupsReady = 0;
     // A low-pass per bus (M17 W3), between the group and the endpoint only while it muffles (open it is not
     // in the graph, so the bus sounds exactly as before).
-    std::array<ma_lpf_node, static_cast<usize>(Bus::Count)> busLpf{};
+    std::array<MuffleNode, static_cast<usize>(Bus::Count)> busLpf{};
     std::array<bool, static_cast<usize>(Bus::Count)> busLpfReady{};
     std::array<f32, static_cast<usize>(Bus::Count)> busMuffles{};
     std::unordered_map<std::string, std::shared_ptr<const Clip>> clips;
@@ -199,7 +275,7 @@ struct AudioSystem::Impl
             ma_sound_group_uninit(&groups[i]);
             if (busLpfReady[i])
             {
-                ma_lpf_node_uninit(&busLpf[i], nullptr);
+                uninitMuffle(busLpf[i]);
             }
         }
         if (engineReady)
@@ -213,16 +289,15 @@ struct AudioSystem::Impl
         ma_sound_uninit(v.sound.get());
         if (v.lpf)
         {
-            ma_lpf_node_uninit(v.lpf.get(), nullptr);
+            uninitMuffle(*v.lpf);
         }
         ma_audio_buffer_ref_uninit(v.source.get());
     }
 
-    [[nodiscard]] ma_lpf_node_config lpfConfig(f32 muffle) const
+    /// The cutoff for `muffle`: open at 20 kHz, strongly muffled (1) at about 600 Hz.
+    [[nodiscard]] static f64 cutoffOf(f32 muffle)
     {
-        // Open at 20 kHz, strongly muffled (1) at about 600 Hz.
-        const f64 cutoff = 20000.0 * std::pow(0.03, static_cast<f64>(std::clamp(muffle, 0.0f, 1.0f)));
-        return ma_lpf_node_config_init(2, config.sampleRate, cutoff, 2);
+        return 20000.0 * std::pow(0.03, static_cast<f64>(std::clamp(muffle, 0.0f, 1.0f)));
     }
 
     /// Waiting for its start, or playing and not at its end.
@@ -418,9 +493,9 @@ Result<SoundId> AudioSystem::play(const SoundDef& def, std::optional<Vec3> posit
     ma_sound_set_pitch(v.sound.get(), 1.0f + def.pitchJitter * spread(m_impl->rng));
     ma_sound_set_looping(v.sound.get(), def.loop ? MA_TRUE : MA_FALSE);
     // A low-pass between the sound and its bus: occlusion (3D), the outside heard from a room (2D).
-    v.lpf = std::make_unique<ma_lpf_node>();
-    const ma_lpf_node_config lc = m_impl->lpfConfig(0.0f);
-    if (ma_lpf_node_init(ma_engine_get_node_graph(&m_impl->engine), &lc, nullptr, v.lpf.get()) == MA_SUCCESS)
+    v.lpf = std::make_unique<MuffleNode>();
+    if (initMuffle(ma_engine_get_node_graph(&m_impl->engine), 2, m_impl->config.sampleRate,
+                   Impl::cutoffOf(0.0f), *v.lpf) == MA_SUCCESS)
     {
         ma_node_attach_output_bus(v.sound.get(), 0, v.lpf.get(), 0);
         ma_node_attach_output_bus(v.lpf.get(), 0, &m_impl->groups[static_cast<usize>(def.bus)], 0);
@@ -549,8 +624,7 @@ void AudioSystem::setMuffle(SoundId id, f32 amount)
         return;
     }
     v->muffle = amount;
-    const ma_lpf_node_config lc = m_impl->lpfConfig(amount);
-    ma_lpf_node_reinit(&lc.lpf, v->lpf.get());
+    v->lpf->cutoff.store(Impl::cutoffOf(amount), std::memory_order_relaxed); // applied on the audio thread
 }
 
 f32 AudioSystem::muffle(SoundId id) const noexcept
@@ -602,11 +676,10 @@ void AudioSystem::setBusMuffle(Bus bus, f32 amount)
     }
     ma_node* group = &m_impl->groups[i];
     ma_node* endpoint = ma_engine_get_endpoint(&m_impl->engine);
-    const ma_lpf_node_config lc = m_impl->lpfConfig(amount);
     if (!m_impl->busLpfReady[i])
     {
-        if (ma_lpf_node_init(ma_engine_get_node_graph(&m_impl->engine), &lc, nullptr, &m_impl->busLpf[i]) !=
-            MA_SUCCESS)
+        if (initMuffle(ma_engine_get_node_graph(&m_impl->engine), 2, m_impl->config.sampleRate,
+                       Impl::cutoffOf(amount), m_impl->busLpf[i]) != MA_SUCCESS)
         {
             G7_LOG_WARN("audio", "bus {}: no low-pass", kBusNames[i]);
             return;
@@ -616,7 +689,8 @@ void AudioSystem::setBusMuffle(Bus bus, f32 amount)
     }
     else
     {
-        ma_lpf_node_reinit(&lc.lpf, &m_impl->busLpf[i]);
+        m_impl->busLpf[i].cutoff.store(Impl::cutoffOf(amount),
+                                       std::memory_order_relaxed); // the audio thread applies it
     }
     if (amount > 0.0f && current <= 0.0f)
     {
