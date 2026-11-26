@@ -663,6 +663,8 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_shroud_rag` (Grabtuchfetzen des Beinhauswarts, Beute: gefaltetes graues Tuch mit ausgefransten Streifen; +Y entlang des Bündels) | 26 × 15 cm | prozedural (`shroud`) |
   | `it_scythe_claw` (Sensenklaue der Kellermutter, Beute/Trophäe: gebogene Chitinklinge vom Gelenkknopf (Ursprung) entlang +Y) | 65 cm | prozedural (`chitin_dark`, `chitin`) |
   | `it_brood_gland` (Brutdrüse der Kellermutter, Beute/Alchemie: orange leuchtende Drüse (`gland_glow_orange`, emissiv) in fünf dunklen Chitinrippen; +Y oben) | 14 cm | prozedural |
+  | `it_rune_light` (Lichtzauber, 2026-11-26: Runenstein wie die übrigen Runen, Zeichen kleine Sonne – Scheibe, Ring, acht Strahlen – in Blassblau; die Rille leuchtet schwach über eine eigene Emissive-Textur `rune_light_glow`, nur das Zeichen) | 6,2 cm | prozedural |
+  | `it_scroll_light` (Spruchrolle Licht: Rolle wie `it_scroll`, das Sonnenzeichen in dunkelblauer Tinte beiderseits des Siegels, blasses Wachssiegel mit eingedrücktem Zeichen) | 20 cm | prozedural |
 
   Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade
   legt engine an.

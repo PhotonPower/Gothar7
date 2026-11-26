@@ -310,3 +310,10 @@ yaw = 20.0
 pitch = 20.0
 roll = 0.0
 fill = 0.75
+
+# --- light spell (2026-11-26): Lua items by engine2 with the same IDs; until then the models name it ---
+[model."items/it_rune_light.glb"]
+category = "rune"
+
+[model."items/it_scroll_light.glb"]
+category = "scroll"
