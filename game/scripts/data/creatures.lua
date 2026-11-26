@@ -86,6 +86,33 @@ Creatures = {
         -- doppelt; ab stagger_share des Lebens taumelt sie (t_stagger).
         weak = { degrees = 60, factor = 2.0, stagger_share = 0.05 },
     },
+    beinhauswart = { -- wartet an einer Gruft (zs_dormant), blendet mit der grünen Laterne, schlägt mit dem Spaten
+        territory = 12,
+        attack_distance = 20,
+        wake_seconds = 1.4,
+        threaten_distance = 8, -- nach dem Erwachen und alle flash.every Sekunden: Laterne entgegenstoßen
+        threaten_seconds = 1.2,
+        chase_gait = "run", -- 0,8 / 3,2 m/s: langsamer als der rennende Held
+        body = { shape = "upright", radius = 0.3, length = 2.0, offset = { 0, 1.0, 0 } },
+        -- Event flash von t_threaten: Wer bis distance m vor ihm steht und zu ihm schaut (bis degrees neben der
+        -- Blickrichtung), sieht seconds lang grünweiß und taumelt. Nur mit der Laterne in der Hand; bei
+        -- lantern_drop des Lebens lässt er sie fallen (Rasend-Phase: danach nur noch der Spaten).
+        flash = { distance = 7, degrees = 60, seconds = 1.5, colour = { 0.75, 1.0, 0.8 }, every = 10 },
+        lantern = "it_lantern_beinhaus",
+        lantern_drop = 0.5,
+    },
+    brunnenmolch = { -- lauert halb untergetaucht im seichten Wasser, schwimmt nicht; blind, hört (Npc senses)
+        territory = 6, -- bleibt beim Wasser
+        attack_distance = 15,
+        wake_seconds = 1.2,
+        chase_gait = "run", -- an Land langsam (0,6 / 1,8 m/s)
+        body = { shape = "lying", radius = 0.3, length = 2.6, offset = { 0, 0.3, 0.2 } },
+        -- Steht der Held höher als above m über ihm (auf dem Steg), schnappt er am Ort senkrecht nach oben
+        -- (t_snap_up) statt vorn bzw. seitlich zu beißen.
+        snap = { above = 0.4 },
+        -- Nach dem Kampf geht er zurück an sein Wasser und sinkt wieder unter (t_submerge, ai/brunnenmolch.lua).
+        returns = true,
+    },
 }
 
 --- Die Werte des Tieres aus Creatures; nil für Menschen (Npc ohne `species`).

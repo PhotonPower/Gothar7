@@ -127,6 +127,9 @@ Ein Spielstand ist geladen: Welt, NPCs, Story und benannte Timer sind wieder da 
 ### `on("game_saved", fn(slot: string))`
 Ein Spielstand ist geschrieben (M15).
 
+### `on("hero_blinded", fn(npc: string))`
+Eine Laterne blendet den Helden (`Creatures.<art>.flash`, Beinhauswart).
+
 ### `on("hero_grabbed", fn(npc: string))`
 Eine Schere hält den Helden fest (`Creatures.<art>.grab`, Kristallkrebs).
 

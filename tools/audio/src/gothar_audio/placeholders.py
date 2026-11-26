@@ -510,6 +510,107 @@ FOOTSTEP_MATERIALS: dict[str, Callable[[random.Random], Samples]] = {
 FOOTSTEP_VARIANTS = 4
 
 
+#: The dungeon monsters (docs/design/monsters.md): a voice each - its pitch (Hz) and what it is made of - from
+#: which attack, hit, die and threaten are made (the clip events sound:<art>_<what>).
+DUNGEON_VOICES: dict[str, tuple[float, str]] = {
+    "gatterbock": (70.0, "stone"),  # stone warden: grinding blocks
+    "mauerschlupfer": (520.0, "beast"),  # small lurker: squeaks and hisses
+    "mauerkriecher": (900.0, "chitin"),  # woodlouse: clicks
+    "kristallkrebs": (330.0, "crystal"),  # crab with ringing crystals
+    "beinhauswart": (140.0, "beast"),  # warden: a hoarse groan
+    "brunnenmolch": (180.0, "wet"),  # blind newt: wet hisses and gulps
+    "kellermutter": (55.0, "beast"),  # the boss: a deep shriek
+}
+
+
+def _voice(base: float, kind: str, seconds: float, rise: float, rng: random.Random) -> Samples:
+    """One utterance of a monster: a tone gliding by `rise` (factor) over `seconds`, coloured by its kind."""
+
+    def glide(t: float) -> float:
+        return (
+            base
+            * (1.0 + (rise - 1.0) * min(t / seconds, 1.0))
+            * (1.0 + 0.03 * math.sin(2 * math.pi * 7.0 * t))
+        )
+
+    if kind == "stone":
+        rumble = lowpass(noise(seconds, rng), 260.0)
+        body = lowpass(tone(glide, seconds, "saw"), 400.0)
+        return mix((rumble, 1.0), (body, 0.5))
+    if kind == "chitin":
+        out = silence(seconds)
+        clicks = max(2, int(seconds * 18))
+        for i in range(clicks):
+            at = int(i * len(out) / clicks)
+            click = envelope(highpass(noise(0.02, rng), 2500.0), 0.0005, 0.008)
+            for j, x in enumerate(click):
+                if at + j < len(out):
+                    out[at + j] += x
+        return mix((out, 1.0), (lowpass(tone(glide, seconds, "square"), 1500.0), 0.15))
+    if kind == "crystal":
+        partials = [(1.0, 1.0), (2.76, 0.5), (5.4, 0.25)]
+        ring = mix(
+            *[
+                (envelope(tone(lambda t, f=f: glide(t) * f, seconds), 0.002, seconds * 0.5), g)
+                for f, g in partials
+            ]
+        )
+        return mix((ring, 1.0), (lowpass(noise(seconds, rng), 900.0), 0.3))
+    if kind == "wet":
+        hiss = highpass(lowpass(noise(seconds, rng), 3500.0), 600.0)
+        gulp = lowpass(tone(glide, seconds, "sine"), 500.0)
+        return mix((hiss, 0.7), (gulp, 0.6))
+    body = lowpass(tone(glide, seconds, "saw"), base * 8.0)  # "beast"
+    breath = lowpass(noise(seconds, rng), 1800.0)
+    return mix((body, 1.0), (breath, 0.35))
+
+
+def _monster(base: float, kind: str, what: str) -> Callable[[random.Random], Samples]:
+    """attack: short and rising; hit: very short; die: long and falling; threaten: long, swelling."""
+    seconds, rise, fade_in, fade_out, peak = {
+        "attack": (0.35, 1.3, 0.01, 0.12, 0.8),
+        "hit": (0.2, 0.8, 0.005, 0.1, 0.7),
+        "die": (1.2, 0.5, 0.05, 0.6, 0.8),
+        "threaten": (0.9, 1.15, 0.2, 0.3, 0.75),
+    }[what]
+
+    def make(rng: random.Random) -> Samples:
+        return normalise(fade(_voice(base, kind, seconds, rise, rng), fade_in, fade_out), peak)
+
+    return make
+
+
+def kristallkrebs_chime(rng: random.Random) -> Samples:
+    # The crystals on its back ring softly (idle, waking, throwing a spell back).
+    ring = mix(
+        *[(envelope(tone(f, 1.0), 0.003, 0.5), g) for f, g in ((1320.0, 1.0), (1980.0, 0.6), (2970.0, 0.3))]
+    )
+    return normalise(ring, 0.5)
+
+
+def mauerkriecher_click(rng: random.Random) -> Samples:
+    # Plates of the shell rattling (curling up, unrolling).
+    return normalise(_voice(900.0, "chitin", 0.4, 1.0, rng), 0.6)
+
+
+def kellermutter_call(rng: random.Random) -> Samples:
+    # The brood is called out of the walls: a long, rising shriek over a deep rumble.
+    shriek = _voice(220.0, "beast", 1.6, 2.2, rng)
+    rumble = lowpass(noise(1.6, rng), 200.0)
+    return normalise(fade(mix((shriek, 1.0), (rumble, 0.6)), 0.2, 0.5))
+
+
+def _dungeon_sounds() -> dict[str, Callable[[random.Random], Samples]]:
+    out: dict[str, Callable[[random.Random], Samples]] = {}
+    for art, (base, kind) in DUNGEON_VOICES.items():
+        for what in ("attack", "hit", "die", "threaten"):
+            out[f"{art}_{what}"] = _monster(base, kind, what)
+    out["kristallkrebs_chime"] = kristallkrebs_chime
+    out["mauerkriecher_click"] = mauerkriecher_click
+    out["kellermutter_call"] = kellermutter_call
+    return out
+
+
 #: name -> generator; the file is sounds/<name>.wav
 SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "amb_field": amb_field,
@@ -552,6 +653,7 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "fire_impact": fire_impact,
     "heal": heal,
     "summon": summon,
+    **_dungeon_sounds(),
 }
 SOUNDS.update(
     {
