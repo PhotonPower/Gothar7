@@ -451,6 +451,11 @@ Json globalsToJson(const GameState& state)
                             {"position", vec3(h.position)},
                             {"yaw", h.yaw},
                             {"torch", h.torch}};
+        if (!h.light.empty()) // the light spell, additive: older saves have none
+        {
+            root["hero"]["light"] = h.light;
+            root["hero"]["lightSeconds"] = h.lightSeconds;
+        }
     }
     root["currentWorld"] = state.currentWorld;
     if (state.weather)
@@ -646,6 +651,10 @@ bool readGlobals(Reader& r, const Json& root, GameState& s)
         ok = c != nullptr && readCharacter(r, *c, "hero.character", h.character) &&
              readVec3(r, j, "position", "hero", h.position) && read(r, j, "yaw", "hero", h.yaw) &&
              read(r, j, "torch", "hero", h.torch);
+        if (ok && j.contains("light"))
+        {
+            ok = read(r, j, "light", "hero", h.light) && read(r, j, "lightSeconds", "hero", h.lightSeconds);
+        }
         s.hero = std::move(h);
     }
     if (ok && root.contains("weather")) // M17 E1, additive: older saves have none

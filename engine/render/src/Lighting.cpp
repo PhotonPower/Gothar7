@@ -1,3 +1,4 @@
+#include <g7/core/Assert.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/render/Camera.hpp>
 #include <g7/render/Lighting.hpp>
@@ -37,7 +38,18 @@ f32 fogDensityFor(f32 amount, f32 distance, f32 start) noexcept
 void LightList::clear() noexcept
 {
     m_lights.clear();
+    m_pinned = 0;
     m_warned = false;
+}
+
+void LightList::addPinned(const PointLight& light)
+{
+    G7_ASSERT(m_lights.size() == m_pinned, "pinned lights come before all others");
+    if (m_lights.size() < kMaxPerObject) // at most as many as one object can take
+    {
+        m_lights.push_back(light);
+        ++m_pinned;
+    }
 }
 
 void LightList::add(const PointLight& light)
@@ -70,7 +82,7 @@ void LightList::selectFor(const AABB& bounds, std::vector<u32>& out) const
         const f32 distance = glm::length(light.position - closest);
         if (distance < light.radius && light.intensity > 0.0f)
         {
-            candidates.push_back({distance, i});
+            candidates.push_back({i < m_pinned ? -1.0f : distance, i}); // pinned ones first
         }
     }
     std::stable_sort(candidates.begin(), candidates.end(),
@@ -86,9 +98,20 @@ void selectFrameLights(std::span<const PointLight> always, std::span<const Point
                        std::span<const PointLight> windows, const Vec3& eye, const Frustum& view,
                        const LightBudget& budget, LightList& out)
 {
+    selectFrameLights({}, always, world, windows, eye, view, budget, out);
+}
+
+void selectFrameLights(std::span<const PointLight> pinned, std::span<const PointLight> always,
+                       std::span<const PointLight> world, std::span<const PointLight> windows,
+                       const Vec3& eye, const Frustum& view, const LightBudget& budget, LightList& out)
+{
     out.clear();
-    const u32 limit = std::min(budget.maxLights, LightList::kMaxPerFrame);
-    u32 count = 0;
+    for (const PointLight& l : pinned)
+    {
+        out.addPinned(l);
+    }
+    const u32 limit = std::max(std::min(budget.maxLights, LightList::kMaxPerFrame), out.pinned());
+    u32 count = out.pinned();
     for (const PointLight& l : always)
     {
         if (count == limit)

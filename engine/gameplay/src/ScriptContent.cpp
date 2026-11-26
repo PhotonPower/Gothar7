@@ -135,7 +135,7 @@ void defineContentKinds(script::ScriptVm& vm)
     //                     fx = { trail = "firebolt", impact = "impact_fire" } }: what a rune or a scroll
     //                     casts
     // (M12 part B, owner decisions Z1-Z3). kind: projectile, area, self, target, summon, transform,
-    // telekinesis (M17).
+    // telekinesis (M17), light (the orb over the hand).
     vm.defineKind(
         {"Spell",
          {
@@ -149,13 +149,13 @@ void defineContentKinds(script::ScriptVm& vm)
               none,
               {},
               std::vector<std::string>{"projectile", "area", "self", "target", "summon", "transform",
-                                       "telekinesis"}},
+                                       "telekinesis", "light"}},
              {"invest", Type::Table}, // Z5: { stages = 3, mana = 5 } more per second of charging
              {"damage", Type::Table}, // { fire = 25 } (projectile, area)
              {"radius", Type::Number, false, 0.0, 50.0},         // area
              {"heal", Type::Integer, false, 0.0, 10000.0},       // self
              {"effect", Type::String},                           // target: sleep, fear
-             {"duration", Type::Number, false, 0.0, 3600.0},     // target, summon (seconds)
+             {"duration", Type::Number, false, 0.0, 3600.0},     // target, summon, light (seconds)
              {"summon", Type::String, false, none, none, "Npc"}, // summon: the creature
              {"species", Type::String},                          // transform: wolf, keiler, laufvogel
              {"fx", Type::Table},                                // { cast, trail, impact, on_target }
@@ -169,6 +169,8 @@ void defineContentKinds(script::ScriptVm& vm)
              {"lift", Type::Number, false, 0.0, 10.0},
              {"carry", Type::Number, false, 0.0, 10.0},        // largest item extent in metres
              {"blocked_drop", Type::Number, false, 0.0, 60.0}, // seconds blocked until it falls; 0: never
+             // Light: { color, range, intensity, flicker, hover, shoulder, warn, warn_flicker, fade } (orb)
+             {"light", Type::Table},
          },
          false});
 

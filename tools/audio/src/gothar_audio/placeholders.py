@@ -86,6 +86,27 @@ def heal(rng: random.Random) -> Samples:
     )
 
 
+def light_pop(rng: random.Random) -> Samples:
+    # The light spell's orb appearing or going out: a soft, round "pop" with a short glassy shimmer.
+    thump = envelope(tone(lambda t: 520.0 - 300.0 * min(t / 0.06, 1.0), 0.18), 0.002, 0.05)
+    shimmer = envelope(highpass(noise(0.25, rng), 5000.0), 0.004, 0.07)
+    ring = envelope(tone(1760.0, 0.3), 0.003, 0.09)
+    return normalise(fade(mix((thump, 1.0), (shimmer, 0.25), (ring, 0.2)), 0.001, 0.05), 0.6)
+
+
+def amb_light_hum(rng: random.Random) -> Samples:
+    # The orb's quiet hum (loop): two close tones beating slowly, a little crackle of plasma.
+    n = int(LOOP * RATE)
+    hum = [
+        0.6 * math.sin(2 * math.pi * 110.0 * i / RATE)
+        + 0.4 * math.sin(2 * math.pi * 110.7 * i / RATE)
+        + 0.15 * math.sin(2 * math.pi * 220.0 * i / RATE)
+        for i in range(n)
+    ]
+    crackle = scatter(n, 30, lambda: envelope(highpass(noise(0.02, rng), 3000.0), 0.0005, 0.006), rng)
+    return normalise(seamless(mix((hum, 1.0), (crackle, 0.12))), 0.5)
+
+
 def summon(rng: random.Random) -> Samples:
     swell = fade(lowpass(tone(55.0, 1.2, "saw"), 400.0), 0.6, 0.4)
     air = fade(lowpass(noise(1.2, rng), 800.0), 0.5, 0.5)
@@ -697,6 +718,8 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "spell_cast": spell_cast,
     "fire_impact": fire_impact,
     "heal": heal,
+    "light_pop": light_pop,
+    "amb_light_hum": amb_light_hum,
     "summon": summon,
     **_dungeon_sounds(),
 }

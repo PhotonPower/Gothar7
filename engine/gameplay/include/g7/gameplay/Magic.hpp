@@ -3,6 +3,7 @@
 // spell's mana (Z3), which does not come back by itself (Z1: potions, sleep, levels).
 #pragma once
 
+#include <g7/core/Math.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 #include <g7/gameplay/Character.hpp>
@@ -27,6 +28,21 @@ enum class SpellKind : u8
     Summon,
     Transform,
     Telekinesis, ///< M17 part T: pulls an item to the caster while held
+    Light,       ///< a glowing orb above the caster's hand for `duration` seconds (EngineSpellLight.cpp)
+};
+
+/// The orb of a light spell (Spell field `light`): its point light and where it hovers.
+struct LightSpellLook
+{
+    Vec3 color{0.86f, 0.92f, 1.0f}; ///< linear
+    f32 range = 8.0f;               ///< metres the light reaches
+    f32 intensity = 3.0f;
+    f32 flicker = 0.08f;    ///< 0..1, gentle
+    f32 hover = 0.15f;      ///< metres above the open hand
+    f32 shoulder = 0.25f;   ///< metres above the left shoulder while the hand is busy
+    f32 warn = 10.0f;       ///< the last seconds it flickers more strongly
+    f32 warnFlicker = 0.5f; ///< 0..1 then
+    f32 fade = 1.0f;        ///< seconds it fades out at the end
 };
 
 struct SpellInfo
@@ -55,6 +71,7 @@ struct SpellInfo
     f32 lift = 0.0f;                ///< metres it rises first
     f32 carry = 0.0f;               ///< largest item extent (metres)
     std::optional<f32> blockedDrop; ///< seconds blocked until it falls (unset: the default; 0: never)
+    LightSpellLook light;           ///< kind light
 };
 
 /// The Spell instance's fields.
