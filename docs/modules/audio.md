@@ -67,6 +67,8 @@
   Echo (`water_drop_deep`) und an den Wänden (`water_drip`).
   `beinhaus` (Ebene 4) – trockene, hohle Luft mit Wind durch einen Schacht (`amb_ossuary`), nachrutschende Knochen
   (`bone_rattle`), selten ein Knarren.
+  `werkstatt` (Ebene 5) – Hallenluft mit fernem Uhrwerk (`amb_workshop`), fernes Metall (`metal_clang_far`), Tropfen
+  (`water_drip`) und knarrendes Gebälk (`wood_creak`).
   - Neue Platzhalter-Schleifen (4 s): `amb_field`, `amb_town`, `amb_market`, `amb_water`, `amb_fountain`, `amb_fire`, `amb_tavern`, `amb_room`.
   - Neue Einzelklänge: `crow`, `dog_bark`, `wood_creak`, `mug_clink`, `frog`.
 - **Spruch-Klänge:** `Spell`-Feld `sounds = { cast, impact }`; das Wirken klingt an der Hand, der Einschlag am Treffpunkt.
