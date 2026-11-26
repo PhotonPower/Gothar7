@@ -377,6 +377,11 @@ std::vector<ui::OptionPage> Engine::optionPages() const
                          {std::string("low"), UiText::key("UI_OPT_QUALITY_LOW")},
                          {std::string("medium"), UiText::key("UI_OPT_QUALITY_MEDIUM")},
                          {std::string("high"), UiText::key("UI_OPT_QUALITY_HIGH")}}),
+                 choice("render.window_reflections", "UI_OPT_WINDOW_REFLECTIONS",
+                        {{std::string("off"), UiText::key("UI_OFF")},
+                         {std::string("low"), UiText::key("UI_OPT_QUALITY_LOW")},
+                         {std::string("medium"), UiText::key("UI_OPT_QUALITY_MEDIUM")},
+                         {std::string("high"), UiText::key("UI_OPT_QUALITY_HIGH")}}),
                  toggle("render.wind", "UI_OPT_WIND"), toggle("render.bloom", "UI_OPT_BLOOM"),
                  toggle("render.grading", "UI_OPT_GRADING")}};
     pages[1] = {"UI_OPTIONS_AUDIO",

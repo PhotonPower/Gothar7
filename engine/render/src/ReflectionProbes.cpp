@@ -21,11 +21,17 @@ bool farFromAll(const std::vector<Vec3>& placed, const Vec3& point, f32 merge)
 }
 } // namespace
 
-std::vector<Vec3> placeReflectionProbes(std::span<const Vec3> junctions,
+std::vector<Vec3> placeReflectionProbes(std::span<const Vec3> markers, std::span<const Vec3> junctions,
                                         std::span<const std::pair<Vec3, Vec3>> segments,
                                         const ProbePlacement& placement)
 {
-    std::vector<Vec3> ground; // on the paths; raised at the end
+    // Distances are compared on the ground: the markers are lowered by the height for that and raised again.
+    const Vec3 up(0.0f, placement.height, 0.0f);
+    std::vector<Vec3> ground;
+    for (const Vec3& marker : markers)
+    {
+        ground.push_back(marker - up);
+    }
     const auto offer = [&](const Vec3& p)
     {
         if (farFromAll(ground, p, placement.merge))
@@ -49,7 +55,7 @@ std::vector<Vec3> placeReflectionProbes(std::span<const Vec3> junctions,
     }
     for (Vec3& p : ground)
     {
-        p.y += placement.height;
+        p += up;
     }
     return ground;
 }

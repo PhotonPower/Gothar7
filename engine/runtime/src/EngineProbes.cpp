@@ -46,8 +46,18 @@ void Engine::placeReflectionProbes()
             }
         }
     }
-    std::vector<Vec3> positions = render::placeReflectionProbes(junctions, segments);
-    if (points.empty() && m_sceneBounds.max.x >= m_sceneBounds.min.x)
+    // welt's markers (question 9, optional): a vob named VOB_PROBE_* is a probe right where it stands.
+    std::vector<Vec3> markers;
+    m_scene.each<world::Vob, world::WorldTransform>(
+        [&](entt::entity, const world::Vob& vob, const world::WorldTransform& transform)
+        {
+            if (vob.nameText.starts_with("VOB_PROBE_"))
+            {
+                markers.emplace_back(transform.matrix[3]);
+            }
+        });
+    std::vector<Vec3> positions = render::placeReflectionProbes(markers, junctions, segments);
+    if (points.empty() && markers.empty() && m_sceneBounds.max.x >= m_sceneBounds.min.x)
     {
         // No waynet (test scenes): a grid over the scene, on the ground found below.
         for (f32 x = m_sceneBounds.min.x; x <= m_sceneBounds.max.x; x += kGridSpacing)
@@ -85,8 +95,8 @@ void Engine::placeReflectionProbes()
                        p.z + reach(p, Vec3(0.0f, 0.0f, 1.0f)));
         probes.push_back({p, box});
     }
-    G7_LOG_INFO("engine", "reflection probes: {} ({})", probes.size(),
-                points.empty() ? "grid, no waynet" : "along the waynet");
+    G7_LOG_INFO("engine", "reflection probes: {} ({}, {} markers)", probes.size(),
+                points.empty() ? "grid, no waynet" : "along the waynet", markers.size());
     m_probes.schedule().setProbes(std::move(probes));
 }
 
