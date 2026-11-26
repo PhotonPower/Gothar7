@@ -86,6 +86,46 @@ Item "it_shears" {
     weight = 0.4,
 }
 
+Item "it_kristall" { -- vom Kristallkrebs abgeschlagen (stumpfe Waffen, Dungeon)
+    name = "Leuchtkristall",
+    mesh = "items/it_kristall.glb",
+    category = "misc",
+    value = 25,
+    weight = 0.3,
+}
+
+Item "it_scythe_claw" { -- Beute der Kellermutter (Dungeon)
+    name = "Sensenklaue",
+    mesh = "items/it_scythe_claw.glb",
+    category = "misc",
+    value = 60,
+    weight = 1.5,
+}
+
+Item "it_brood_gland" { -- Beute der Kellermutter (Dungeon)
+    name = "Brutdrüse",
+    mesh = "items/it_brood_gland.glb",
+    category = "misc",
+    value = 80,
+    weight = 0.8,
+}
+
+Item "it_lantern_beinhaus" { -- die grüne Laterne des Beinhauswarts (figuren #461)
+    name = "Grüne Laterne",
+    mesh = "items/it_lantern_beinhaus.glb",
+    category = "misc",
+    value = 30,
+    weight = 1.5,
+}
+
+Item "it_shroud_rag" { -- Beute des Beinhauswarts (Dungeon)
+    name = "Grabtuchfetzen",
+    mesh = "items/it_shroud_rag.glb",
+    category = "misc",
+    value = 5,
+    weight = 0.1,
+}
+
 -- Beute der Dungeon-Monster (IDs mit figuren abgestimmt 2026-11-25; Modelle figuren #475).
 Item "it_crawler_plate" { -- Mauerkriecher
     name = "Kriecherplatte",

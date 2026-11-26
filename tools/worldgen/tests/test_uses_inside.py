@@ -848,14 +848,16 @@ def test_in_leonberg_the_lights_keep_within_the_frame_budget():
     """W7 phase 3: the engine takes 256 point lights a frame (world lights and daylight through
     the windows together); Leonberg keeps well below, room lights and windows sparingly. The
     castle inside (W7 D1b) adds 37 lights at night: 200 since the engine picks the lights per
-    frame (E1, at most 128, the torch first)."""
+    frame (E1, at most 128, the torch first). The castle's rooms take daylight at their windows
+    about every 4.5 m (coordinator 2026-11-25): 103 window lights; engine keeps those within
+    ``window_light_radius`` (25 m) only."""
     import json
 
     world_path = Path(__file__).resolve().parents[3] / "assets/source/worlds/leonberg"
     world = json.loads((world_path / "leonberg.g7world").read_text(encoding="utf-8"))
     lights = [v for v in world["vobs"] if v["type"] == "light"]
     daylight = [v for v in lights if v.get("components", {}).get("light", {}).get("daylight")]
-    assert len(lights) - len(daylight) <= 200 and len(daylight) <= 100
+    assert len(lights) - len(daylight) <= 200 and len(daylight) <= 120
     assert len(lights) <= 300  # the engine picks per frame (E1); none warned in the bench (D1b)
 
 

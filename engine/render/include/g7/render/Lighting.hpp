@@ -11,6 +11,17 @@
 
 namespace g7::render
 {
+/// M17 windows F2: how many reflection probes the shader gets at most (the nearest finished ones).
+inline constexpr u32 kMaxShaderProbes = 32;
+
+/// A reflection probe in the shader (render::ReflectionProbes): centre (w = its atlas slot), influence box.
+struct GpuProbe
+{
+    Vec4 center{0.0f};
+    Vec4 boxMin{0.0f};
+    Vec4 boxMax{0.0f};
+};
+
 /// A room (world.md "zones", type indoor): a box turned by `yaw` about +Y; local +X points to
 /// (cos yaw, 0, -sin yaw). Surfaces in it get the room's ambient factor.
 struct IndoorVolume
@@ -69,6 +80,23 @@ struct Environment
     /// glass, and the stage of window reflections (off: glass drawn like any material).
     Vec3 skyZenith{0.04f, 0.03f, 0.05f};
     WindowReflections windowReflections = WindowReflections::Off;
+    /// M17 windows F1b: the warm glow of the panes at night - the share of window rows lit by chance
+    /// (render::windowsAwake), how dark it is outside (render::windowGlowNight; 0: no glow) and a running
+    /// time in seconds for the flames' flicker.
+    f32 windowsAwake = 0.0f;
+    f32 windowGlowNight = 0.0f;
+    f32 glassTime = 0.0f;
+    /// M17 windows F2: the finished reflection probes nearest the camera (at most kMaxShaderProbes; empty:
+    /// the glass mirrors the sky alone) and the atlas layout (ReflectionProbes::shaderParams). The probes
+    /// must stay alive until packLighting.
+    std::span<const GpuProbe> probes;
+    Vec4 probeParams{0.0f};
+    /// M17 windows F3 (high): the glass traces reflection rays through the previous frame's scene
+    /// (render::ScreenHistory), seen by this camera; false: no trace (probes and sky alone).
+    bool ssr = false;
+    Mat4 ssrViewProjection{1.0f};
+    Vec3 ssrCameraPosition{0.0f};
+    Vec3 ssrCameraForward{0.0f, 0.0f, -1.0f};
 };
 
 inline constexpr u32 kMaxIndoorVolumes = 32;
@@ -165,14 +193,24 @@ struct GpuLighting
     Vec4 aoParams;              ///< x ambient occlusion strength (0 off), yz 1 / viewport size
     Mat4 rainMapViewProjection; ///< M17 N: world -> rain map (depth 0 top .. 1)
     Vec4 wetParams;             ///< x wetness, y has rain map, z puddles
-    Vec4 skyZenith; ///< M17 windows F1: rgb the zenith colour, w window reflections (0 off .. 3 high)
+    Vec4 skyZenith;   ///< M17 windows F1: rgb the zenith colour, w window reflections (0 off .. 3 high)
+    Vec4 glassGlow;   ///< M17 windows F1b: x windows awake, y night (0 no glow), z time (s)
+    Vec4 probeParams; ///< M17 windows F2: x probes, y slots per atlas row, z face size (texels)
+    std::array<Vec4, kMaxShaderProbes> probeCenter; ///< xyz centre, w atlas slot
+    std::array<Vec4, kMaxShaderProbes> probeBoxMin;
+    std::array<Vec4, kMaxShaderProbes> probeBoxMax;
+    Mat4 ssrViewProjection; ///< M17 windows F3: the previous frame's camera
+    Mat4 ssrInverseViewProjection;
+    Vec4 ssrCamera;  ///< xyz its position, w 1 = trace
+    Vec4 ssrForward; ///< xyz its forward
     std::array<Vec4, 2 * kMaxIndoorVolumes>
         indoorBoxes; ///< per room: centre + cos yaw, half extents + sin yaw
     std::array<Vec4, kMaxIndoorVolumes / 4> indoorAmbient; ///< per room its ambient factor, four to a vec4
     std::array<Vec4, LightList::kMaxPerFrame> pointPositionRadius;
     std::array<Vec4, LightList::kMaxPerFrame> pointColor; ///< rgb * intensity
 };
-static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64 + 2 * 16 +
+static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64 + 4 * 16 +
+                                         3 * 16 * kMaxShaderProbes + 2 * 64 + 2 * 16 +
                                          2 * 16 * kMaxIndoorVolumes + 4 * kMaxIndoorVolumes +
                                          2 * 16 * LightList::kMaxPerFrame,
               "must match std140 (common/lighting.glsl)");

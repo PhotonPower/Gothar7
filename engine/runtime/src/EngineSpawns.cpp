@@ -24,8 +24,8 @@ constexpr f32 kRingRadius = 1.5f; ///< m: the second and further NPCs of a marke
 constexpr f32 kProbeAbove = 0.5f; ///< m: the ground below a marker (a room's ceiling is not ground)
 constexpr f32 kProbeBelow = 3.0f; ///< m: how far below the marker the ground may lie
 constexpr f32 kDropAhead = 0.4f;  ///< m: an item an NPC lets fall lies this far before its feet
-constexpr std::array<std::string_view, 6> kScriptEvents = {
-    "steal", "emerge", "grab", "release", "reflect", "spawn_brood"}; ///< characters-pipeline.md 7.5
+constexpr std::array<std::string_view, 7> kScriptEvents = {
+    "steal", "emerge", "grab", "release", "reflect", "spawn_brood", "flash"}; ///< characters-pipeline.md 7.5
 
 f32 yawOfMatrix(const Mat4& m)
 {
@@ -223,6 +223,31 @@ void Engine::bindSpawnFunctions()
                      c.value()->sleep = false;
                  }
                  return Value();
+             }});
+    vm.bind(
+        {"npc_set_weak", "npc_set_weak(npc: string, open: boolean)",
+         "Öffnet bzw. schließt die Schwachstelle eines Monsters (`Creatures.<art>.weak`; die Kellermutter in "
+         "Phase 3): offen zählen Treffer von hinten mehrfach, schwere lassen es taumeln.",
+         "NPCs", [npc](std::span<const Value> a) -> Result<Value>
+         {
+             auto c = npc(a);
+             if (!c || a.size() < 2)
+             {
+                 return !c ? c.error() : Error{"argument 2 must be true or false"};
+             }
+             c.value()->weakOpen = a[1].asBool();
+             return Value();
+         }});
+    vm.bind({"npc_weak", "npc_weak(npc: string) -> boolean",
+             "Ob die Schwachstelle offen ist (`npc_set_weak`).", "NPCs",
+             [npc](std::span<const Value> a) -> Result<Value>
+             {
+                 auto c = npc(a);
+                 if (!c)
+                 {
+                     return c.error();
+                 }
+                 return Value(c.value()->weakOpen);
              }});
     vm.bind({"npc_hold", "npc_hold(npc: string, item?: string, socket?: string)",
              "Zeigt einen Gegenstand am Socket der Figur (Vorgabe `socket_hand_r`; ein Mauerschlupfer trägt "

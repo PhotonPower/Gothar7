@@ -523,8 +523,15 @@ bool Engine::startCommand(Creature& c)
                                        : cmd.text;
         if (a != nullptr && !a->hasState(in) && !a->hasState(loop) && a->hasState(played))
         {
-            constexpr std::array<std::pair<std::string_view, i32>, 5> kActions = {
-                {{"threaten", 4}, {"wake", 5}, {"steal", 6}, {"submerge", 13}, {"listen", 14}}};
+            constexpr std::array<std::pair<std::string_view, i32>, 9> kActions = {{{"threaten", 4},
+                                                                                   {"wake", 5},
+                                                                                   {"steal", 6},
+                                                                                   {"grab", 7},
+                                                                                   {"reflect", 8},
+                                                                                   {"call", 9},
+                                                                                   {"rage", 10},
+                                                                                   {"submerge", 13},
+                                                                                   {"listen", 14}}};
             for (const auto& [name, value] : kActions)
             {
                 if (played == name)
@@ -539,6 +546,7 @@ bool Engine::startCommand(Creature& c)
             c.eat = played == "eat";
             c.sleep = played == "sleep";
             c.rest = played == "dormant";
+            c.guard = played == "guard";
             c.ambientPhase = Creature::AmbientPhase::Loop;
             return false;
         }
@@ -565,13 +573,14 @@ bool Engine::startCommand(Creature& c)
             c.ambientPhase = Creature::AmbientPhase::Out;
             return true;
         }
-        if (a != nullptr && a->hasState("move") && !c.eat && !c.sleep && !c.rest)
+        if (a != nullptr && a->hasState("move") && !c.eat && !c.sleep && !c.rest && !c.guard)
         {
             a->enter("move", 0.25f);
         }
         c.eat = false; // animals: their graph goes back to walking by itself
         c.sleep = false;
         c.rest = false;
+        c.guard = false;
         c.ambient.clear();
         c.ambientPhase = Creature::AmbientPhase::None;
         if (c.heldItem.empty())

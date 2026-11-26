@@ -4,6 +4,7 @@
 const int kMaxPointLights = 256;
 const int kMaxIndoorVolumes = 32;
 const int kMaxLightsPerObject = 8;
+const int kMaxShaderProbes = 32;
 
 layout(std140, binding = 0) uniform Lighting
 {
@@ -27,6 +28,15 @@ layout(std140, binding = 0) uniform Lighting
     mat4 rainMapViewProjection; // M17 N: world -> rain map (depth 0 top .. 1)
     vec4 wetParams;         // x wetness, y has rain map, z puddles
     vec4 skyZenith;         // M17 windows F1: rgb zenith colour, w window reflections (0 off .. 3 high)
+    vec4 glassGlow;         // M17 windows F1b: x windows awake, y night (0 no glow), z time (s)
+    vec4 probeParams;       // M17 windows F2: x probes, y slots per atlas row, z face size (texels)
+    vec4 probeCenter[kMaxShaderProbes]; // xyz centre, w atlas slot
+    vec4 probeBoxMin[kMaxShaderProbes];
+    vec4 probeBoxMax[kMaxShaderProbes];
+    mat4 ssrViewProjection; // M17 windows F3: the previous frame's camera
+    mat4 ssrInverseViewProjection;
+    vec4 ssrCamera;         // xyz its position, w 1 = trace
+    vec4 ssrForward;        // xyz its forward
     vec4 indoorBoxes[2 * kMaxIndoorVolumes]; // per room: centre + cos yaw, half extents + sin yaw
     vec4 indoorAmbient[kMaxIndoorVolumes / 4]; // per room its ambient factor, four to a vec4
     vec4 pointPositionRadius[kMaxPointLights];

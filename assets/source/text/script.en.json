@@ -69,6 +69,24 @@
       "status": "entwurf"
     },
     "data.guilds.name_12": {
+      "de": "Kristallkrebse",
+      "text": "Crystal crabs",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_13": {
+      "de": "Kellermutter",
+      "text": "Cellar mothers",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_14": {
+      "de": "Beinhauswarte",
+      "text": "Charnel wardens",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_15": {
       "de": "Brunnenmolche",
       "text": "Well newts",
       "context": "data/guilds.lua",
@@ -1064,6 +1082,12 @@
       "context": "items/food.lua",
       "status": "entwurf"
     },
+    "it_brood_gland.name": {
+      "de": "Brutdrüse",
+      "text": "Brood gland",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
     "it_broom.name": {
       "de": "Besen",
       "text": "Broom",
@@ -1184,10 +1208,22 @@
       "context": "items/tools.lua",
       "status": "entwurf"
     },
+    "it_kristall.name": {
+      "de": "Leuchtkristall",
+      "text": "Glow crystal",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
     "it_ladle.name": {
       "de": "Kelle",
       "text": "Ladle",
       "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_lantern_beinhaus.name": {
+      "de": "Grüne Laterne",
+      "text": "Green lantern",
+      "context": "items/goods.lua",
       "status": "entwurf"
     },
     "it_letter_council.name": {
@@ -1358,9 +1394,21 @@
       "context": "items/goods.lua",
       "status": "entwurf"
     },
+    "it_scythe_claw.name": {
+      "de": "Sensenklaue",
+      "text": "Scythe claw",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
     "it_shears.name": {
       "de": "Schere",
       "text": "Shears",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_shroud_rag.name": {
+      "de": "Grabtuchfetzen",
+      "text": "Shroud rag",
       "context": "items/goods.lua",
       "status": "entwurf"
     },
@@ -1448,6 +1496,18 @@
       "context": "mobs/camp.lua",
       "status": "entwurf"
     },
+    "mob_testdungeon_niche.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/testdungeon.lua",
+      "status": "entwurf"
+    },
+    "mon_beinhauswart.name": {
+      "de": "Beinhauswart",
+      "text": "Charnel Warden",
+      "context": "npcs/dungeon.lua",
+      "status": "entwurf"
+    },
     "mon_brunnenmolch.name": {
       "de": "Brunnenmolch",
       "text": "Well Newt",
@@ -1464,6 +1524,18 @@
       "de": "Keiler",
       "text": "Boar",
       "context": "npcs/animals.lua",
+      "status": "entwurf"
+    },
+    "mon_kellermutter.name": {
+      "de": "Kellermutter",
+      "text": "Cellar Mother",
+      "context": "npcs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mon_kristallkrebs.name": {
+      "de": "Kristallkrebs",
+      "text": "Crystal Crab",
+      "context": "npcs/dungeon.lua",
       "status": "entwurf"
     },
     "mon_laufvogel.name": {
