@@ -1,8 +1,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from gothar_voice.cli import check_texts, repo_root
-from gothar_voice.texts import ScriptTexts, Text, is_text, scan_texts
+from gothar_voice.texts import SCHEMA, ScriptTexts, Text, is_text, scan_texts
 
 SCRIPTS = {
     "data/voices.lua": 'Voices = { guard = { "m" }, farmer = { "m", "f" } }\n',
@@ -105,3 +107,13 @@ def test_validate():
 def test_repository_translations_match_the_scripts():
     """What CI checks with `gothar-voice check`: every content text translated, none outdated."""
     assert check_texts(repo_root()) == []
+
+
+def test_a_key_twice_is_an_error(tmp_path):
+    """After a merge the same text key can appear twice (two new guilds as name_12): loading refuses it."""
+    (tmp_path / "script.en.json").write_text(
+        f'{{"schema": {SCHEMA}, "texts": {{"a": {{"de": "A", "text": "A"}}, "a": {{"de": "B", "text": "B"}}}}}}',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="doppelt"):
+        ScriptTexts.load(tmp_path, "en")

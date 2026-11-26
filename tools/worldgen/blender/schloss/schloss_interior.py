@@ -186,7 +186,10 @@ class Inside:
             if ws != side or not (s0 < u < s1) or not (wy0 >= y0 + 0.2 and wy1 <= y1 - 0.1):
                 continue
             a, b = u - 0.6, u + 0.6
-            self.quad("frame", a, t_back, b, t_back, wy0, wy1, inward)  # the dark pane
+            # the pane facing out, seen from inside as glass's back face (milky, by daylight;
+            # its material is double-sided, schloss.json "glass"); just behind the facade's pane
+            outward = (-inward[0], 0.0, -inward[2])
+            self.quad("window_glass", a, t_back, b, t_back, wy0, wy1, outward)
             self.quad("plaster_white", a, t_in, b, t_back, wy0, wy0, self.up(), horizontal=False)
             p = self.w.p
             self.m.quad("stone", p(a, t_in, wy0), p(b, t_in, wy0), p(b, t_back, wy0),
@@ -210,6 +213,7 @@ class Inside:
                 self.vault(a, b, y0, y1, mats["ceiling"])
             else:
                 self.quad(mats["ceiling"], a, -t, b, t, y1, y1, self.down(), horizontal=True)
+                self.beams(key, a, b, y1)
             for side in (1, -1):
                 self.wall_face(side, a, b, y0, y1, mats["wall"], holes[side])
                 self.niches(side, a, b, y0, y1)
@@ -222,6 +226,25 @@ class Inside:
             self.partition(b, c, y0, y1, mats["wall"], key, (part_name(key, before),
                                                              part_name(key, after)))  # fmt: skip
         self.m.part = None
+
+    def beams(self, key: str, a: float, b: float, y1: float) -> None:
+        """A timber-beam ceiling like the houses' (``interior.beams``): beams across the wing
+        under the ceiling, the plaster fields between them; two sides and the bottom of each
+        (the top is hidden, the ends sit in the walls). No collision: above head height."""
+        spec = self.spec.get("beams")
+        if not spec or key not in spec.get("storeys", []):
+            return
+        w, d = float(spec["widthM"]), float(spec["depthM"])
+        every, mat = float(spec["everyM"]), str(spec["material"])
+        t = self.t_in
+        n = max(int((b - a) / every), 1)
+        step = (b - a) / n  # evenly over the room, half a field at either end
+        for k in range(n):
+            s = a + step * (k + 0.5)
+            s0, s1, y0 = s - w / 2, s + w / 2, y1 - d
+            self.quad(mat, s0, -t, s1, t, y0, y0, self.down(), horizontal=True)
+            self.quad(mat, s0, -t, s0, t, y0, y1, self.w.along(-1.0))
+            self.quad(mat, s1, -t, s1, t, y0, y1, self.w.along(1.0))
 
     def end_face(self, s: float, y0: float, y1: float, mat: str, sign: float) -> None:
         t = self.t_in

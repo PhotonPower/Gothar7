@@ -14,6 +14,7 @@
 #include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/gameplay/Character.hpp>
+#include <g7/gameplay/Combat.hpp>
 #include <g7/physics/Character.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/SkinnedMesh.hpp>
@@ -24,6 +25,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace g7
@@ -64,6 +66,10 @@ struct AnimatedFigure
 
     virtual ~AnimatedFigure() = default;
 };
+
+/// The pose drawn in `frame`: between the last two steps at `alpha`, its model-space matrices and skinning
+/// palette (CPU only, safe in a job: touches nothing but `f`). The morph weights go to the GPU separately.
+void computeFigurePose(AnimatedFigure& f, f32 alpha, u64 frame);
 
 /// A static model held by a socket bone (sword in the hand, torch, bow on the back).
 struct FigureAttachment
@@ -194,6 +200,9 @@ struct Creature
     bool simulated = true;     ///< near enough to the player (AI LOD)
     bool lodAllowed = true; ///< among the [ai] max_simulated nearest (or fighting, talking): may be simulated
     bool animationOnly = false; ///< out by the count, but visible and near: animated, no AI (M17 perf part D)
+    /// Clip events of this step, collected while the figures animate in parallel and fired afterwards in
+    /// creature order (M17 perf part C2).
+    std::vector<std::pair<std::string, std::string>> pendingEvents;
     /// The item of the ambient animation: taken at its event item_to_hand, put away at item_from_hand.
     std::string handItemWanted;
     // Perception (M9 part C, EnginePerception.cpp).
@@ -231,11 +240,16 @@ struct Creature
     bool eat = false;
     bool sleep = false;
     bool dead = false;
-    bool rest = false;        ///< graph "dormant": its resting loop (statue, rolled up), dungeon D6
-    std::string spawn;        ///< dungeon D6: the spawn marker that put it in, empty: none
-    bool dormant = false;     ///< dungeon D6: resting until it wakes (saved; the behaviour is Lua's)
-    bool moveAcross = false;  ///< Creatures.<species>.move_axis = "x": walks sideways (a crab)
-    std::string heldItem;     ///< npc_hold (dungeon D6): the item shown at handBone, empty: none
+    bool rest = false;       ///< graph "dormant": its resting loop (statue, rolled up), dungeon D6
+    bool guard = false;      ///< graph "guard": over its treasure (Kellermutter, phase 3)
+    bool weakOpen = false;   ///< Creatures.<species>.weak counts (npc_set_weak; Kellermutter phase 3)
+    std::string spawn;       ///< dungeon D6: the spawn marker that put it in, empty: none
+    bool dormant = false;    ///< dungeon D6: resting until it wakes (saved; the behaviour is Lua's)
+    bool moveAcross = false; ///< Creatures.<species>.move_axis = "x": walks sideways (a crab)
+    std::string heldItem;    ///< npc_hold (dungeon D6): the item shown at handBone, empty: none
+    gameplay::DamageByType
+        reflectPending;       ///< Creatures.<species>.reflect: thrown back at the event "reflect"
+    i32 splinters = 0;        ///< Creatures.<species>.splinter: crystals knocked off so far
     f32 acrossYaw = 0.0f;     ///< the turn of its figure against its course while walking sideways
     f32 curledSeconds = 0.0f; ///< > 0: rolled up after a heavy hit (Creatures.<species>.curl), graph "curled"
     bool asleep = false;      ///< M12 (Z6): put to sleep by a spell, until hurt or the time is over

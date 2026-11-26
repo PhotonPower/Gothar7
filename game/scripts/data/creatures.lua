@@ -58,6 +58,49 @@ Creatures = {
         -- von vorn (bis 45° neben der Blickrichtung) trifft man den weichen Bauch voll (Projektinhaber 2026-11-24).
         curl = { share = 0.25, seconds = 4.0, damage_factor = 0.25, belly_degrees = 45 },
     },
+    kristallkrebs = { -- liegt zwischen den Kristallen der Grotte, läuft seitwärts, hält fest, wirft Zauber zurück
+        territory = 8,
+        attack_distance = 20,
+        wake_seconds = 1.2,
+        chase_gait = "run", -- seitwärts 0,8 / 2,5 m/s
+        move_axis = "x",
+        body = { shape = "lying", radius = 0.4, length = 1.0, axis = "x", offset = { 0, 0.44, 0 } },
+        -- Ein Angriff von dreien ist ein Griff: die Schere hält den Helden bis zum Event release (höchstens 2,5 s),
+        -- wenn er beim Event grab bis 2,2 m vor ihm steht.
+        grab = { chance = 0.33, seconds = 2.5, reach = 2.2 },
+        reflect = { share = 0.5 }, -- die Hälfte eines Zaubers des Helden geht an ihn zurück (Event reflect)
+        splinter = { item = "it_kristall", max = 3 }, -- stumpfe Treffer schlagen Kristalle ab (Beute)
+    },
+    kellermutter = { -- Boss: Stammmutter der Kriecher über dem Hort, drei Phasen (ai/kellermutter.lua)
+        territory = 15,
+        attack_distance = 25,
+        wake_seconds = 2.0,
+        chase_gait = "run", -- 0,6 / 1,5 m/s
+        body = { shape = "lying", radius = 0.9, length = 5.0, offset = { 0, 1.0, 0.4 } },
+        -- Phasen nach dem Anteil des Lebens: unter rage tobt sie (t_rage) und ruft alle call_seconds die Brut
+        -- (t_call, Event spawn_brood: count Mauerkriecher, höchstens max zugleich); unter guard schleppt sie sich
+        -- zum Hort und schützt ihn (s_guard), die Schwachstelle am Brutsack ist offen.
+        phases = { rage = 2 / 3, guard = 1 / 3 },
+        brood = { npc = "mon_mauerkriecher", count = 3, max = 6, call_seconds = 15 },
+        -- Offene Schwachstelle (Brutsack hinten): Treffer von hinten (bis 60° neben der Gegenrichtung) zählen
+        -- doppelt; ab stagger_share des Lebens taumelt sie (t_stagger).
+        weak = { degrees = 60, factor = 2.0, stagger_share = 0.05 },
+    },
+    beinhauswart = { -- wartet an einer Gruft (zs_dormant), blendet mit der grünen Laterne, schlägt mit dem Spaten
+        territory = 12,
+        attack_distance = 20,
+        wake_seconds = 1.4,
+        threaten_distance = 8, -- nach dem Erwachen und alle flash.every Sekunden: Laterne entgegenstoßen
+        threaten_seconds = 1.2,
+        chase_gait = "run", -- 0,8 / 3,2 m/s: langsamer als der rennende Held
+        body = { shape = "upright", radius = 0.3, length = 2.0, offset = { 0, 1.0, 0 } },
+        -- Event flash von t_threaten: Wer bis distance m vor ihm steht und zu ihm schaut (bis degrees neben der
+        -- Blickrichtung), sieht seconds lang grünweiß und taumelt. Nur mit der Laterne in der Hand; bei
+        -- lantern_drop des Lebens lässt er sie fallen (Rasend-Phase: danach nur noch der Spaten).
+        flash = { distance = 7, degrees = 60, seconds = 1.5, colour = { 0.75, 1.0, 0.8 }, every = 10 },
+        lantern = "it_lantern_beinhaus",
+        lantern_drop = 0.5,
+    },
 }
 
 --- Die Werte des Tieres aus Creatures; nil für Menschen (Npc ohne `species`).

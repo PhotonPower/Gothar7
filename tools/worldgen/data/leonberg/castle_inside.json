@@ -4,8 +4,9 @@
  "note": "W7 D1b (docs/design/schloss-dungeon.md, freigegeben 2026-11-23): Einrichtung, Licht, Wegnetz und Freepoints im begehbaren Hauptbau des Schlosses. Lage im Rahmen des Flügels: s entlang (ab Ende a), t quer (+ Hofseite, - Gartenseite). wall garden/court/a/b mit s bzw. t der Mitte; at [s, t] frei im Raum. Bewohner (F1): Vogt, zwei Wachen, Koch, Schreiber. Mechanik: gothar_worldgen/uses/castle.py.",
  "tag": "LEO_SCHLOSS",
  "laneHalfM": 1.2,
- "roomLights": 4,
- "daylight": {"eg_schreibstube": 0.35, "eg_wachstube": 0.15},
+ "roomLights": 8,
+ "windowLightEveryM": 4.5,
+ "daylight": {"eg_schreibstube": 0.35, "eg_wachstube": 0.15, "og_bibliothek": 0.5, "og_kapelle": 0.5, "og_festsaal": 0.5, "og_gemach": 0.5},
  "rooms": {
   "keller_gewoelbe": [
    {"what": "prop:crate_stack", "wall": "a", "t": -3.0},
@@ -232,8 +233,7 @@
    {"what": "fp:SMALLTALK", "at": [55.6, -3.0], "dir": "-s"},
    {"what": "light:lantern", "wall": "court", "s": 47.8},
    {"what": "light:lantern", "wall": "a", "t": -3.5},
-   {"what": "light:lantern", "wall": "b", "t": -3.5},
-   {"what": "lights", "max": 6}
+   {"what": "light:lantern", "wall": "b", "t": -3.5}
   ],
   "og_gemach": [
    {"what": "mob:bed", "wall": "garden", "s": 63.0},

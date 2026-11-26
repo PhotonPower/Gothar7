@@ -1,0 +1,56 @@
+name: TSan
+
+# ThreadSanitizer over the CPU tests (perf.md part C, job system). Not a required check: it runs only after a push to
+# main and on demand (workflow_dispatch), never on pull requests.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  tsan:
+    name: tsan (ubuntu-24.04, clang)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg-binary-cache,readwrite"
+    steps:
+      - uses: actions/checkout@v4
+
+      # The libraries are built by vcpkg with the system compiler (not instrumented) - the same packages as the
+      # release job, so its cache entries fit.
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-binary-cache
+          key: vcpkg-${{ runner.os }}-${{ github.job }}-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-${{ github.job }}-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-${{ runner.os }}-${{ github.job }}-
+            vcpkg-${{ runner.os }}-
+
+      - name: Setup vcpkg
+        run: |
+          mkdir -p vcpkg-binary-cache
+          git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+
+      - name: Install Ninja, clang and SDL3 build dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev
+
+      # TSan of clang 18 cannot map its shadow memory with the 32 bits of mmap randomisation of the 24.04 kernels.
+      - name: Reduce mmap randomisation for TSan
+        run: sudo sysctl vm.mmap_rnd_bits=28
+
+      - name: Configure
+        run: cmake --preset tsan
+
+      - name: Build
+        run: cmake --build --preset tsan
+
+      # CPU tests only (no GPU tests, no assembled figures). TSan makes them several times slower.
+      - name: Test (without GPU tests)
+        env:
+          SDL_VIDEO_DRIVER: offscreen
+        run: ctest --preset tsan -LE gpu --timeout 3600

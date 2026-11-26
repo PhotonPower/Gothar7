@@ -36,3 +36,21 @@ radius = 0.21 # die Höhe muss den doppelten Radius übersteigen
 height = 0.5
 step_height = 0.25
 max_slope_degrees = 60.0
+
+[kristallkrebs] # Dungeon (figuren #463): 1,8 m über die Beine, Panzer 1,0 m breit, 0,6 m hoch (ohne Kristalle)
+radius = 0.4 # die Höhe muss den doppelten Radius übersteigen
+height = 0.9
+step_height = 0.3
+max_slope_degrees = 45.0
+
+[kellermutter] # Dungeon-Boss (figuren #471): 5,5 m lang, 2,4 m hoch; braucht im Hort mindestens 4 m Raumhöhe
+radius = 1.0 # die Höhe muss den doppelten Radius übersteigen
+height = 2.4
+step_height = 0.5
+max_slope_degrees = 40.0
+
+[beinhauswart] # Dungeon (figuren #461): 2,0 m bis zur Kapuze, gebeugt; Kapsel stehend wie ein Mensch
+radius = 0.35 # die Höhe muss den doppelten Radius übersteigen
+height = 2.0
+step_height = 0.4
+max_slope_degrees = 45.0

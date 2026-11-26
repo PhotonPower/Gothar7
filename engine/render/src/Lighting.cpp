@@ -221,6 +221,21 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
     gpu.wetParams = Vec4(std::clamp(environment.wetness, 0.0f, 1.0f), environment.hasRainMap ? 1.0f : 0.0f,
                          environment.puddles ? 1.0f : 0.0f, 0.0f);
     gpu.skyZenith = Vec4(environment.skyZenith, static_cast<f32>(environment.windowReflections));
+    gpu.glassGlow = Vec4(std::clamp(environment.windowsAwake, 0.0f, 1.0f),
+                         std::clamp(environment.windowGlowNight, 0.0f, 1.0f), environment.glassTime, 0.0f);
+    const usize probes = std::min<usize>(environment.probes.size(), kMaxShaderProbes);
+    gpu.probeParams =
+        Vec4(static_cast<f32>(probes), environment.probeParams.y, environment.probeParams.z, 0.0f);
+    for (usize i = 0; i < probes; ++i)
+    {
+        gpu.probeCenter[i] = environment.probes[i].center;
+        gpu.probeBoxMin[i] = environment.probes[i].boxMin;
+        gpu.probeBoxMax[i] = environment.probes[i].boxMax;
+    }
+    gpu.ssrViewProjection = environment.ssrViewProjection;
+    gpu.ssrInverseViewProjection = glm::inverse(environment.ssrViewProjection);
+    gpu.ssrCamera = Vec4(environment.ssrCameraPosition, environment.ssr ? 1.0f : 0.0f);
+    gpu.ssrForward = Vec4(environment.ssrCameraForward, 0.0f);
     for (usize i = 0; i < rooms; ++i)
     {
         const IndoorVolume& v = environment.indoor[i];

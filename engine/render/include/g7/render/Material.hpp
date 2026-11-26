@@ -184,6 +184,16 @@ public:
     void setAmbientOcclusion(const rhi::Texture* texture) noexcept { m_ambientOcclusion = texture; }
     /// The rain map the shaders read at unit 9 for wet surfaces (M17 N); nullptr: none.
     void setRainMap(const rhi::Texture* texture) noexcept { m_rainMap = texture; }
+    /// The reflection probes' atlas the glass reads at unit 10 (M17 windows F2); nullptr: none (also while a
+    /// probe face is drawn into it).
+    void setReflectionProbes(const rhi::Texture* atlas) noexcept { m_probeAtlas = atlas; }
+    /// The previous frame's scene (render::ScreenHistory) the glass traces its reflection rays through at
+    /// units 11 (colour) and 12 (depth) (M17 windows F3); nullptr: none.
+    void setScreenHistory(const rhi::Texture* color, const rhi::Texture* depth) noexcept
+    {
+        m_historyColor = color;
+        m_historyDepth = depth;
+    }
     /// The frame's wind (M17 W) for every following draw, shadows and depth prepass included. Until the
     /// first call (and with strength 0) nothing moves.
     void setWind(const WindFrame& wind);
@@ -229,6 +239,7 @@ private:
     std::array<rhi::Pipeline, VariantCount * 2> m_pipelines; // [variant][culled, double-sided]
     rhi::Sampler m_sampler;
     rhi::Sampler m_aoSampler;     // linear, clamped (M17 P3)
+    rhi::Sampler m_pointSampler;  // nearest, clamped (M17 windows F3: depth)
     rhi::Buffer m_lightingBuffer; // GpuLighting, uniform block binding 0
     rhi::ShaderProgram* m_shadowProgram = nullptr;
     rhi::ShaderProgram* m_shadowAlphaTestProgram = nullptr;
@@ -237,6 +248,9 @@ private:
     bool m_depthPass = false;                       // the shadow draws go to the depth prepass
     const rhi::Texture* m_ambientOcclusion = nullptr;
     const rhi::Texture* m_rainMap = nullptr;
+    const rhi::Texture* m_probeAtlas = nullptr;
+    const rhi::Texture* m_historyColor = nullptr;
+    const rhi::Texture* m_historyDepth = nullptr;
     void bindAmbientOcclusion(Device& device) const;
     static void setWindUniforms(rhi::ShaderProgram& program, const Material& material);
     rhi::Buffer m_windBuffer; // GpuWind, uniform block binding 4 (M17 W)

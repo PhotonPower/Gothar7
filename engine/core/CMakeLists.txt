@@ -74,3 +74,7 @@ add_custom_target(g7_build_info
 set_target_properties(g7_build_info PROPERTIES FOLDER "engine")
 target_sources(g7_core PRIVATE ${_g7_build_info})
 add_dependencies(g7_core g7_build_info)
+
+# The job system's worker threads (Jobs.cpp, perf.md part C).
+find_package(Threads REQUIRED)
+target_link_libraries(g7_core PRIVATE Threads::Threads)
