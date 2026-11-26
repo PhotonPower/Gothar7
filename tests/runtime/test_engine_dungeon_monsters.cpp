@@ -695,3 +695,70 @@ TEST_CASE("Engine dungeon monsters: the Beinhauswart's lantern lights green whil
     frames(engine, 3);
     CHECK(engine.creatureLights().size() == before);
 }
+
+TEST_CASE("Engine dungeon monsters: the Kellermutter sweeps her scythes in from the side (t_scythe_l/r)")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    engine.setRandomSource([] { return 0.0f; }); // every blow a side sweep (side_swing.chance)
+    frames(engine, 3);
+    run(engine, "set_stat('hp_max', 5000) set_stat('hp', 5000)");
+    const std::string mother = insertMother(engine);
+    placeAhead(engine, mother, 4.0f, 180.0f); // facing the hero
+    run(engine, std::format("wake('{}')", mother));
+    bool swept = false;
+    for (int i = 0; i < 900 && !swept; ++i)
+    {
+        frames(engine, 1);
+        const std::string anim(run(engine, std::format("npc_state('{}').animation", mother)).asString());
+        swept = anim == "scythe_l" || anim == "scythe_r";
+    }
+    CHECK(swept);
+    frames(engine, 60);
+    CHECK(run(engine, "stat('hp')").asInteger() < 5000); // the sweep hits
+}
+
+TEST_CASE(
+    "Engine dungeon monsters: on ebene_03 the Brunnenmolch snaps straight up at the hero on the basin edge")
+{
+    EngineConfig config = monstersConfig();
+    config.world = fs::fromUtf8("worlds/leonberg/dungeon/ebene_03.g7world");
+    config.start = "START_E03_VON_OBEN";
+    Engine engine(config);
+    REQUIRE(engine.init().ok());
+    engine.setRandomSource([] { return 0.99f; });
+    frames(engine, 5);
+    run(engine, "set_stat('hp_max', 5000) set_stat('hp', 5000)");
+    const script::Value names = run(engine, "spawn_npcs('SPAWN_E03_10_9')");
+    REQUIRE(names.asTable() != nullptr);
+    REQUIRE_FALSE(names.asTable()->array.empty());
+    const std::string newt(names.asTable()->array[0].asString());
+    const auto at = [&](std::string_view who, std::string_view key)
+    {
+        return static_cast<f32>(run(engine, who == "hero" ? std::format("where().{}", key)
+                                                          : std::format("npc_state('{}').{}", who, key))
+                                    .asNumber());
+    };
+    const Vec3 water(at(newt, "x"), at(newt, "y"), at(newt, "z"));
+    // The hero on the edge (or the jetty) above it: the first spot around it at least 0.4 m higher.
+    bool above = false;
+    for (int i = 0; i < 64 && !above; ++i)
+    {
+        const f32 angle = glm::two_pi<f32>() * static_cast<f32>(i % 16) / 16.0f;
+        const f32 radius = 1.5f + 1.5f * static_cast<f32>(i / 16); // 1.5, 3, 4.5, 6 m
+        run(engine, std::format("teleport({}, {}, {})", water.x + radius * std::cos(angle), water.y + 1.5f,
+                                water.z + radius * std::sin(angle)));
+        frames(engine, 40); // lands
+        above = at("hero", "y") - water.y > 0.4f;
+    }
+    REQUIRE(above);
+    run(engine, std::format("wake('{}')", newt));
+    bool snapped = false;
+    for (int i = 0; i < 900 && !snapped; ++i)
+    {
+        frames(engine, 1);
+        snapped = run(engine, std::format("npc_state('{}').animation", newt)).asString() == "snap_up";
+    }
+    CHECK(snapped); // straight up from the water instead of biting ahead
+    CHECK(engine.scripts()->callErrors() == 0);
+}
