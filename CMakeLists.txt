@@ -16,6 +16,7 @@ option(G7_WARNINGS_AS_ERRORS "Warnungen als Fehler behandeln" OFF)
 option(G7_PROFILING   "Profiler-Zonen (G7_PROFILE_*) aktivieren" OFF)
 option(G7_TRACY       "Profiler-Zonen an Tracy melden (ADR 0024; nur mit G7_PROFILING, Preset profile)" OFF)
 option(G7_COVERAGE    "Testabdeckung messen (GCC/Clang, --coverage)" OFF)
+set(G7_SANITIZE "" CACHE STRING "Sanitizer fuer den ganzen Build (GCC/Clang), z.B. thread (Preset tsan)")
 option(G7_DEV_ASSETS  "Entwicklung: Repo-Ordner assets/ ins VFS mounten ([assets] dev_mounts); fuer Auslieferung OFF" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -29,6 +30,17 @@ if(G7_COVERAGE)
         add_link_options(--coverage)
     else()
         message(WARNING "G7_COVERAGE wird nur mit GCC/Clang unterstuetzt - ignoriert.")
+    endif()
+endif()
+
+# Sanitizers (preset tsan: G7_SANITIZE=thread, perf.md part C). Only our code is instrumented, the vcpkg libraries are
+# not; tests/tsan.supp suppresses reports from inside them.
+if(G7_SANITIZE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(-fsanitize=${G7_SANITIZE} -fno-omit-frame-pointer -O1 -g)
+        add_link_options(-fsanitize=${G7_SANITIZE})
+    else()
+        message(WARNING "G7_SANITIZE wird nur mit GCC/Clang unterstuetzt - ignoriert.")
     endif()
 endif()
 

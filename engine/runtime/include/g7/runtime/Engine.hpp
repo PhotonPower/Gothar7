@@ -18,6 +18,7 @@
 #include <g7/audio/Music.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Config.hpp>
+#include <g7/core/Jobs.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 #include <g7/gameplay/Character.hpp>
@@ -469,6 +470,8 @@ public:
     /// and `world` (VFS path of a .g7world) is loaded with the camera on its start point `start`. An unknown
     /// world or start point is a warning and nothing changes. Game time stays (it is not part of a world).
     void requestWorldChange(std::string world, std::string start);
+    /// The job system ([jobs] threads: 0 = automatic, 1 = serial; perf.md part C). Valid after init().
+    [[nodiscard]] JobSystem& jobs() noexcept { return *m_jobs; }
     /// Game time (global across worlds): day, time of day, speed; jumps with setTime/advanceTo.
     [[nodiscard]] world::GameTime& gameTime() noexcept { return m_gameTime; }
     /// Light, fog and sky of the last frame (from the day cycle).
@@ -1892,6 +1895,7 @@ private:
     // Assets: the manager is destroyed before the VFS it reads from (member order).
     asset::Vfs m_vfs;
     std::unique_ptr<asset::AssetManager> m_assets;
+    std::unique_ptr<JobSystem> m_jobs; // [jobs] threads (perf.md part C); created in init()
     std::unique_ptr<platform::Window> m_window;
     std::unique_ptr<platform::GlContext> m_glContext; // must outlive m_device
     std::unique_ptr<render::Device> m_device;

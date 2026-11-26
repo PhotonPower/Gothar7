@@ -14,6 +14,23 @@ TEST_CASE("Engine runs a bounded headless loop")
     CHECK(engine.frameCount() == 3);
 }
 
+TEST_CASE("Engine owns a job system sized by [jobs] threads")
+{
+    for (const g7::i64 threads : {0, 1, 4})
+    {
+        CAPTURE(threads);
+        g7::EngineConfig config;
+        config.headless = true;
+        config.maxFrames = 1;
+        config.settings.set<g7::i64>("jobs.threads", threads);
+        g7::Engine engine(config);
+        REQUIRE(engine.init().ok());
+        const g7::u32 expected = threads == 0 ? g7::JobSystem::autoThreads() : static_cast<g7::u32>(threads);
+        CHECK(engine.jobs().threads() == expected);
+        CHECK(engine.run() == 0);
+    }
+}
+
 TEST_CASE("Engine rejects invalid config")
 {
     g7::EngineConfig config;
