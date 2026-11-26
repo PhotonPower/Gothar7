@@ -384,6 +384,40 @@ def water_drip(rng: random.Random) -> Samples:
     return normalise(out, 0.6)
 
 
+def amb_cistern(rng: random.Random) -> Samples:
+    # The cistern (dungeon level 3): the hollow hum of a big vault and water lapping slowly at the walkways, both
+    # smeared by the long echo of the stone.
+    hum = lowpass(noise(LOOP, rng), 90.0)
+    lap = lowpass(highpass(noise(LOOP, rng), 150.0), 700.0)
+    lapping = [
+        x * (0.5 + 0.5 * math.sin(2 * math.pi * 0.45 * i / RATE + math.sin(i / 14000.0)))
+        for i, x in enumerate(lap)
+    ]
+    out = mix((hum, 1.0), (lapping, 0.5))
+    for delay, gain in ((0.21, 0.35), (0.47, 0.22), (0.83, 0.12)):
+        d = int(delay * RATE)
+        out = [x + gain * out[i - d] if i >= d else x for i, x in enumerate(out)]
+    return normalise(seamless(out), 0.5)
+
+
+def water_drop_deep(rng: random.Random) -> Samples:
+    # A drop falling from the vault into deep water: a low "bloop" and a long trail of echoes through the cistern.
+    start = 380.0 + 120.0 * rng.random()
+    length = int(1.4 * RATE)
+    drop = int(0.14 * RATE)
+    out = [0.0] * length
+    phase = 0.0
+    for i in range(drop):
+        t = i / RATE
+        phase += 2.0 * math.pi * start * (1.0 + 4.0 * t) / RATE
+        out[i] = math.sin(phase) * math.exp(-t * 28.0)
+    for delay, gain in ((0.19, 0.45), (0.41, 0.3), (0.67, 0.2), (0.98, 0.12)):
+        d = int(delay * RATE)
+        for i in range(drop):
+            out[i + d] += gain * out[i]
+    return normalise(fade(lowpass(out, 2500.0), 0.001, 0.2), 0.6)
+
+
 # --- Footsteps (M13 E): six materials, four variants each (footstep_<material>_<n>) --------------------------
 
 
@@ -565,6 +599,8 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "lute_play": lute_play,
     "frog": frog,
     "water_drip": water_drip,
+    "amb_cistern": amb_cistern,
+    "water_drop_deep": water_drop_deep,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,
     "amb_night": amb_night,

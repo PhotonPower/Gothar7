@@ -1496,6 +1496,72 @@
       "context": "mobs/camp.lua",
       "status": "entwurf"
     },
+    "mob_dng_e1_chest.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e1_niche.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e2_chest_kerker.name": {
+      "de": "Verschlossene Truhe",
+      "text": "Locked Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e2_chest_osthalle.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e2_chest_schatz.name": {
+      "de": "Verschlossene Truhe",
+      "text": "Locked Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e2_chest_sued.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e2_chest_zelle2.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e2_chest_zelle4.name": {
+      "de": "Verschlossene Truhe",
+      "text": "Locked Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e2_niche_depot.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e2_niche_kerker.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e2_niche_zelle2.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
     "mob_testdungeon_niche.name": {
       "de": "Nische",
       "text": "Niche",
