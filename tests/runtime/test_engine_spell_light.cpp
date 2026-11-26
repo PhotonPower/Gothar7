@@ -208,7 +208,8 @@ TEST_CASE("Engine light spell: a save keeps the time it has left")
         run(engine, "give_item('it_scroll_light') equip('it_scroll_light') set_stat('mana_max', 30) "
                     "set_stat('mana', 30)");
         castLight(engine, "it_scroll_light");
-        run(engine, "draw_magic()");
+        // The last scroll used up: the hands are empty again by themselves (no "nothing equipped" notice).
+        CHECK(run(engine, "player_weapon()").asString() == "none");
         runSeconds(engine, 2.0f);
         left = engine.lightSecondsLeft();
         REQUIRE(left > 280.0f);
