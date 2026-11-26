@@ -12,6 +12,7 @@
 #include <SDL3/SDL.h>
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <functional>
 
@@ -330,6 +331,14 @@ TEST_CASE("Engine UI: main menu, new game, pause menu and options (part F)")
     tapKey(engine, SDL_SCANCODE_RETURN);
     auto* options = dynamic_cast<g7::ui::OptionsScreen*>(engine.screens().find("options"));
     REQUIRE(options != nullptr);
+    // Graphics: window reflections off/low/medium/high (M17 windows, closing part).
+    REQUIRE(!options->pages().empty());
+    const auto& graphics = options->pages()[0].options;
+    const auto reflections = std::ranges::find_if(graphics, [](const g7::ui::OptionDef& o)
+                                                  { return o.id == "render.window_reflections"; });
+    REQUIRE(reflections != graphics.end());
+    CHECK(reflections->label == "UI_OPT_WINDOW_REFLECTIONS");
+    CHECK(reflections->choices.size() == 4);
     tapKey(engine, SDL_SCANCODE_PAGEDOWN); // the audio page
     CHECK(options->page() == 1);
     tapKey(engine, SDL_SCANCODE_DOWN);

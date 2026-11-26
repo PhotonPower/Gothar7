@@ -231,6 +231,8 @@ State "zs_mm_wake" {
         local c = animal(npc) or {}
         if c.steals and player_has_shiny() then
             npc_start_state(npc, "zs_mm_steal")
+        elseif c.flash and c.threaten_distance and npc_distance_to_player(npc) <= c.threaten_distance then
+            npc_start_state(npc, "zs_mm_threaten") -- Beinhauswart: erst die Laterne (ai/beinhauswart.lua)
         else
             emit("npc_would_attack", npc, "animal")
             npc_start_state(npc, "zs_mm_attack")

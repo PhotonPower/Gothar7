@@ -531,3 +531,125 @@ TEST_CASE(
     CHECK(back >= 2 * front - 1);
     CHECK(staggered);
 }
+
+namespace
+{
+/// A Beinhauswart with its lantern, `distance` m in front of the hero (negative: behind him), facing him.
+std::string wardenFacingHero(Engine& engine, f32 distance)
+{
+    const std::string warden(run(engine, "insert_npc('mon_beinhauswart', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("npc_set_dormant('{}', true)", warden));
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", warden));
+    run(engine, std::format("arm_warden('{}')", warden));
+    frames(engine, 5);
+    const auto get = [&](std::string_view key)
+    { return static_cast<f32>(run(engine, std::format("where().{}", key)).asNumber()); };
+    const Vec3 at =
+        Vec3(get("x"), get("y"), get("z")) + gameplay::forwardOf(glm::radians(get("yaw"))) * distance;
+    run(engine, std::format("npc_teleport('{}', {}, {}, {}, {})", warden, at.x, at.y, at.z,
+                            get("yaw") + (distance >= 0.0f ? 180.0f : 0.0f)));
+    frames(engine, 5);
+    return warden;
+}
+
+/// Wakes it and waits up to `seconds` for its lantern to blind the hero.
+bool blinded(Engine& engine, std::string_view warden, f32 seconds)
+{
+    run(engine, "Story.blinded = nil");
+    run(engine, std::format("wake('{}')", warden));
+    for (int i = 0; i < static_cast<int>(seconds * 60.0f); ++i)
+    {
+        frames(engine, 1);
+        if (!run(engine, "Story.blinded").isNil())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+} // namespace
+
+TEST_CASE("Engine dungeon monsters: the Beinhauswart wakes and blinds the hero with its lantern")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    run(engine, "set_stat('hp_max', 1000) set_stat('hp', 1000)");
+    run(engine, "on('hero_blinded', function(npc) Story.blinded = npc end)");
+    const std::string warden = wardenFacingHero(engine, 4.0f);
+    CHECK(run(engine, std::format("warden_has_lantern('{}')", warden)).asBool());
+    REQUIRE(blinded(engine, warden, 6.0f));
+    CHECK(run(engine, "Story.blinded").asString() == warden);
+    CHECK(engine.screenFade() > 0.5f); // the screen is bright
+    CHECK(run(engine, "fight_state('hero')").asString() == "stagger");
+    frames(engine, 120);
+    CHECK(engine.screenFade() == 0.0f); // and clears again
+}
+
+TEST_CASE("Engine dungeon monsters: the Beinhauswart's lantern does not blind a hero looking away")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    run(engine, "on('hero_blinded', function(npc) Story.blinded = npc end)");
+    const std::string warden = wardenFacingHero(engine, -3.0f); // behind him
+    CHECK_FALSE(blinded(engine, warden, 4.0f));
+    CHECK(engine.screenFade() == 0.0f);
+}
+
+TEST_CASE("Engine dungeon monsters: the Beinhauswart drops its lantern at half its life and blinds no more")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    run(engine, "on('hero_blinded', function(npc) Story.blinded = npc end)");
+    const std::string warden = wardenFacingHero(engine, 4.0f);
+    run(engine, std::format("npc_set_stat('{}', 'hp', 50)", warden)); // of 110
+    run(engine, std::format("emit('npc_hit', 'hero', '{}', 10, false)", warden));
+    CHECK_FALSE(run(engine, std::format("warden_has_lantern('{}')", warden)).asBool());
+    CHECK(run(engine, std::format("npc_item_count('{}', 'it_lantern_beinhaus')", warden)).asInteger() == 0);
+    CHECK_FALSE(blinded(engine, warden, 4.0f));
+}
+
+TEST_CASE(
+    "Engine dungeon monsters: the Brunnenmolch lurks, wakes, and sinks back at its water after the fight")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::string newt(run(engine, "insert_npc('mon_brunnenmolch', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("newt_water('{}', 'WP_MONSTER_OST')", newt));
+    run(engine, std::format("npc_set_dormant('{}', true)", newt));
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", newt));
+    frames(engine, 30);
+    CHECK(run(engine, std::format("npc_state('{}').animation", newt)).asString() == "dormant");
+    // Blind, it listens (t_listen) ...
+    run(engine, std::format("npc_clear('{}') npc_play('{}', 'listen')", newt, newt));
+    bool listened = false;
+    for (int i = 0; i < 60 && !listened; ++i)
+    {
+        frames(engine, 1);
+        listened = run(engine, std::format("npc_state('{}').animation", newt)).asString() == "listen";
+    }
+    CHECK(listened);
+    // ... wakes (t_wake), and with nobody to fight goes back to its water and sinks under (t_submerge).
+    run(engine, "teleport(-30, 0, -30)"); // far away: it cannot hear him
+    run(engine, std::format("wake('{}')", newt));
+    frames(engine, 10);
+    CHECK_FALSE(dormant(engine, newt));
+    bool submerged = false;
+    bool resting = false;
+    for (int i = 0; i < 1200 && !resting; ++i)
+    {
+        frames(engine, 1);
+        const std::string anim(run(engine, std::format("npc_state('{}').animation", newt)).asString());
+        submerged = submerged || anim == "submerge";
+        resting = dormant(engine, newt) && anim == "dormant";
+    }
+    CHECK(submerged);
+    CHECK(resting);
+    // Its loot: skin and gills (figuren #475).
+    CHECK(run(engine, std::format("npc_item_count('{}', 'it_newt_skin')", newt)).asInteger() == 1);
+    CHECK(run(engine, std::format("npc_item_count('{}', 'it_newt_gills')", newt)).asInteger() == 2);
+    CHECK(engine.scripts()->callErrors() == 0);
+}

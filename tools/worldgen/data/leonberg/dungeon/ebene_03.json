@@ -1,0 +1,54 @@
+{
+  "format": "gothar-dungeon-level",
+  "version": 1,
+  "note": "W8 D3 (docs/design/schloss-dungeon.md): Ebene 3 'Zisterne'. Große Zisternenhalle mit Umgang um ein flaches Becken (Boden 0,9 m tief, Wasser 0,45 m unter dem Rand), Steg ins Becken und Insel mit Brunnenschacht; dort lauern die Brunnenmolche (schwimmen nicht, schnappen vom Wasser nach dem Umgang). Rätsel 1 (neu): der Hebel in der Pumpenkammer schaltet den Teleporter zur Insel ein; der Hebel am Brunnenschacht öffnet das Gatter zur Schleusenkammer (Treppe und Falltür nach Ebene 4). Rätsel 2 (neu): drei lose Steine an den Hallenwänden zählt ein Relais 'count'; erst der dritte öffnet die Geheimwand zum Depot. Dazu Brunnenstube und Ostkammer mit Truhen, Mauerkriecher.",
+  "level": 3,
+  "theme": "zisterne",
+  "origin": [0.0, 0.0, 0.0],
+  "cellM": 3.0,
+  "heightM": 3.5,
+  "water": {"depthM": 0.9, "edgeM": 0.45},
+  "torches": [[12, 12, "E"], [14, 12, "W"], [13, 11, "S"]],
+  "cells": [
+    {"at": [1, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_02.g7world", "start": "START_E02_VON_UNTEN", "facing": "S"}, "arrive": "START_E03_VON_OBEN"},
+    {"at": [3, 2], "monster": {"npc": "mon_mauerkriecher", "count": 2}},
+    {"at": [25, 2], "chest": {"definition": "chest"}},
+    {"at": [26, 3], "niche": {"definition": "niche", "facing": "W"}},
+    {"at": [6, 5], "switch": {"type": "wall_button", "facing": "S", "hidden": true, "once": true, "targets": ["RELAY_E03_STEINE"], "action": "trigger"}},
+    {"at": [22, 10], "secret_wall": {"open": false}},
+    {"at": [14, 11], "teleport": {"to": [13, 7], "visible": true, "facing": "S"}},
+    {"at": [2, 12], "teleport": {"to": [12, 11], "visible": true, "active": false, "facing": "E"}},
+    {"at": [5, 12], "door": {"definition": "door"}},
+    {"at": [13, 12], "switch": {"type": "lever", "facing": "S", "targets": ["GATE_E03_13_20"], "action": "toggle"}},
+    {"at": [24, 12], "niche": {"definition": "niche", "facing": "N"}},
+    {"at": [22, 13], "switch": {"type": "wall_button", "facing": "W", "hidden": true, "once": true, "targets": ["RELAY_E03_STEINE"], "action": "trigger"}},
+    {"at": [3, 15], "switch": {"type": "lever", "facing": "N", "targets": ["TELE_E03_2_12"], "action": "on"}},
+    {"at": [22, 16], "door": {"definition": "door"}},
+    {"at": [26, 16], "chest": {"definition": "chest"}},
+    {"at": [24, 17], "monster": {"npc": "mon_mauerkriecher", "count": 2}},
+    {"at": [7, 20], "switch": {"type": "wall_button", "facing": "N", "hidden": true, "once": true, "targets": ["RELAY_E03_STEINE"], "action": "trigger"}},
+    {"at": [13, 20], "gate": {"open": false}},
+    {"at": [16, 21], "chest": {"definition": "chest"}},
+    {"at": [11, 22], "monster": {"npc": "mon_mauerkriecher", "count": 3}},
+    {"at": [15, 22], "trapdoor": {"open": false, "plate": "player", "fall": {"world": "worlds/leonberg/dungeon/ebene_04.g7world", "start": "START_E04_SCHACHT"}}},
+    {"at": [14, 23], "stairs": {"world": "worlds/leonberg/dungeon/ebene_04.g7world", "start": "START_E04_VON_OBEN", "facing": "N"}, "arrive": "START_E03_VON_UNTEN"}
+  ],
+  "spawns": [
+    {"at": [10, 9], "npc": "mon_brunnenmolch", "count": 1, "facing": "N"},
+    {"at": [17, 14], "npc": "mon_brunnenmolch", "count": 1, "facing": "E"},
+    {"at": [9, 16], "npc": "mon_brunnenmolch", "count": 1, "facing": "W"}
+  ],
+  "relays": [
+    {"name": "STEINE", "at": [21, 10], "mode": "count", "count": 3, "once": true, "targets": ["WALL_E03_22_10"], "action": "open"}
+  ],
+  "items": [
+    {"at": [25, 10], "instance": "it_ring_gold"},
+    {"at": [25, 10], "instance": "it_potion_mana_medium", "count": 2},
+    {"at": [25, 10], "instance": "it_gulden", "count": 120},
+    {"at": [12, 13], "instance": "it_potion_heal_medium"},
+    {"at": [24, 3], "instance": "it_potion_speed"}
+  ],
+  "starts": [
+    {"name": "START_E03_SCHACHT", "at": [20, 7], "facing": "W", "shaft": true}
+  ]
+}
