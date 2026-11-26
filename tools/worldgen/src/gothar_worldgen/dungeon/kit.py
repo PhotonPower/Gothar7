@@ -43,11 +43,25 @@ import numpy as np
 from gothar_worldgen.buildings.gltf import CollisionPart, Primitive, glb_bytes_multi
 from gothar_worldgen.buildings.massing import _Builder
 from gothar_worldgen.mobs import GRAIN_U, box_body
-from gothar_worldgen.textures.procedural import TILE_M, albedo_scale, make, to_png
+from gothar_worldgen.textures.procedural import (
+    DUNGEON_KINDS,
+    TILE_M,
+    albedo_scale,
+    make,
+    to_png,
+)
 
 Vec3 = tuple[float, float, float]
 TEXTURE_SIZE = 512
 TEXTURE_DIR = "../../../../furniture/textures"  # from worlds/<site>/dungeon/<level or kit>/
+# the dungeon's own floor and ceiling textures, not shared: worlds/<site>/dungeon/textures
+DUNGEON_TEXTURE_DIR = "../textures"
+
+
+def texture_dir(kind: str) -> str:
+    return DUNGEON_TEXTURE_DIR if kind in DUNGEON_KINDS else TEXTURE_DIR
+
+
 # material -> (texture kind, linear colour)
 MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "rubble": ("stone", (0.16, 0.145, 0.13)),  # Bruchstein: walls and vault
@@ -60,6 +74,14 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "dark": ("stone", (0.012, 0.011, 0.01)),  # the stairs' far end: darkness
     "rune": ("stone", (0.05, 0.045, 0.06)),  # the teleporter's ring
     "bone": ("stone", (0.36, 0.33, 0.26)),  # skulls and bones: yellowed, a little dusty
+    # floors and ceilings of the levels (owner 2026-11-26: unlike the walls; textures mean 1.0,
+    # the rubble walls come out at 0.45 x their colour, about 0.07)
+    "flag": ("flagstone", (0.052, 0.048, 0.044)),  # worn flagstones: darker than the wall
+    "flag_damp": ("flagstone_damp", (0.04, 0.043, 0.04)),  # Zisterne: damp, darker
+    "flag_dust": ("flagstone_dust", (0.06, 0.059, 0.057)),  # Beinhaus: dusty grey
+    "plate": ("iron", (0.035, 0.035, 0.038)),  # Werkstatt: iron plates let into the floor
+    "vault_brick": ("brick", (0.12, 0.074, 0.054)),  # small bricks: lighter and redder
+    "vault_rock": ("rock", (0.05, 0.046, 0.042)),  # rough dark natural stone
 }
 CELL_M = 3.0
 WALL_H = 3.5
@@ -142,7 +164,10 @@ class KitMesh:
                     material,
                     (*(min(c / scale, 1.0) for c in colour), 1.0),  # type: ignore[arg-type]
                     mesh,
-                    (f"{TEXTURE_DIR}/{kind}_albedo.png", f"{TEXTURE_DIR}/{kind}_normal.png"),
+                    (
+                        f"{texture_dir(kind)}/{kind}_albedo.png",
+                        f"{texture_dir(kind)}/{kind}_normal.png",
+                    ),
                 )
             )
         return out

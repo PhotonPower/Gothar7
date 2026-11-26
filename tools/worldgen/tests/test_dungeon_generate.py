@@ -89,7 +89,7 @@ def test_blocks_have_walls_floor_and_collision() -> None:
     assert len(plan.blocks) == 6
     for mesh in plan.blocks.values():
         assert mesh.triangles() > 0 and mesh.collision
-        assert {"rubble", "floor"} <= set(mesh.builders)
+        assert {"rubble", "flag", "vault_brick"} <= set(mesh.builders)
     names = {c.name for m in plan.blocks.values() for c in m.collision}
     assert "COL_HULL_flight_1_0" in names and "COL_HULL_flight_17_11" in names  # both flights
     assert any(n.startswith("COL_HULL_niche_9_7_") for n in names)
@@ -295,3 +295,40 @@ def test_werkstatt_props_and_shortcut() -> None:
     trap = by["TELE_E05_9_2"]["components"]["trigger"]["teleport"]
     assert trap["visible"] is False and trap["to"] == "TELE_E05_9_2_ZIEL"
     assert by["BUTTON_E05_7_1"]["components"]["mob"]["action"] == "off"
+
+
+@pytest.mark.parametrize("number", [1, 2, 3, 4, 5])
+def test_floor_and_ceiling_unlike_the_walls(number: int) -> None:
+    """Owner 2026-11-26: flagstones on the floor, bricks or rough rock above, ribs or beams
+    every few metres; the walls stay rubble."""
+    from gothar_worldgen.dungeon.generate import SURFACES
+
+    lv = load_level(DATA, number)
+    floor, ceiling, rib, _ = SURFACES[lv.theme]
+    plan = plan_level(lv, "leonberg")
+    mats = set().union(*(m.builders for m in plan.blocks.values()))
+    assert {"rubble", floor, ceiling, rib} <= mats
+    assert floor.startswith("flag") and ceiling.startswith("vault_")
+    kinds = {k for m in plan.blocks.values() for k in m.kinds()}
+    assert {"stone", "brick" if ceiling == "vault_brick" else "rock"} <= kinds
+    assert any(k.startswith("flagstone") for k in kinds)
+
+
+def test_workshop_floor_has_inlays_and_themes_differ() -> None:
+    from gothar_worldgen.dungeon.generate import SURFACES
+
+    plan = plan_level(load_level(DATA, 5), "leonberg")
+    mats = set().union(*(m.builders for m in plan.blocks.values()))
+    assert {"oak", "plate", "oak_beam"} <= mats
+    assert SURFACES["zisterne"][0] == "flag_damp" and SURFACES["beinhaus"][0] == "flag_dust"
+
+
+def test_dungeon_textures_tile_and_differ() -> None:
+    import numpy as np
+
+    from gothar_worldgen.textures.procedural import DUNGEON_KINDS, make
+
+    for kind in DUNGEON_KINDS:
+        t = make(kind, 128)
+        assert t.albedo.shape[:2] == (128, 128) and abs(float(t.albedo.mean()) - 1.0) < 1e-6
+        assert np.all(np.isfinite(t.normal()))
