@@ -6,6 +6,8 @@
 # water puts it out. Hence a_torch_hold touches only the left shoulder and arm, so it fits over
 # none, fist and 1h clips. The hold was found by a grid search: grip beside the left hip, a
 # little forward, the torch upright and slightly outwards.
+# none/a_light_hold (light spell, 2026-11-26) follows the same overlay rules: the left palm up in
+# front of the belly, the light orb above it (arm and hand found by a search).
 #
 # Key poses rotate about world axes at rest (Blender: X = the figure's left, -Y = forward, Z = up;
 # +X pitches the head down and swings a limb back, +Z turns left); twist turns a bone about its
@@ -55,6 +57,38 @@ base = "none/s_torch_ref"
 keys = [[0, "hold"], [10, "rest"]]
 [clip.params.poses.hold]
 rotate = { clavicle_l = [["Y", -4]], upperarm_l = [["X", -30], ["Y", -10], ["Z", -15]], lowerarm_l = [["X", -60]], index_01_l = [["Y", 50]], index_02_l = [["Y", 60]], middle_01_l = [["Y", 50]], middle_02_l = [["Y", 60]], ring_01_l = [["Y", 50]], ring_02_l = [["Y", 60]], pinky_01_l = [["Y", 50]], pinky_02_l = [["Y", 60]], thumb_02_l = [["Z", -30]] }
+
+[[clip]]
+name = "none/a_light_hold"        # light spell (2026-11-26): left palm up in front of the belly (loop)
+keyframe = "keyposes"             # same overlay rules as a_torch_hold (engine masks it from clavicle_l);
+additive = true                   # the light orb floats above the open palm, fingers a little spread
+[clip.params]
+base = "none/s_torch_ref"
+keys = [[0, "hold"], [30, "breathe"], [60, "hold"]]
+[clip.params.poses.hold]
+rotate = { clavicle_l = [["Y", 3]], upperarm_l = [["X", -20], ["Z", -30]], lowerarm_l = [["Z", -45]], hand_l = [["X", -140], ["Z", -20]], index_01_l = [["Y", -50], ["Z", 6]], index_02_l = [["Y", -60]], index_03_l = [["Y", -40]], middle_01_l = [["Y", -50], ["Z", 2]], middle_02_l = [["Y", -60]], middle_03_l = [["Y", -40]], ring_01_l = [["Y", -44], ["Z", -2]], ring_02_l = [["Y", -56]], ring_03_l = [["Y", -40]], pinky_01_l = [["Y", -40], ["Z", -6]], pinky_02_l = [["Y", -50]], pinky_03_l = [["Y", -36]], thumb_01_l = [["Z", 8]], thumb_02_l = [["Z", 10]] }
+[clip.params.poses.breathe]
+rotate = { clavicle_l = [["Y", 2]], upperarm_l = [["X", -22], ["Z", -30]], lowerarm_l = [["Z", -46]], hand_l = [["X", -143], ["Z", -20]], index_01_l = [["Y", -50], ["Z", 8]], index_02_l = [["Y", -60]], index_03_l = [["Y", -40]], middle_01_l = [["Y", -50], ["Z", 3]], middle_02_l = [["Y", -60]], middle_03_l = [["Y", -40]], ring_01_l = [["Y", -44], ["Z", -3]], ring_02_l = [["Y", -56]], ring_03_l = [["Y", -40]], pinky_01_l = [["Y", -40], ["Z", -8]], pinky_02_l = [["Y", -50]], pinky_03_l = [["Y", -36]], thumb_01_l = [["Z", 10]], thumb_02_l = [["Z", 10]] }
+
+[[clip]]
+name = "none/a_light_hold_in"     # from the free arm into the light hold
+keyframe = "keyposes"
+additive = true
+[clip.params]
+base = "none/s_torch_ref"
+keys = [[0, "rest"], [12, "hold"]]
+[clip.params.poses.hold]
+rotate = { clavicle_l = [["Y", 3]], upperarm_l = [["X", -20], ["Z", -30]], lowerarm_l = [["Z", -45]], hand_l = [["X", -140], ["Z", -20]], index_01_l = [["Y", -50], ["Z", 6]], index_02_l = [["Y", -60]], index_03_l = [["Y", -40]], middle_01_l = [["Y", -50], ["Z", 2]], middle_02_l = [["Y", -60]], middle_03_l = [["Y", -40]], ring_01_l = [["Y", -44], ["Z", -2]], ring_02_l = [["Y", -56]], ring_03_l = [["Y", -40]], pinky_01_l = [["Y", -40], ["Z", -6]], pinky_02_l = [["Y", -50]], pinky_03_l = [["Y", -36]], thumb_01_l = [["Z", 8]], thumb_02_l = [["Z", 10]] }
+
+[[clip]]
+name = "none/a_light_hold_out"    # from the light hold back to the free arm
+keyframe = "keyposes"
+additive = true
+[clip.params]
+base = "none/s_torch_ref"
+keys = [[0, "hold"], [12, "rest"]]
+[clip.params.poses.hold]
+rotate = { clavicle_l = [["Y", 3]], upperarm_l = [["X", -20], ["Z", -30]], lowerarm_l = [["Z", -45]], hand_l = [["X", -140], ["Z", -20]], index_01_l = [["Y", -50], ["Z", 6]], index_02_l = [["Y", -60]], index_03_l = [["Y", -40]], middle_01_l = [["Y", -50], ["Z", 2]], middle_02_l = [["Y", -60]], middle_03_l = [["Y", -40]], ring_01_l = [["Y", -44], ["Z", -2]], ring_02_l = [["Y", -56]], ring_03_l = [["Y", -40]], pinky_01_l = [["Y", -40], ["Z", -6]], pinky_02_l = [["Y", -50]], pinky_03_l = [["Y", -36]], thumb_01_l = [["Z", 8]], thumb_02_l = [["Z", 10]] }
 
 [[clip]]
 name = "none/t_torch_light"       # takes the torch from the belt, raises it, the right hand strikes a light

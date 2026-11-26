@@ -315,7 +315,8 @@ def test_real_list_is_consistent_with_files():
     counts = list(result.section_counts().values())
     # Prio-B item use + mobs (M8, with the table and the dungeon switches), per mode,
     # Prio-C routines (M9, with reading and cooking), dialogue (M10),
-    # combat (M11), magic (M12, with the human transformation), torch (F6), gait variants,
+    # combat (M11), magic (M12, with the human transformation), torch (F6, with the light hold),
+    # gait variants,
     # 7 monsters (own wolf 15 with the transformation, keiler/laufvogel 12, schinder 15,
     # quaderbuckel 17, glemsmahr/bergleu 19, gatterbock 14, mauerkriecher 18,
     # mauerschlupfer 15, kristallkrebs 16, beinhauswart 14, kellermutter 20,
@@ -327,7 +328,7 @@ def test_real_list_is_consistent_with_files():
         (22, 22),
         (31, 31),
         (16, 16),
-        (6, 6),
+        (9, 9),
         (10, 10),
         (8, 8),
         (6, 6),
