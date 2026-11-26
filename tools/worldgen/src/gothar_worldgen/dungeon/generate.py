@@ -37,10 +37,10 @@ BLOCK = 8  # cells per block side
 RISE = 1.8  # a flight climbs or falls this much over one cell (31 degrees at 3 m)
 STEPS = 9
 SHAFT_M = 3.0  # trapdoor shaft below the floor; arrival shaft above the ceiling
-WATER_D = 1.0  # a water cell's floor below the others
 SINK_M = 0.6  # an open secret wall sinks this far below the floor (clear of the floor slab)
 SLAB = 0.3  # thickness of the collision slabs
 TORCHES_PER_BLOCK = 8  # plan 3.4: the engine picks the nearest lights
+ITEM_SPREAD_M = 0.4  # items on one cell lie this far apart
 TORCH_GAP_CELLS = 3  # torches at least this many cells apart (Chebyshev)
 LIGHT_TORCH = {"color": [1.0, 0.6, 0.3], "range": 7.0, "intensity": 2.0, "flicker": 0.35}
 THEMES = {  # theme -> (ambient zone, environment)
@@ -60,6 +60,24 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_color": [0.018, 0.018, 0.02],
             "fog_start": 2.0,
             "fog_distance": 20.0,
+        },
+    ),
+    "zisterne": (  # Ebene 3 (stub): still the vault's sound until engine has "zisterne"
+        "gewoelbe",
+        {
+            "ambient": [0.04, 0.047, 0.055],
+            "fog_color": [0.016, 0.02, 0.024],
+            "fog_start": 2.0,
+            "fog_distance": 18.0,
+        },
+    ),
+    "beinhaus": (  # Ebene 4 (stub): still the vault's sound until engine has "beinhaus"
+        "gewoelbe",
+        {
+            "ambient": [0.045, 0.05, 0.042],
+            "fog_color": [0.02, 0.022, 0.018],
+            "fog_start": 2.0,
+            "fog_distance": 18.0,
         },
     ),
 }
@@ -144,7 +162,7 @@ class _Gen:
         return self.lv.origin[1] + v
 
     def floor(self, at: Cell) -> float:
-        return -WATER_D if self.lv.char(*at) == "~" else 0.0
+        return -self.lv.water_depth if self.lv.char(*at) == "~" else 0.0
 
     def ceil(self, at: Cell) -> float:
         if at in self.wells and self.lv.char(*self.wells[at]) == "<":
@@ -442,7 +460,9 @@ class _Gen:
         for (x, y), n in self._runs({a for a in self.walk if lv.char(*a) == "~"}):
             x0, x1, z0, z1 = self.x0(x), self.x0(x + n), self.z0(y), self.z0(y) + self.c
             self.mesh((x, y)).body(
-                f"water_{x}_{y}", (x0, self.y(-WATER_D - SLAB), z0), (x1, self.y(-WATER_D), z1)
+                f"water_{x}_{y}",
+                (x0, self.y(-self.lv.water_depth - SLAB), z0),
+                (x1, self.y(-self.lv.water_depth), z1),
             )
         for at in sorted(self.lv.cells("P")):
             x0, z0 = self.x0(at[0]), self.z0(at[1])
@@ -669,15 +689,18 @@ class _Gen:
                         }
                     },
                 )
-        for at in lv.cells("~"):
-            cx, cz = self.mid(at)
-            hy = (WATER_D - 0.2) / 2
+        hy = (lv.water_depth - lv.water_edge) / 2  # the surface ``edgeM`` below the edge
+        for (x, y), n in self._runs(set(lv.cells("~"))):  # one water box per row run
+            cx = (self.x0(x) + self.x0(x + n)) / 2
+            cz = self.mid((x, y))[1]
             self.vob(
                 "water",
-                f"WATER_{self.tag}_{at[0]}_{at[1]}",
-                (cx, self.y(-WATER_D + hy), cz),
+                f"WATER_{self.tag}_{x}_{y}",
+                (cx, self.y(-lv.water_depth + hy), cz),
                 ident,
-                components={"water": {"halfExtents": [self.c / 2, hy, self.c / 2], "kind": "pond"}},
+                components={
+                    "water": {"halfExtents": [n * self.c / 2, hy, self.c / 2], "kind": "pond"}
+                },
             )
         for st in lv.starts:
             at = st["at"]
@@ -685,6 +708,59 @@ class _Gen:
             look = DIRS[st.get("facing", "S")]
             y = self.h + 1.0 if st.get("shaft") else self.floor(at)
             self.vob("start", st["name"], (cx, self.y(y), cz), _quat_look(look[0], look[1]))
+        for at, sp in sorted(lv.spawns.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+            cx, cz = self.mid(at)
+            look = DIRS[sp.get("facing", "S")]
+            self.vob(
+                "spawn",
+                lv.spawn_name(at),
+                (cx, self.y(self.floor(at)), cz),
+                _quat_look(look[0], look[1]),
+                components={
+                    "spawn": {
+                        "npc": sp["npc"],
+                        "count": int(sp.get("count", 1)),
+                        "respawn": bool(sp.get("respawn", False)),
+                        "dormant": bool(sp.get("dormant", True)),
+                    }
+                },
+            )
+        self.relays()
+        self.items()
+
+    def relays(self) -> None:
+        """Invisible relays (``relays``): above their cell ``at`` (else the level's origin)."""
+        for name, r in sorted(self.lv.relays.items()):
+            if "at" in r:
+                cx, cz = self.mid(_cell(r["at"], name))
+            else:
+                cx, cz = self.lv.origin[0], self.lv.origin[2]
+            relay: dict[str, Any] = {"mode": r.get("mode", "any")}
+            if relay["mode"] == "count":
+                relay["count"] = int(r["count"])
+            relay["delay"] = tidy(float(r.get("delay", 0.0)))
+            relay["once"] = bool(r.get("once", False))
+            relay["invert"] = bool(r.get("invert", False))
+            relay["targets"] = list(r["targets"])
+            relay["action"] = r.get("action", "trigger")
+            self.vob("relay", name, (cx, self.y(2.0), cz), [0.0, 0.0, 0.0, 1.0],
+                     components={"relay": relay})  # fmt: skip
+
+    def items(self) -> None:
+        """Item vobs (``items``, the depots' finds): side by side across the cell's middle."""
+        per_cell: dict[Cell, int] = {}
+        for it in self.lv.items:
+            at = it["at"]
+            k = per_cell.get(at, 0)
+            per_cell[at] = k + 1
+            cx, cz = self.mid(at)
+            off = ITEM_SPREAD_M * ((k + 1) // 2) * (1 if k % 2 else -1)
+            item: dict[str, Any] = {"instance": it["instance"]}
+            if int(it.get("count", 1)) != 1:
+                item["count"] = int(it["count"])
+            self.vob("item", f"ITEM_{self.tag}_{at[0]}_{at[1]}_{k}",
+                     (cx + off, self.y(self.floor(at) + 0.05), cz), [0.0, 0.0, 0.0, 1.0],
+                     components={"item": item})  # fmt: skip
 
     def door(self, at: Cell, name: str, spec: dict[str, Any]) -> None:
         cx, cz = self.mid(at)
@@ -1031,6 +1107,10 @@ def _components(kind: str, comps: dict[str, Any]) -> dict[str, Any]:
         out["mover"] = mover
     if "spawn" in comps:
         out["spawn"] = comps["spawn"]
+    if "relay" in comps:
+        out["relay"] = comps["relay"]
+    if "item" in comps:
+        out["item"] = comps["item"]
     if "water" in comps:
         w = comps["water"]
         out["water"] = {"halfExtents": [tidy(v) for v in w["halfExtents"]], "kind": w["kind"]}

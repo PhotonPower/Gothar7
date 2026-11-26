@@ -1819,6 +1819,7 @@ private:
     [[nodiscard]] bool hiddenInRoom(const SceneInstance& instance) const noexcept;
     void updateUnderwater();
     void drawScene(u32 width, u32 height);
+    void updateCullGrid(); ///< the instances' culling grid anew when they changed
     void addDebugOverlay(u32 width, u32 height);
     /// `allowMouse` / `allowKeyboard` false while the debug UI uses them.
     void updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard);
@@ -2331,6 +2332,7 @@ private:
         Vec3 colour{1.0f};   ///< of the light
     };
     std::map<std::string, FlashRule, std::less<>> m_flashRules; // Creatures.<species>.flash (Beinhauswart)
+    std::map<std::string, f32, std::less<>> m_snapAbove; // Creatures.<species>.snap.above (Brunnenmolch)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline

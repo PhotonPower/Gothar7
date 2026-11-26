@@ -86,6 +86,12 @@
       "context": "data/guilds.lua",
       "status": "entwurf"
     },
+    "data.guilds.name_15": {
+      "de": "Brunnenmolche",
+      "text": "Well newts",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
     "data.teaching.attribute_names_01": {
       "de": "Stärke",
       "text": "Strength",
@@ -1034,6 +1040,12 @@
       "context": "items/tools.lua",
       "status": "entwurf"
     },
+    "it_bat_ear.name": {
+      "de": "Schlupferohr",
+      "text": "Slinker ear",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
     "it_beer.name": {
       "de": "Bier",
       "text": "Beer",
@@ -1106,10 +1118,22 @@
       "context": "items/weapons.lua",
       "status": "entwurf"
     },
+    "it_crawler_plate.name": {
+      "de": "Kriecherplatte",
+      "text": "Crawler plate",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
     "it_crossbow.name": {
       "de": "Leichte Armbrust",
       "text": "Light Crossbow",
       "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
+    "it_ember_eye.name": {
+      "de": "Glutauge",
+      "text": "Ember eye",
+      "context": "items/goods.lua",
       "status": "entwurf"
     },
     "it_gulden.name": {
@@ -1260,6 +1284,18 @@
       "de": "Krug",
       "text": "Mug",
       "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_newt_gills.name": {
+      "de": "Molchkiemen",
+      "text": "Newt gills",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_newt_skin.name": {
+      "de": "Molchhaut",
+      "text": "Newt skin",
+      "context": "items/goods.lua",
       "status": "entwurf"
     },
     "it_potion_heal_medium.name": {
@@ -1469,6 +1505,12 @@
     "mon_beinhauswart.name": {
       "de": "Beinhauswart",
       "text": "Charnel Warden",
+      "context": "npcs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mon_brunnenmolch.name": {
+      "de": "Brunnenmolch",
+      "text": "Well Newt",
       "context": "npcs/dungeon.lua",
       "status": "entwurf"
     },

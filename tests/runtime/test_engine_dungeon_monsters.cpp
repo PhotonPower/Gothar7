@@ -611,6 +611,49 @@ TEST_CASE("Engine dungeon monsters: the Beinhauswart drops its lantern at half i
     CHECK_FALSE(blinded(engine, warden, 4.0f));
 }
 
+TEST_CASE(
+    "Engine dungeon monsters: the Brunnenmolch lurks, wakes, and sinks back at its water after the fight")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::string newt(run(engine, "insert_npc('mon_brunnenmolch', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("newt_water('{}', 'WP_MONSTER_OST')", newt));
+    run(engine, std::format("npc_set_dormant('{}', true)", newt));
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", newt));
+    frames(engine, 30);
+    CHECK(run(engine, std::format("npc_state('{}').animation", newt)).asString() == "dormant");
+    // Blind, it listens (t_listen) ...
+    run(engine, std::format("npc_clear('{}') npc_play('{}', 'listen')", newt, newt));
+    bool listened = false;
+    for (int i = 0; i < 60 && !listened; ++i)
+    {
+        frames(engine, 1);
+        listened = run(engine, std::format("npc_state('{}').animation", newt)).asString() == "listen";
+    }
+    CHECK(listened);
+    // ... wakes (t_wake), and with nobody to fight goes back to its water and sinks under (t_submerge).
+    run(engine, "teleport(-30, 0, -30)"); // far away: it cannot hear him
+    run(engine, std::format("wake('{}')", newt));
+    frames(engine, 10);
+    CHECK_FALSE(dormant(engine, newt));
+    bool submerged = false;
+    bool resting = false;
+    for (int i = 0; i < 1200 && !resting; ++i)
+    {
+        frames(engine, 1);
+        const std::string anim(run(engine, std::format("npc_state('{}').animation", newt)).asString());
+        submerged = submerged || anim == "submerge";
+        resting = dormant(engine, newt) && anim == "dormant";
+    }
+    CHECK(submerged);
+    CHECK(resting);
+    // Its loot: skin and gills (figuren #475).
+    CHECK(run(engine, std::format("npc_item_count('{}', 'it_newt_skin')", newt)).asInteger() == 1);
+    CHECK(run(engine, std::format("npc_item_count('{}', 'it_newt_gills')", newt)).asInteger() == 2);
+    CHECK(engine.scripts()->callErrors() == 0);
+}
+
 TEST_CASE("Engine dungeon monsters: the Kristallkrebs's crystals glow blue at socket_glow and move with it")
 {
     Engine engine(monstersConfig());

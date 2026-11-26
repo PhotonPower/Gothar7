@@ -38,7 +38,7 @@ std::vector<ReflectionProbe> probesAt(std::initializer_list<f32> xs)
 TEST_CASE("Probes: every 20 m along a path, 2.5 m above it, none nearer than 10 m to another (F2)")
 {
     const std::vector<std::pair<Vec3, Vec3>> street{{Vec3(0.0f), Vec3(100.0f, 0.0f, 0.0f)}};
-    const std::vector<Vec3> probes = placeReflectionProbes({}, street);
+    const std::vector<Vec3> probes = placeReflectionProbes({}, {}, street);
     REQUIRE(probes.size() == 6);
     for (usize i = 0; i < probes.size(); ++i)
     {
@@ -49,7 +49,7 @@ TEST_CASE("Probes: every 20 m along a path, 2.5 m above it, none nearer than 10 
     const std::vector<std::pair<Vec3, Vec3>> more{{Vec3(0.0f), Vec3(100.0f, 0.0f, 0.0f)},
                                                   {Vec3(0.0f, 0.0f, 4.0f), Vec3(100.0f, 0.0f, 4.0f)},
                                                   {Vec3(51.0f, 0.0f, 1.0f), Vec3(52.0f, 0.0f, 1.0f)}};
-    const std::vector<Vec3> merged = placeReflectionProbes(squares, more);
+    const std::vector<Vec3> merged = placeReflectionProbes({}, squares, more);
     REQUIRE(!merged.empty());
     CHECK(near(merged[0], Vec3(50.0f, 2.5f, 0.0f)));
     for (usize i = 0; i < merged.size(); ++i)
@@ -61,10 +61,27 @@ TEST_CASE("Probes: every 20 m along a path, 2.5 m above it, none nearer than 10 
     }
     CHECK(merged.size() ==
           7); // the square and the street's six (40 and 60 are just 10 m away); the lane adds none
-    CHECK(placeReflectionProbes(squares, more) == merged); // deterministic
-    CHECK(placeReflectionProbes({}, {}).empty());
+    CHECK(placeReflectionProbes({}, squares, more) == merged); // deterministic
+    CHECK(placeReflectionProbes({}, {}, {}).empty());
     // Own spacing and height.
-    CHECK(placeReflectionProbes({}, street, {.spacing = 50.0f, .height = 1.0f, .merge = 5.0f}).size() == 3);
+    CHECK(placeReflectionProbes({}, {}, street, {.spacing = 50.0f, .height = 1.0f, .merge = 5.0f}).size() ==
+          3);
+}
+
+TEST_CASE("Probes: welt's VOB_PROBE_* markers stand as they are; the paths keep their distance to them")
+{
+    const std::vector<Vec3> markers{Vec3(30.0f, 2.5f, 0.0f), Vec3(35.0f, 6.0f, 0.0f)};
+    const std::vector<std::pair<Vec3, Vec3>> street{{Vec3(0.0f), Vec3(100.0f, 0.0f, 0.0f)}};
+    const std::vector<Vec3> probes = placeReflectionProbes(markers, {}, street);
+    REQUIRE(probes.size() >= 2);
+    CHECK(near(probes[0], markers[0])); // both, unmerged and not raised
+    CHECK(near(probes[1], markers[1]));
+    for (usize i = 2; i < probes.size(); ++i)
+    {
+        CHECK(probes[i].y == doctest::Approx(2.5f));
+        CHECK(glm::length(Vec2(probes[i].x, probes[i].z) - Vec2(30.0f, 0.0f)) >= 10.0f);
+    }
+    CHECK(probes.size() == 2 + 5); // 0, 20, 60, 80, 100: 40 is within 10 m of the markers
 }
 
 TEST_CASE("Probes: the face cameras look along the cube's axes, x = cross(forward, up) as in the shader")
