@@ -1,0 +1,13 @@
+{
+  "format": "gothar-dungeon-level",
+  "version": 1,
+  "note": "W8 D3: Ebene 5 'Werkstätten der Erbauer' (Thema werkstatt; Gatterbock, Mauerschlupfer) als Stub (Ziel der Treppe aus Ebene 4); der Ausbau folgt als eigener PR.",
+  "level": 5,
+  "theme": "werkstatt",
+  "origin": [0.0, 0.0, 0.0],
+  "cellM": 3.0,
+  "heightM": 3.5,
+  "cells": [
+    {"at": [1, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_04.g7world", "start": "START_E04_VON_UNTEN", "facing": "S"}, "arrive": "START_E05_VON_OBEN"}
+  ]
+}

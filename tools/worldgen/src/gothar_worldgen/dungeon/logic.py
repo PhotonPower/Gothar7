@@ -12,6 +12,14 @@ fires every ``count`` "on" events; ``invert`` and ``once`` as in the engine. The
 and spent flags are part of the search state, and so is whether a teleporter is on (``active``;
 ``on``/``open`` switch it on, ``off``/``close`` off, ``toggle`` over): an inactive pad is floor.
 A plate's release sends its ``release_action`` if it has one; a switch with ``once`` works once.
+A lever goes back (the counterpart) and a plate is released; a wall button only ever sends its
+``action`` (dungeon.md "Stand D3").
+
+A relay with ``delay`` (a time gate, W8 E4) does not fire at once: its event waits while the hero
+runs ``window`` cells (``(delay - TIMER_MARGIN_S) * RUN_M_S / cellM``, the margin for the clip and
+the gate's travel), then arrives. So a gate that a button opens and a delayed relay shuts again is
+open only for the next few cells: what lies further away than that stays shut. Pending events are
+part of the search state with the cells still left. A sarcophagus (``props``) fills its cell.
 """
 
 from __future__ import annotations
@@ -28,10 +36,13 @@ OFF = {"close", "off", "lock"}  # the "off" side of an event (dungeon.md "Polari
 COUNTER = {"open": "close", "close": "open", "on": "off", "off": "on", "lock": "unlock",
            "unlock": "lock"}  # fmt: skip
 MAX_DEPTH = 16  # relays naming relays: a cycle stops here (the engine warns about cycles)
+RUN_M_S = 4.0  # the hero's run (movement.toml [speed] run)
+TIMER_MARGIN_S = 2.0  # of a delay: pressing the button (clip) and the gate's travel
 
 State = frozenset[str]
 Node = tuple[State, tuple[int, int]]
-Action = tuple[list[str], str, str, str | None, bool]  # targets, action, sender, release, once
+# targets, action, sender, release, once, goes back (lever, plate; not a wall button)
+Action = tuple[list[str], str, str, str | None, bool, bool]
 
 
 @dataclass(frozen=True)
@@ -87,6 +98,29 @@ class _Net:
         self.level = level
         self.movers = movers | set(_teleporters(level))  # both are on/off
         self.inputs = _inputs(level)
+
+    def window(self, relay: dict[str, Any]) -> int:
+        """Cells the hero runs before a delayed event arrives."""
+        free = float(relay.get("delay", 0.0)) - TIMER_MARGIN_S
+        return max(0, int(free * RUN_M_S / self.level.cell_m))
+
+    def tick(self, state: State) -> State:
+        """One cell run: pending events come one cell closer; those due arrive."""
+        pend = sorted(f for f in state if f.startswith("PEND:"))
+        if not pend:
+            return state
+        out = set(state) - set(pend)
+        due = []
+        for f in pend:
+            _, name, act, n = f.split(":")
+            if int(n) <= 1:
+                due.append((name, act))
+            else:
+                out.add(f"PEND:{name}:{act}:{int(n) - 1}")
+        for name, act in due:
+            for t in self.level.relays[name]["targets"]:
+                self._one(out, t, act, name, 1)
+        return frozenset(out)
 
     def send(self, state: State, targets: list[str], action: str, source: str) -> State:
         out = set(state)
@@ -144,6 +178,10 @@ class _Net:
                 return
             s.add(f"SPENT:{name}")
         act = _counter(action) if r.get("invert") else action
+        n = self.window(r) if float(r.get("delay", 0.0)) > 0 else 0
+        if n > 0:  # arrives after ``n`` cells run
+            s.add(f"PEND:{name}:{act}:{n}")
+            return
         for t in r["targets"]:
             self._one(s, t, act, name, depth + 1)
 
@@ -158,16 +196,19 @@ def _actions(level: Level) -> dict[tuple[int, int], list[Action]]:
             stand = (at[0] + dx, at[1] + dy)
         else:
             stand = at
+        back = spec.get("type") != "wall_button"
         out.setdefault(stand, []).append(
             (list(spec["targets"]), spec.get("action", "trigger"), level.name(at),
-             spec.get("release_action"), bool(spec.get("once")))
+             spec.get("release_action"), bool(spec.get("once")), back)
         )  # fmt: skip
     return out
 
 
 def _set(net: _Net, state: State, targets: list[str], action: str, sender: str,
-         release: str | None) -> Iterator[State]:  # fmt: skip
+         release: str | None, back: bool = True) -> Iterator[State]:  # fmt: skip
     yield net.send(state, targets, action, sender)
+    if not back:  # a wall button: only its action
+        return
     if release:  # a plate's own release
         yield net.send(state, targets, release, sender)
     elif action in COUNTER:  # a plate or lever also goes back (the counterpart)
@@ -176,6 +217,8 @@ def _set(net: _Net, state: State, targets: list[str], action: str, sender: str,
 
 def _passable(level: Level, at: tuple[int, int], state: State, water: bool = True) -> bool:
     if not level.is_floor(*at) or (not water and level.char(*at) == "~"):
+        return False
+    if at in level.blocked:
         return False
     if level.char(*at) in "GH":
         return level.name(at) in state
@@ -190,17 +233,17 @@ def _steps(level: Level, node: Node, acts: dict[tuple[int, int], list[Action]], 
     if level.char(*at) == "T" and level.name(at) in state:
         spec = level.entries[at]["teleport"]
         if "to" in spec:
-            yield state, _cell(spec["to"], "teleport")
+            yield net.tick(state), _cell(spec["to"], "teleport")
             return
     for dx, dy in DIRS.values():
         nxt = (at[0] + dx, at[1] + dy)
         if _passable(level, nxt, state, water):
-            yield state, nxt
-    for targets, action, sender, release, once in acts.get(at, []):
+            yield net.tick(state), nxt
+    for targets, action, sender, release, once, back in acts.get(at, []):
         used = f"USED:{sender}"
         if once and used in state:
             continue
-        for s in _set(net, state, targets, action, sender, release):
+        for s in _set(net, state, targets, action, sender, release, back):
             if once:
                 s = s | {used}
             if s != state:
@@ -237,7 +280,8 @@ def check_reach(level: Level, water: bool = True) -> Reach:
                 ok.add(prev)
                 queue.append(prev)
     cells = {at for _, at in seen}
-    floor = level.cells(FLOOR_CHARS if water else FLOOR_CHARS - {"~"})
+    floor = [a for a in level.cells(FLOOR_CHARS if water else FLOOR_CHARS - {"~"})
+             if a not in level.blocked]  # fmt: skip
     stuck = sorted({at for n in seen - ok for at in [n[1]] if level.char(*at) != "P"})
     states = {frozenset(f for f in s if f in movers) for s, _ in seen}
     return Reach(cells, sorted(set(floor) - cells), stuck, len(states))
