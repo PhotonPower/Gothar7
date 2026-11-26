@@ -186,6 +186,7 @@ void Engine::loadAnimalBodies()
     m_reflectShares.clear();
     m_splinterRules.clear();
     m_weakSpots.clear();
+    m_sideSwings.clear();
     const script::Value creatures = m_scripts ? m_scripts->global("Creatures") : script::Value();
     if (creatures.asTable() == nullptr)
     {
@@ -257,6 +258,15 @@ void Engine::loadAnimalBodies()
             number(weak, "factor", spot.factor);
             number(weak, "stagger_share", spot.staggerShare);
             m_weakSpots.insert_or_assign(species, spot);
+        }
+        if (const script::Value* side = field(def.asTable(), "side_swing");
+            side != nullptr && side->asTable() != nullptr)
+        {
+            // side_swing = { chance, hit_degrees }: sweeps in from the side (Kellermutter's scythes).
+            SideSwing swing;
+            number(side, "chance", swing.chance);
+            number(side, "hit_degrees", swing.hitDegrees);
+            m_sideSwings.insert_or_assign(species, swing);
         }
         if (const script::Value* flash = field(def.asTable(), "flash");
             flash != nullptr && flash->asTable() != nullptr)
@@ -508,6 +518,18 @@ bool Engine::startFight(Combatant& c, std::string_view move, AttackKind kind)
     if (c.creature != nullptr && c.animal && move == "attack")
     {
         c.creature->action = c.fighter->comboHit() % 2 == 1 ? 1 : 2;
+        // Kellermutter: some of her blows sweep in from the side with a scythe (t_scythe_l/r), wider.
+        c.creature->sideSwing = false;
+        if (const auto it = m_sideSwings.find(c.species);
+            it != m_sideSwings.end() && it->second.chance > 0.0f)
+        {
+            const f32 roll = m_random ? m_random() : std::uniform_real_distribution<f32>(0.0f, 1.0f)(m_rng);
+            if (roll < it->second.chance)
+            {
+                c.creature->action = c.fighter->comboHit() % 2 == 1 ? 15 : 16;
+                c.creature->sideSwing = true;
+            }
+        }
         // Kristallkrebs: some of its attacks are a grab (t_grab: its hit window pinches, "grab" holds fast).
         if (const auto it = m_grabRules.find(c.species); it != m_grabRules.end() && it->second.chance > 0.0f)
         {
@@ -870,7 +892,11 @@ void Engine::strike(Combatant& attacker, std::span<const u32> ids)
             }
             const f32 cosine =
                 distance > 1e-3f ? glm::dot(Vec2(to.x, to.z) / distance, Vec2(forward.x, forward.z)) : 1.0f;
-            if (cosine < std::cos(glm::radians(m_combat.hitAngleDegrees)))
+            const auto side = attacker.creature != nullptr && attacker.creature->sideSwing
+                                  ? m_sideSwings.find(attacker.species)
+                                  : m_sideSwings.end();
+            const f32 angle = side != m_sideSwings.end() ? side->second.hitDegrees : m_combat.hitAngleDegrees;
+            if (cosine < std::cos(glm::radians(angle)))
             {
                 continue;
             }

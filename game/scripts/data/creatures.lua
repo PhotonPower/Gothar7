@@ -85,6 +85,9 @@ Creatures = {
         -- Offene Schwachstelle (Brutsack hinten): Treffer von hinten (bis 60° neben der Gegenrichtung) zählen
         -- doppelt; ab stagger_share des Lebens taumelt sie (t_stagger).
         weak = { degrees = 60, factor = 2.0, stagger_share = 0.05 },
+        -- Zwei von fünf Hieben fegen mit einer Sense von der Seite heran (t_scythe_l/r) und treffen bis 100° neben
+        -- ihrer Blickrichtung (die anderen nur vorn).
+        side_swing = { chance = 0.4, hit_degrees = 100 },
     },
     beinhauswart = { -- wartet an einer Gruft (zs_dormant), blendet mit der grünen Laterne, schlägt mit dem Spaten
         territory = 12,

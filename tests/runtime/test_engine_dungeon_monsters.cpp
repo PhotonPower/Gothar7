@@ -610,3 +610,25 @@ TEST_CASE("Engine dungeon monsters: the Beinhauswart drops its lantern at half i
     CHECK(run(engine, std::format("npc_item_count('{}', 'it_lantern_beinhaus')", warden)).asInteger() == 0);
     CHECK_FALSE(blinded(engine, warden, 4.0f));
 }
+
+TEST_CASE("Engine dungeon monsters: the Kellermutter sweeps her scythes in from the side (t_scythe_l/r)")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    engine.setRandomSource([] { return 0.0f; }); // every blow a side sweep (side_swing.chance)
+    frames(engine, 3);
+    run(engine, "set_stat('hp_max', 5000) set_stat('hp', 5000)");
+    const std::string mother = insertMother(engine);
+    placeAhead(engine, mother, 4.0f, 180.0f); // facing the hero
+    run(engine, std::format("wake('{}')", mother));
+    bool swept = false;
+    for (int i = 0; i < 900 && !swept; ++i)
+    {
+        frames(engine, 1);
+        const std::string anim(run(engine, std::format("npc_state('{}').animation", mother)).asString());
+        swept = anim == "scythe_l" || anim == "scythe_r";
+    }
+    CHECK(swept);
+    frames(engine, 60);
+    CHECK(run(engine, "stat('hp')").asInteger() < 5000); // the sweep hits
+}
