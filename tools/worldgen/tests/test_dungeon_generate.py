@@ -275,3 +275,21 @@ def test_kit_props_stand_on_the_floor() -> None:
     for build in kit.PROPS.values():
         m = build()
         assert m.collision and 0 < m.triangles() < 3000
+
+
+def test_werkstatt_props_and_shortcut() -> None:
+    lv = load_level(DATA, 5)
+    plan = plan_level(lv, "leonberg")
+    by = {v["name"]: v for v in plan.vobs}
+    cog = by["PROP_E05_10_9"]  # facing E: on the west wall of its cell
+    assert cog["mesh"].endswith("cogwheel.glb") and cog["pos"] == [30.0, 0.0, 28.5]
+    bench = by["PROP_E05_12_18"]
+    assert bench["mesh"].endswith("workbench.glb") and bench["pos"] == [37.5, 0.0, 55.5]
+    points = {p["name"] for p in plan.points}
+    assert "WP_DNG_E05_12_18" not in points and "WP_DNG_E05_10_9" in points
+    tele = by["TELE_E05_25_16"]["components"]["trigger"]["teleport"]
+    assert tele["world"].endswith("ebene_01.g7world") and tele["start"] == "START_E01_VON_OBEN"
+    assert tele["active"] is False and tele["visible"] is True
+    trap = by["TELE_E05_9_2"]["components"]["trigger"]["teleport"]
+    assert trap["visible"] is False and trap["to"] == "TELE_E05_9_2_ZIEL"
+    assert by["BUTTON_E05_7_1"]["components"]["mob"]["action"] == "off"
