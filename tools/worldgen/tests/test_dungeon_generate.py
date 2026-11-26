@@ -226,3 +226,24 @@ def test_relays_and_items_in_the_engine_layout() -> None:
     world = json.loads(world_text(build_world(lv, plan_level(lv, "leonberg"), "leonberg",
                                               VobIds({}, 1), None)))  # fmt: skip
     assert [v["type"] for v in world["vobs"] if v["name"] == "RELAY_E02_TREPPE"] == ["relay"]
+
+
+def test_cistern_water_boxes_and_molch_spawns() -> None:
+    lv = load_level(DATA, 3)
+    by = {v["name"]: v for v in plan_level(lv, "leonberg").vobs}
+    water = [v for v in by.values() if v["type"] == "water"]
+    assert len(water) < len(lv.cells("~")) // 3  # one box per row run, not per cell
+    for v in water:
+        hx, hy, _ = v["components"]["water"]["halfExtents"]
+        assert v["pos"][1] + hy == pytest.approx(-lv.water_edge)  # surface below the edge
+        assert v["pos"][1] - hy == pytest.approx(-lv.water_depth)  # on the basin floor
+    assert sum(v["components"]["water"]["halfExtents"][0] * 2 / 3 for v in water) == len(
+        lv.cells("~")
+    )
+    molch = by["SPAWN_E03_10_9"]
+    assert molch["pos"][1] == pytest.approx(-lv.water_depth)
+    assert molch["components"]["spawn"]["npc"] == "mon_brunnenmolch"
+    tele = by["TELE_E03_2_12"]["components"]["trigger"]["teleport"]
+    assert tele["active"] is False and tele["to"] == "TELE_E03_2_12_ZIEL"
+    relay = by["RELAY_E03_STEINE"]["components"]["relay"]
+    assert list(relay)[:2] == ["mode", "count"] and relay["count"] == 3 and relay["once"] is True

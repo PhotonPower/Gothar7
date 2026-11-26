@@ -121,3 +121,43 @@ def test_relay_all_needs_every_input() -> None:
 def test_broken_relays_and_items(extra: dict, message: str) -> None:
     with pytest.raises(LevelError, match=message):
         parse_level("#####\n#<..#\n#####", {**doc(), **extra})
+
+
+def test_level_3_zisterne_is_complete_and_solvable() -> None:
+    """W8 D3: Ebene 3 with the cistern, the Brunnenmolch in the water and two new riddles."""
+    level = load_level(DATA, 3)
+    kinds = {name.split("_")[0] for name in level.targets()}
+    assert kinds >= {"GATE", "WALL", "TRAP", "LEVER", "BUTTON", "TELE", "NICHE", "SPAWN", "DOOR",
+                     "CHEST", "STAIRS", "RELAY"}  # fmt: skip
+    for water in (True, False):  # the riddles open every dry cell without wading
+        reach = check_reach(level, water=water)
+        assert reach.unreached == [] and reach.stuck == []
+    assert level.water_depth - level.water_edge > 0 and level.water_edge >= 0.4  # snap-up edge
+    molche = [sp for at, sp in level.spawns.items() if level.char(*at) == "~"]
+    assert len(molche) >= 2 and {sp["npc"] for sp in molche} == {"mon_brunnenmolch"}
+    npcs = {e["monster"]["npc"] for e in level.entries.values() if "monster" in e}
+    assert npcs == {"mon_mauerkriecher"}
+    down = [level.entries[at]["stairs"]["world"] for at in level.cells(">")]
+    fall = [level.entries[at]["trapdoor"]["fall"]["world"] for at in level.cells("P")]
+    assert down == fall == ["worlds/leonberg/dungeon/ebene_04.g7world"]
+    assert load_level(DATA, 4).theme == "beinhaus"
+
+
+def test_level_3_riddles_hold() -> None:
+    """Without the pump lever the island stays out of reach (dry); with a fourth stone needed the
+    depot stays shut."""
+    level = load_level(DATA, 3)
+    pump = level.entries[(3, 15)]["switch"]
+    pump["targets"] = ["RELAY_E03_STEINE"]  # no longer switches the teleporter on
+    dry = check_reach(level, water=False)
+    assert (13, 13) in dry.unreached and (14, 23) in dry.unreached  # island, stairs down
+    level = load_level(DATA, 3)
+    level.relays["RELAY_E03_STEINE"]["count"] = 4
+    assert (25, 10) in check_reach(level).unreached
+
+
+def test_spawns_and_water_are_checked() -> None:
+    with pytest.raises(LevelError, match="spawns"):
+        parse_level("#####\n#<..#\n#####", {**doc(), "spawns": [{"at": [0, 0], "npc": "m"}]})
+    with pytest.raises(LevelError, match="edgeM"):
+        parse_level("#####\n#<..#\n#####", {**doc(), "water": {"depthM": 0.3, "edgeM": 0.5}})

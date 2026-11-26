@@ -339,7 +339,32 @@ schreibt.
     Treppe hinab.
   - Schatzkammer mit Gatterbock und Truhe, Falltür (Platte `player`) nach Ebene 3; Treppe hinab nach Ebene 3.
   - Erreichbarkeit grün (keine Zelle unerreicht, keine ohne Rückweg).
-- **Ebene 3** als Stub (Thema `zisterne`, vorerst mit dem Ambiente `gewoelbe`): Ziel der Treppe und der Falltür.
+- **Ebene 3** siehe 7c.
+
+## 7c. Stand D3 (welt): Ebene 3 „Zisterne“, Ebene 4 als Stub
+- **Neu in der Karten-JSON:**
+  - `water`: `depthM` (Beckenboden unter dem Umgang, Vorgabe 1,0) und `edgeM` (Wasserspiegel unter dem Rand,
+    Vorgabe 0,2); je Zeilenlauf ein Wasser-Vob statt je Zelle.
+  - `spawns`: Monsterplätze `SPAWN_E03_<x>_<y>` auf beliebigen Boden- und Wasserzellen (der Brunnenmolch lauert im
+    Wasser).
+  - Teleporter mit `active: false` lassen sich per Ereignis einschalten; die Erreichbarkeit rechnet das mit, dazu
+    `release_action` der Platten und `once` der Schalter. `check_reach(level, water=False)` prüft zusätzlich ohne
+    Waten: Die Rätsel müssen jede trockene Zelle öffnen.
+- **Ebene 3** (28 × 26, 341 begehbare Zellen = 47 %, davon 109 Wasser):
+  - Zisternenhalle mit Umgang um ein flaches Becken (Boden 0,9 m tief, Wasser **0,45 m unter dem Rand**, also gut
+    0,45 m tief), Steg ins Becken, Insel mit Brunnenschacht (Pfeiler mit Hebel, drei Fackeln). Drei Brunnenmolche
+    im Wasser (schwimmen nicht, schnappen vom Wasser nach dem Umgang); Mauerkriecher in Ankunft, Ostkammer und
+    Schleusenkammer.
+  - **Rätsel 1 (neu, Teleporter einschalten):** Der Hebel in der Pumpenkammer schaltet den Teleporter dort ein; er
+    bringt zur Insel. Der Hebel am Brunnenschacht öffnet das Gatter zur Schleusenkammer. Zurück über den Teleporter
+    der Insel auf den Umgang. Wer durchs Wasser watet und auf die Insel klettert, kommt auch hin – an den Molchen
+    vorbei.
+  - **Rätsel 2 (neu, Zählrelais):** drei lose Steine an den Hallenwänden (je einmal), ein Relais `count` 3 öffnet
+    erst beim dritten die Geheimwand zum Depot (Goldring, Manatränke, Gulden).
+  - Brunnenstube (Truhe, Nische, Trank), Ostkammer (Tür, Truhe), Pumpenkammer (Tür).
+  - Schleusenkammer: Treppe hinab und Falltür (Platte `player`) nach Ebene 4; Treppe hinauf nach Ebene 2.
+- **Ebene 4** als Stub (Thema `beinhaus`, vorerst Ambiente `gewoelbe`).
+- **Offen für engine:** Instanz `mon_brunnenmolch` (bis dahin drei Ladewarnungen), Ambiente `zisterne` und `beinhaus`.
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |
