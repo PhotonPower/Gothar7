@@ -58,7 +58,14 @@ TEST_CASE("Rain surface: streaks in the open, none under a roof, none without ra
     };
     const f32 open = brightness(false, 1.0f);
     CHECK(open > 1.0f);
-    CHECK(brightness(true, 1.0f) < open * 0.05f); // under a roof
+    // Under a roof - several times in a row: the map rewritten while it is still bound for the rain's vertex
+    // shader (llvmpipe once sampled the old map then).
+    for (int i = 0; i < 4; ++i)
+    {
+        CAPTURE(i);
+        CHECK(brightness(true, 1.0f) < open * 0.05f);
+        CHECK(brightness(false, 1.0f) == doctest::Approx(open)); // and open again: the map cleared to the sky
+    }
     CHECK(brightness(false, 0.0f) == doctest::Approx(0.0f));
     CHECK(gl.device->debugErrorCount() == 0);
 }
