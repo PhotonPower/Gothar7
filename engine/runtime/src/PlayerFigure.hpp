@@ -243,6 +243,7 @@ struct Creature
     bool rest = false;       ///< graph "dormant": its resting loop (statue, rolled up), dungeon D6
     bool guard = false;      ///< graph "guard": over its treasure (Kellermutter, phase 3)
     bool weakOpen = false;   ///< Creatures.<species>.weak counts (npc_set_weak; Kellermutter phase 3)
+    bool sideSwing = false;  ///< its blow now sweeps in from the side (t_scythe_l/r): a wider hit angle
     std::string spawn;       ///< dungeon D6: the spawn marker that put it in, empty: none
     bool dormant = false;    ///< dungeon D6: resting until it wakes (saved; the behaviour is Lua's)
     bool moveAcross = false; ///< Creatures.<species>.move_axis = "x": walks sideways (a crab)

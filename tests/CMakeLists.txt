@@ -15,10 +15,13 @@ g7_add_test_suite(core)
 g7_add_test_suite(runtime NO_TEST)
 # The runtime suite runs whole engines with a world: several ctest entries over the one executable, grouped by source
 # file and measured run time, so each stays within its timeout in the coverage job (instrumented, about twice as
-# slow). Every test case runs in exactly one entry: `runtime` takes the files no group names.
+# slow). Every test case runs in exactly one entry: `runtime` takes the files no group names. An optional third field
+# is a doctest test-case filter, to split one file over two entries (both entries name the file, with opposite filters).
 set(_g7_runtime_groups
-    "scenarios|*_scenario.cpp"
-    "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp"
+    "scenarios|*test_engine_m9_scenario.cpp,*test_engine_m10_scenario.cpp"
+    "scenarios_combat|*test_engine_m11_scenario.cpp,*test_engine_m12_scenario.cpp,*test_engine_dungeon_scenario.cpp"
+    "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp|--test-case-exclude=Engine NPC*,Engine AI LOD*"
+    "npc_routines|*test_engine_scripts.cpp|--test-case=Engine NPC*,Engine AI LOD*"
     "fights|*test_engine_perception.cpp,*test_engine_combat.cpp"
     "dialog|*test_engine_dialog.cpp,*test_engine_weapon_sweep.cpp"
     "magic|*test_engine_magic.cpp,*test_engine_telekinesis.cpp,*test_engine_spell_glow.cpp"
@@ -44,7 +47,12 @@ foreach(_group IN LISTS _g7_runtime_groups)
     string(REPLACE "|" ";" _parts "${_group}")
     list(GET _parts 0 _name)
     list(GET _parts 1 _files)
-    add_test(NAME runtime_${_name} COMMAND g7_tests_runtime "--source-file=${_files}")
+    list(LENGTH _parts _count)
+    set(_filter "")
+    if(_count GREATER 2)
+        list(GET _parts 2 _filter)
+    endif()
+    add_test(NAME runtime_${_name} COMMAND g7_tests_runtime "--source-file=${_files}" ${_filter})
     list(APPEND _g7_runtime_tests runtime_${_name})
     string(APPEND _g7_runtime_grouped "${_files},")
 endforeach()

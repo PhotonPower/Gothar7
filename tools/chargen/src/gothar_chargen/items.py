@@ -270,10 +270,11 @@ def rune(seg: int, spell: str) -> list[Mesh]:
     return [stone, face]
 
 
-def scroll(seg: int) -> list[Mesh]:
+def scroll(seg: int, spell: str = "") -> list[Mesh]:
     """Spell scroll (M12): a rolled parchment along +Y (origin in the middle), a cord around it
-    and a red wax seal on its +Z side."""
-    paper = Mesh("parchment")
+    and a red wax seal on its +Z side. With `spell` (it_scroll_<spell>): the sign of the spell is
+    drawn on the parchment above the seal and pressed into a pale wax seal."""
+    paper = Mesh(f"parchment_{spell}" if spell else "parchment")
     r, half = 0.017, 0.1
     profile = [(0.0, -half), (r * 0.6, -half), (r, -half + 0.002), (r, half - 0.002),
                (r * 0.6, half), (0.0, half)]  # fmt: skip
@@ -281,7 +282,7 @@ def scroll(seg: int) -> list[Mesh]:
     cord = Mesh("leather")
     loft(cord, np.array([[0.0, y, 0.0] for y in (-0.004, 0.004)]),
          [circle(r + 0.0015, seg)] * 2, tile=0.05)  # fmt: skip
-    seal = Mesh("wax_red")
+    seal = Mesh(f"wax_{spell}" if spell else "wax_red")
     loft(seal, np.array([[0.0, 0.0, r + 0.0005], [0.0, 0.0, r + 0.004]]),
          [circle(0.009, max(8, seg))] * 2, ref=(0.0, 1.0, 0.0), tile=0.02)  # fmt: skip
     return [paper, cord, seal]
@@ -1265,7 +1266,12 @@ def brood_gland(seg: int) -> list[Mesh]:
     return [gland, ribs]
 
 
-RUNES = ("firebolt", "heal", "sleep", "transform_wolf", "summon_wolf", "telekinesis")  # it_rune_<x>
+RUNES = (
+    "firebolt", "heal", "sleep", "transform_wolf", "summon_wolf", "telekinesis", "light",
+)  # it_rune_<x>  # fmt: skip
+SCROLLS = (
+    "light",
+)  # it_scroll_<x>: spell scrolls with their own sign (the plain it_scroll has none)
 
 ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_sword_old": (lambda s: sword(s, rust=True), 12),
@@ -1287,6 +1293,9 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_sword_2h": (sword_2h, 12),
     "it_potion_mana_small": (lambda s: potion(s, "glass_blue"), 16),
     "it_scroll": (scroll, 12),
+    **{
+        f"it_scroll_{spell}": ((lambda sp: lambda s: scroll(s, sp))(spell), 12) for spell in SCROLLS
+    },
     "it_ham": (ham, 14),
     "it_sausage": (sausage, 12),
     "it_cheese": (cheese, 20),
@@ -1339,6 +1348,8 @@ TEXTURES: dict[str, tuple[str, int, tuple[float, float, float]]] = {
 PROCEDURAL = (
     "iron_forged", "apple", "bread", "glass_red", "glass_blue", "cork", "straw", "feather",
     "stone", "parchment", "wax_red", "pitch", *(f"rune_{spell}" for spell in RUNES),
+    *(f"parchment_{spell}" for spell in SCROLLS), *(f"wax_{spell}" for spell in SCROLLS),
+    "rune_light_glow",
     "ham", "bone", "sausage", "cheese", "clay", "glass_green", "glass_amber", "linen",
     "root", "leaf_sage", "leaf_green", "leaf_dry", "flower_white", "flower_yellow",
     "gold", "silver", "iron_hot", "glass_glow_green",
@@ -1359,8 +1370,11 @@ EMISSIVE = {
 RUNE_COLOURS = {  # sign colour per spell
     "firebolt": (0.95, 0.42, 0.08), "heal": (0.25, 0.85, 0.35), "sleep": (0.6, 0.35, 0.9),
     "transform_wolf": (0.7, 0.5, 0.25), "summon_wolf": (0.25, 0.4, 0.95),
-    "telekinesis": (0.3, 0.72, 1.0),
+    "telekinesis": (0.3, 0.72, 1.0), "light": (0.72, 0.86, 1.0),
 }  # fmt: skip
+EMISSIVE_MAPS = {
+    "rune_light": "rune_light_glow"
+}  # material -> own emissive texture (only the sign)
 
 
 def _rune_sign(spell: str, x: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -1401,6 +1415,13 @@ def _rune_sign(spell: str, x: np.ndarray, y: np.ndarray) -> np.ndarray:
     if spell == "transform_wolf":  # spiral
         a = np.arctan2(y, x)
         return (np.abs(((r - 0.08 * a) % 0.25) - 0.12) < 0.05) & (r < 0.75)
+    if spell == "light":  # a small sun: a disc in a ring with eight rays
+        rays = np.zeros_like(r, dtype=bool)
+        for k in range(8):
+            ang = np.pi * k / 4
+            along = x * np.cos(ang) + y * np.sin(ang)
+            rays |= (np.abs(x * np.sin(ang) - y * np.cos(ang)) < stroke * 0.6) & (along > 0.5)
+        return (r < 0.2) | (np.abs(r - 0.36) < stroke * 0.6) | (rays & (r < 0.78))
     # summon: a ring with a star of lines
     lines = np.zeros_like(r, dtype=bool)
     for k in range(3):
@@ -1418,10 +1439,35 @@ def _rune_face(spell: str, size: int, n1: np.ndarray, n2: np.ndarray) -> np.ndar
     return np.clip(out, 0, 1)
 
 
+def _scroll_paper(spell: str, size: int) -> np.ndarray:
+    """Parchment of a spell scroll with the sign drawn in the colour of the spell on the +Z side
+    above the seal (u around the roll, v along it)."""
+    base = procedural_texture("parchment", size)
+    v, u = np.mgrid[0:size, 0:size] / (size - 1)
+    x, y = (u - SCROLL_SIGN_U) / 0.14, (v - 0.5) / 0.14  # v repeats: a sign each side of the seal
+    sign = _rune_sign(spell, x, -y)
+    ink = np.array(RUNE_COLOURS[spell]) * np.array([0.3, 0.4, 0.62])  # dark blue ink
+    return np.clip(np.where(sign[..., None], ink[None, None], base), 0, 1)
+
+
+SCROLL_SIGN_U = 0.25  # texture u of the scroll's +Z side (the seal side)
+
+
 def procedural_texture(name: str, size: int = 256) -> np.ndarray:
     """(size, size, 3) colour in 0..1 for the procedural materials."""
     rng = np.random.default_rng(sum(map(ord, name)))
     n1, n2 = fractal(size, rng, octaves=5, base=4), fractal(size, rng, octaves=3, base=16)
+    if name == "rune_light_glow":  # emissive map of the light rune: only the sign, pale blue
+        v, u = np.mgrid[0:size, 0:size] / (size - 1)
+        sign = _rune_sign("light", 2 * u - 1, 1 - 2 * v)
+        return np.where(sign[..., None], np.array([0.35, 0.5, 0.7])[None, None], 0.0)
+    if name.startswith("parchment_"):
+        return _scroll_paper(name[10:], size)
+    if name.startswith("wax_") and name[4:] in SCROLLS:  # pale seal with the sign pressed in
+        v, u = np.mgrid[0:size, 0:size] / (size - 1)
+        sign = _rune_sign(name[4:], 2 * u - 1, 1 - 2 * v)
+        c = np.array([0.78, 0.84, 0.9])[None, None] * (0.85 + 0.15 * n1[..., None])
+        return np.clip(np.where(sign[..., None], c * 0.7, c), 0, 1)
     if name == "iron_forged":  # dark, uneven forged iron with hammer marks
         lum = 0.17 + 0.1 * n1 + 0.06 * (n2 - 0.5)
         return np.clip(lum[:, :, None] * np.array([1.0, 1.0, 1.05]), 0, 1)
@@ -1641,6 +1687,11 @@ def item_gltf(item: str, texture_uri: Callable[[str], str]) -> tuple[dict, bytes
                     "roughnessFactor": 0.8,
                 },
             })  # fmt: skip
+            if name in EMISSIVE_MAPS:  # glows only where its own emissive texture is bright
+                doc["images"].append({"uri": texture_uri(EMISSIVE_MAPS[name])})
+                doc["textures"].append({"sampler": 0, "source": len(doc["images"]) - 1})
+                doc["materials"][-1]["emissiveTexture"] = {"index": len(doc["textures"]) - 1}
+                doc["materials"][-1]["emissiveFactor"] = [1.0, 1.0, 1.0]
             if name in EMISSIVE:  # glows: emissive = the colour texture times the factor
                 doc["materials"][-1]["emissiveTexture"] = {"index": len(doc["textures"]) - 1}
                 doc["materials"][-1]["emissiveFactor"] = list(EMISSIVE[name])
@@ -1724,6 +1775,7 @@ LENGTHS = {
     "it_amulet": (0.24, 0.3), "it_chain_gold": (0.3, 0.4), "it_hammer": (0.28, 0.34),
     "it_saw": (0.5, 0.6), "it_shears": (0.18, 0.24),
     "it_potion_mana_small": (0.12, 0.2), "it_scroll": (0.18, 0.24), "it_torch": (0.65, 0.75),
+    **{f"it_scroll_{spell}": (0.18, 0.24) for spell in SCROLLS},
     "it_lute": (0.75, 0.9), "it_gulden": (0.01, 0.03), "it_blank_hot": (0.7, 0.8),
     **{f"it_rune_{spell}": (0.05, 0.08) for spell in RUNES},
 }  # fmt: skip

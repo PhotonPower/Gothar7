@@ -404,7 +404,9 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   näher als 6 m, kämpft sie und kehrt danach zurück), und ihre Schwachstelle ist offen (`npc_set_weak`). Mechanik
   `Creatures.<art>.weak = { degrees, factor, stagger_share }`: offen zählen Nahkampf und Geschosse von hinten (Brutsack,
   bis 60° neben der Gegenrichtung) doppelt, ab 5 % ihres Lebens taumelt sie (`t_stagger`). Lua: `npc_set_weak`,
-  `npc_weak`, `boss_phase`, `brood_alive`. Noch nicht: `t_scythe_l/r`, Leuchten an `socket_glow`, Klänge.
+  `npc_weak`, `boss_phase`, `brood_alive`. Sensenhiebe von der Seite: `Creatures.<art>.side_swing = { chance,
+  hit_degrees }` – dieser Anteil ihrer Hiebe ist `t_scythe_l/r` (Aktionen 15/16) und trifft bis `hit_degrees` (100°)
+  neben ihrer Blickrichtung statt nur vorn (Kellermutter 0,4).
 - **Beinhauswart** (figuren #461): Graph wie der Gatterbock (Erwachen `t_wake`, Drohen = Laterne entgegenstoßen
   `t_threaten`, Aktion 4), Kapsel stehend r 0,35 / h 2,0, Instanz `mon_beinhauswart` (Beute `it_lantern_beinhaus`,
   `it_shroud_rag`). Mechanik `Creatures.<art>.flash = { distance, degrees, seconds, colour }`: Beim

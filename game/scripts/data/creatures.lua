@@ -89,6 +89,9 @@ Creatures = {
         weak = { degrees = 60, factor = 2.0, stagger_share = 0.05 },
         -- Die Schwachstelle am Brutsack glüht orange (socket_glow).
         glow = { socket = "socket_glow", colour = { 1.0, 0.55, 0.2 }, radius = 6, intensity = 1.5 },
+        -- Zwei von fünf Hieben fegen mit einer Sense von der Seite heran (t_scythe_l/r) und treffen bis 100° neben
+        -- ihrer Blickrichtung (die anderen nur vorn).
+        side_swing = { chance = 0.4, hit_degrees = 100 },
     },
     beinhauswart = { -- wartet an einer Gruft (zs_dormant), blendet mit der grünen Laterne, schlägt mit dem Spaten
         territory = 12,

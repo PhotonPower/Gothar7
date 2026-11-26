@@ -2358,6 +2358,14 @@ private:
         f32 staggerShare = 0.05f; ///< a hit there of this share of hp_max or more: t_stagger
     };
     std::map<std::string, WeakSpot, std::less<>> m_weakSpots; // Creatures.<species>.weak (Kellermutter)
+    struct SideSwing
+    {
+        f32 chance = 0.0f; ///< share of its attacks that sweep in from the side (t_scythe_l/r)
+        f32 hitDegrees =
+            100.0f; ///< such a sweep hits within this angle of its front (others: Combat.hit_angle)
+    };
+    std::map<std::string, SideSwing, std::less<>>
+        m_sideSwings; // Creatures.<species>.side_swing (Kellermutter)
     struct FlashRule
     {
         f32 distance = 7.0f; ///< m in front of it

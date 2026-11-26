@@ -3,7 +3,7 @@
 #   dormant  Ruhe-Schleife solange gesetzt (bool, zs_dormant); guard: über dem Schatz (s_guard, Phase 3)
 #   action   5 Erwachen (t_wake), 9 Rufen (t_call: Event spawn_brood), 10 Phasenwechsel (t_rage),
 #            11 Taumeln (t_stagger: schwerer Treffer auf die offene Schwachstelle)
-# Noch nicht verwendet: t_scythe_l/r (Sensenhiebe von der Seite).
+#            15 / 16 Sensenhieb von links bzw. rechts (t_scythe_l/r, Creatures.kellermutter.side_swing)
 version = 1
 sets = ["characters/monsters/kellermutter/anims/kellermutter.glb"]
 start = "move"
@@ -71,6 +71,14 @@ clip = "kellermutter/s_dormant"
 name = "wake"
 clip = "kellermutter/t_wake"
 
+[[state]] # die linke Sense fegt von der Seite heran
+name = "scythe_l"
+clip = "kellermutter/t_scythe_l"
+
+[[state]] # die rechte Sense fegt von der Seite heran
+name = "scythe_r"
+clip = "kellermutter/t_scythe_r"
+
 [[state]] # ruft die Brut aus den Wänden: Event spawn_brood
 name = "call"
 clip = "kellermutter/t_call"
@@ -134,6 +142,18 @@ blend = 0.05
 from = "*"
 to = "rage"
 when = ["action == 10", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "*"
+to = "scythe_l"
+when = ["action == 15", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "*"
+to = "scythe_r"
+when = ["action == 16", "!dead"]
 blend = 0.1
 
 [[transition]]
@@ -259,6 +279,18 @@ blend = 0.2
 
 [[transition]]
 from = "stagger"
+to = "move"
+when = ["end"]
+blend = 0.2
+
+[[transition]]
+from = "scythe_l"
+to = "move"
+when = ["end"]
+blend = 0.2
+
+[[transition]]
+from = "scythe_r"
 to = "move"
 when = ["end"]
 blend = 0.2
