@@ -628,7 +628,8 @@ TEST_CASE("Engine dungeon monsters: the Kristallkrebs's crystals glow blue at so
     const f32 z = static_cast<f32>(run(engine, std::format("npc_state('{}').z", crab)).asNumber());
     CHECK(glm::distance(glow.position, Vec3(x, y, z)) < 1.5f); // on its back
     CHECK(glow.position.y > y + 0.3f);
-    run(engine, std::format("npc_teleport('{}', {}, {}, {})", crab, x + 6.0f, y, z)); // it moves, the light too
+    run(engine,
+        std::format("npc_teleport('{}', {}, {}, {})", crab, x + 6.0f, y, z)); // it moves, the light too
     frames(engine, 3);
     CHECK(engine.creatureLights().back().position.x > glow.position.x + 5.0f);
 }

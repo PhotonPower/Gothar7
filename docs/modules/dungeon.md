@@ -414,6 +414,11 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `socket_lantern` (`arm_warden`, beim Spawn von selbst), nach dem Erwachen erst drohen (`zs_mm_threaten`), im Kampf
   alle `flash.every` (10 s) wieder; unter `lantern_drop` (die Hälfte) seines Lebens fällt die Laterne zu Boden
   (Rasend-Phase, danach nur der Spaten). Noch nicht: grünes Licht der Laterne, Klänge `beinhauswart_*`.
+- **Leuchten** (2026-11-26): `Creatures.<art>.glow = { socket, colour, radius, intensity, holding }` setzt ein
+  Punktlicht an einen Socket der Figur (`Engine::creatureLights()`, kommt zu den Effektlichtern des Bildes; Lage aus
+  der Pose des Simulationsschritts). Tot oder verschwunden erlischt es; mit `holding = true` nur, solange die Figur
+  etwas hält (`npc_hold`). Kristallkrebs blassblau (`socket_glow`), Kellermutter orange (Schwachstelle,
+  `socket_glow`), Beinhauswart grün (Laterne, `socket_lantern`, fällt mit ihr weg).
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am
