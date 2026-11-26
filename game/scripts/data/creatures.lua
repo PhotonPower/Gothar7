@@ -70,6 +70,8 @@ Creatures = {
         grab = { chance = 0.33, seconds = 2.5, reach = 2.2 },
         reflect = { share = 0.5 }, -- die Hälfte eines Zaubers des Helden geht an ihn zurück (Event reflect)
         splinter = { item = "it_kristall", max = 3 }, -- stumpfe Treffer schlagen Kristalle ab (Beute)
+        -- Die Kristalle leuchten im Dunkeln blassblau und verraten ihn (socket_glow); tot erlöschen sie.
+        glow = { socket = "socket_glow", colour = { 0.45, 0.75, 1.0 }, radius = 5, intensity = 1.2 },
     },
     kellermutter = { -- Boss: Stammmutter der Kriecher über dem Hort, drei Phasen (ai/kellermutter.lua)
         territory = 15,
@@ -85,6 +87,8 @@ Creatures = {
         -- Offene Schwachstelle (Brutsack hinten): Treffer von hinten (bis 60° neben der Gegenrichtung) zählen
         -- doppelt; ab stagger_share des Lebens taumelt sie (t_stagger).
         weak = { degrees = 60, factor = 2.0, stagger_share = 0.05 },
+        -- Die Schwachstelle am Brutsack glüht orange (socket_glow).
+        glow = { socket = "socket_glow", colour = { 1.0, 0.55, 0.2 }, radius = 6, intensity = 1.5 },
         -- Zwei von fünf Hieben fegen mit einer Sense von der Seite heran (t_scythe_l/r) und treffen bis 100° neben
         -- ihrer Blickrichtung (die anderen nur vorn).
         side_swing = { chance = 0.4, hit_degrees = 100 },
@@ -103,6 +107,8 @@ Creatures = {
         flash = { distance = 7, degrees = 60, seconds = 1.5, colour = { 0.75, 1.0, 0.8 }, every = 10 },
         lantern = "it_lantern_beinhaus",
         lantern_drop = 0.5,
+        -- Die Laterne wirft grünes Licht, solange er sie trägt (socket_lantern).
+        glow = { socket = "socket_lantern", colour = { 0.5, 1.0, 0.6 }, radius = 6, intensity = 1.3, holding = true },
     },
     brunnenmolch = { -- lauert halb untergetaucht im seichten Wasser, schwimmt nicht; blind, hört (Npc senses)
         territory = 6, -- bleibt beim Wasser

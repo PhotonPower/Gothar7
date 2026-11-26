@@ -2454,6 +2454,8 @@ void Engine::drawScene(u32 width, u32 height)
     {
         std::vector<render::PointLight> effectLights;
         m_particles.lights(effectLights);
+        const std::vector<render::PointLight> carried = creatureLights(); // monsters' crystals, lanterns
+        effectLights.insert(effectLights.end(), carried.begin(), carried.end());
         render::selectFrameLights(effectLights, m_lights, daylightLights(), m_camera.transform.position,
                                   m_camera.frustum(), m_lightBudget, m_frameLights);
     }

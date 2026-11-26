@@ -654,6 +654,48 @@ TEST_CASE(
     CHECK(engine.scripts()->callErrors() == 0);
 }
 
+TEST_CASE("Engine dungeon monsters: the Kristallkrebs's crystals glow blue at socket_glow and move with it")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::size_t before = engine.creatureLights().size();
+    const std::string crab(run(engine, "insert_npc('mon_kristallkrebs', 'WP_MONSTER_OST')").asString());
+    frames(engine, 5);
+    const auto lights = engine.creatureLights();
+    REQUIRE(lights.size() == before + 1);
+    const render::PointLight& glow = lights.back();
+    CHECK(glow.color.z > glow.color.x); // pale blue
+    const f32 x = static_cast<f32>(run(engine, std::format("npc_state('{}').x", crab)).asNumber());
+    const f32 y = static_cast<f32>(run(engine, std::format("npc_state('{}').y", crab)).asNumber());
+    const f32 z = static_cast<f32>(run(engine, std::format("npc_state('{}').z", crab)).asNumber());
+    CHECK(glm::distance(glow.position, Vec3(x, y, z)) < 1.5f); // on its back
+    CHECK(glow.position.y > y + 0.3f);
+    run(engine,
+        std::format("npc_teleport('{}', {}, {}, {})", crab, x + 6.0f, y, z)); // it moves, the light too
+    frames(engine, 3);
+    CHECK(engine.creatureLights().back().position.x > glow.position.x + 5.0f);
+}
+
+TEST_CASE("Engine dungeon monsters: the Beinhauswart's lantern lights green while carried, not once dropped")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::size_t before = engine.creatureLights().size();
+    const std::string warden(run(engine, "insert_npc('mon_beinhauswart', 'WP_MONSTER_OST')").asString());
+    frames(engine, 3);
+    CHECK(engine.creatureLights().size() == before); // nothing in its hand yet
+    run(engine, std::format("arm_warden('{}')", warden));
+    frames(engine, 3);
+    REQUIRE(engine.creatureLights().size() == before + 1);
+    CHECK(engine.creatureLights().back().color.y > engine.creatureLights().back().color.x); // green
+    run(engine, std::format("npc_set_stat('{}', 'hp', 40)", warden)); // under half: the lantern falls
+    run(engine, std::format("emit('npc_hit', 'hero', '{}', 10, false)", warden));
+    frames(engine, 3);
+    CHECK(engine.creatureLights().size() == before);
+}
+
 TEST_CASE("Engine dungeon monsters: the Kellermutter sweeps her scythes in from the side (t_scythe_l/r)")
 {
     Engine engine(monstersConfig());

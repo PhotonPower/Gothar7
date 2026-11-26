@@ -182,6 +182,7 @@ void Engine::loadAnimalBodies()
     m_sidewaysSpecies.clear();
     m_flashRules.clear();
     m_snapAbove.clear();
+    m_glowRules.clear();
     m_curlRules.clear();
     m_grabRules.clear();
     m_reflectShares.clear();
@@ -208,6 +209,37 @@ void Engine::loadAnimalBodies()
             moveAxis != nullptr && moveAxis->asString() == "x")
         {
             m_sidewaysSpecies.insert(species);
+        }
+        if (const script::Value* glow = field(def.asTable(), "glow");
+            glow != nullptr && glow->asTable() != nullptr)
+        {
+            // glow = { socket, colour = { r, g, b }, radius, intensity, holding }: a light it carries.
+            GlowRule rule;
+            const script::Table& t = *glow->asTable();
+            if (const script::Value* v = field(&t, "socket"); v != nullptr && v->isString())
+            {
+                rule.socket = std::string(v->asString());
+            }
+            if (const script::Value* v = field(&t, "colour");
+                v != nullptr && v->asTable() != nullptr && v->asTable()->array.size() == 3)
+            {
+                const auto& a = v->asTable()->array;
+                rule.colour = Vec3(static_cast<f32>(a[0].asNumber()), static_cast<f32>(a[1].asNumber()),
+                                   static_cast<f32>(a[2].asNumber()));
+            }
+            if (const script::Value* v = field(&t, "radius"); v != nullptr && v->isNumber())
+            {
+                rule.radius = static_cast<f32>(v->asNumber());
+            }
+            if (const script::Value* v = field(&t, "intensity"); v != nullptr && v->isNumber())
+            {
+                rule.intensity = static_cast<f32>(v->asNumber());
+            }
+            if (const script::Value* v = field(&t, "holding"); v != nullptr)
+            {
+                rule.holding = v->asBool();
+            }
+            m_glowRules.insert_or_assign(species, std::move(rule));
         }
         const auto number = [&](const script::Value* table, std::string_view key, f32& out)
         {
