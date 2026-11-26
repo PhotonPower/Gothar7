@@ -9,7 +9,9 @@ Relays (``relays`` in the JSON) pass events on as the engine does (dungeon.md "S
 forwards the "on" side as its action and the "off" side as the counterpart; ``all`` fires when all
 its inputs (the senders naming it) are on and the counterpart when one goes off again; ``count``
 fires every ``count`` "on" events; ``invert`` and ``once`` as in the engine. Their inputs, counters
-and spent flags are part of the search state.
+and spent flags are part of the search state, and so is whether a teleporter is on (``active``;
+``on``/``open`` switch it on, ``off``/``close`` off, ``toggle`` over): an inactive pad is floor.
+A plate's release sends its ``release_action`` if it has one; a switch with ``once`` works once.
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ MAX_DEPTH = 16  # relays naming relays: a cycle stops here (the engine warns abo
 
 State = frozenset[str]
 Node = tuple[State, tuple[int, int]]
-Action = tuple[list[str], str, str]  # targets, action, sender
+Action = tuple[list[str], str, str, str | None, bool]  # targets, action, sender, release, once
 
 
 @dataclass(frozen=True)
@@ -44,8 +46,13 @@ def _movers(level: Level) -> dict[str, tuple[int, int]]:
     return {level.name(at): at for at in level.cells(set("GH"))}
 
 
+def _teleporters(level: Level) -> dict[str, tuple[int, int]]:
+    return {level.name(at): at for at in level.cells("T")}
+
+
 def _initial(level: Level) -> State:
-    out = set()
+    out = {name for name, at in _teleporters(level).items()
+           if level.entries[at]["teleport"].get("active", True)}  # fmt: skip
     for name, at in _movers(level).items():
         spec = level.entries[at][level.kind(at)]  # type: ignore[index]
         if spec.get("open"):
@@ -78,7 +85,7 @@ class _Net:
 
     def __init__(self, level: Level, movers: set[str]) -> None:
         self.level = level
-        self.movers = movers
+        self.movers = movers | set(_teleporters(level))  # both are on/off
         self.inputs = _inputs(level)
 
     def send(self, state: State, targets: list[str], action: str, source: str) -> State:
@@ -152,47 +159,57 @@ def _actions(level: Level) -> dict[tuple[int, int], list[Action]]:
         else:
             stand = at
         out.setdefault(stand, []).append(
-            (list(spec["targets"]), spec.get("action", "trigger"), level.name(at))
-        )
+            (list(spec["targets"]), spec.get("action", "trigger"), level.name(at),
+             spec.get("release_action"), bool(spec.get("once")))
+        )  # fmt: skip
     return out
 
 
-def _set(net: _Net, state: State, targets: list[str], action: str, sender: str
-         ) -> Iterator[State]:  # fmt: skip
+def _set(net: _Net, state: State, targets: list[str], action: str, sender: str,
+         release: str | None) -> Iterator[State]:  # fmt: skip
     yield net.send(state, targets, action, sender)
-    if action in COUNTER:  # a plate or lever also goes back (the counterpart)
+    if release:  # a plate's own release
+        yield net.send(state, targets, release, sender)
+    elif action in COUNTER:  # a plate or lever also goes back (the counterpart)
         yield net.send(state, targets, _counter(action), sender)
 
 
-def _passable(level: Level, at: tuple[int, int], state: State) -> bool:
-    if not level.is_floor(*at):
+def _passable(level: Level, at: tuple[int, int], state: State, water: bool = True) -> bool:
+    if not level.is_floor(*at) or (not water and level.char(*at) == "~"):
         return False
     if level.char(*at) in "GH":
         return level.name(at) in state
     return True
 
 
-def _steps(level: Level, node: Node, acts: dict[tuple[int, int], list[Action]], net: _Net
-           ) -> Iterator[Node]:  # fmt: skip
+def _steps(level: Level, node: Node, acts: dict[tuple[int, int], list[Action]], net: _Net,
+           water: bool = True) -> Iterator[Node]:  # fmt: skip
     state, at = node
     if level.char(*at) == "P":
         return  # fell through the trapdoor
-    if level.char(*at) == "T":
+    if level.char(*at) == "T" and level.name(at) in state:
         spec = level.entries[at]["teleport"]
         if "to" in spec:
             yield state, _cell(spec["to"], "teleport")
             return
     for dx, dy in DIRS.values():
         nxt = (at[0] + dx, at[1] + dy)
-        if _passable(level, nxt, state):
+        if _passable(level, nxt, state, water):
             yield state, nxt
-    for targets, action, sender in acts.get(at, []):
-        for s in _set(net, state, targets, action, sender):
+    for targets, action, sender, release, once in acts.get(at, []):
+        used = f"USED:{sender}"
+        if once and used in state:
+            continue
+        for s in _set(net, state, targets, action, sender, release):
+            if once:
+                s = s | {used}
             if s != state:
                 yield s, at
 
 
-def check_reach(level: Level) -> Reach:
+def check_reach(level: Level, water: bool = True) -> Reach:
+    """``water=False``: the basins count as walls (no wading and climbing out); then the
+    riddles must still open every dry cell."""
     movers = _movers(level)
     acts = _actions(level)
     net = _Net(level, set(movers))
@@ -202,7 +219,7 @@ def check_reach(level: Level) -> Reach:
     queue = deque([start])
     while queue:
         node = queue.popleft()
-        edges[node] = list(_steps(level, node, acts, net))
+        edges[node] = list(_steps(level, node, acts, net, water))
         for nxt in edges[node]:
             if nxt not in seen:
                 seen.add(nxt)
@@ -220,7 +237,7 @@ def check_reach(level: Level) -> Reach:
                 ok.add(prev)
                 queue.append(prev)
     cells = {at for _, at in seen}
-    floor = level.cells(FLOOR_CHARS)
+    floor = level.cells(FLOOR_CHARS if water else FLOOR_CHARS - {"~"})
     stuck = sorted({at for n in seen - ok for at in [n[1]] if level.char(*at) != "P"})
     states = {frozenset(f for f in s if f in movers) for s, _ in seen}
     return Reach(cells, sorted(set(floor) - cells), stuck, len(states))

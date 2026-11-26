@@ -7,7 +7,10 @@ south (row 0 = north edge). ``ebene_NN.json``: what a character does not say, pe
 Top level of the JSON besides ``cells``: ``starts`` (extra arrivals), ``relays`` (invisible relays
 ``RELAY_E01_<name>`` with ``mode`` any/all/count, ``targets``, ``action``, ``once``, ``invert``,
 ``delay``; switches and plates may name them) and ``items`` (item vobs ``ITEM_E01_<x>_<y>_<k>`` on a
-floor cell: ``at``, ``instance``, ``count``; the finds of the hidden depots).
+floor cell: ``at``, ``instance``, ``count``; the finds of the hidden depots), ``spawns`` (monster
+places ``SPAWN_E01_<x>_<y>`` like ``m``, but on any floor cell, also in the water ``~``: the
+Brunnenmolch lurks there) and ``water`` (``depthM`` of a basin's floor below the others,
+``edgeM`` of the water's surface below the edge; plan W8 D3).
 
 Characters (contract of the plan): ``#`` wall, ``.`` floor, ``D`` door, ``G`` gate, ``P`` trapdoor,
 ``T`` teleporter, ``S`` wall switch (lever or button), ``O`` pressure plate, ``N`` niche, ``H``
@@ -60,6 +63,17 @@ class Level:
     starts: list[dict[str, Any]] = field(default_factory=list)  # extra arrivals (``starts``)
     relays: dict[str, dict[str, Any]] = field(default_factory=dict)  # vob name -> spec
     items: list[dict[str, Any]] = field(default_factory=list)  # item vobs (``items``)
+    spawns: dict[tuple[int, int], dict[str, Any]] = field(default_factory=dict)  # ``spawns``
+
+    @property
+    def water_depth(self) -> float:
+        return float(self.raw.get("water", {}).get("depthM", 1.0))
+
+    @property
+    def water_edge(self) -> float:
+        """How far the water's surface lies below the floor around the basin."""
+        return float(self.raw.get("water", {}).get("edgeM", 0.2))
+
     raw: dict[str, Any] = field(default_factory=dict)  # the JSON (environment, torches …)
 
     @property
@@ -141,7 +155,10 @@ class Level:
 
     def targets(self) -> set[str]:
         """Every name a switch, plate or relay may send to: the map's vobs and the relays."""
-        return set(self.names()) | set(self.relays)
+        return set(self.names()) | set(self.relays) | {self.spawn_name(at) for at in self.spawns}
+
+    def spawn_name(self, at: tuple[int, int]) -> str:
+        return f"{PREFIX['monster']}_{self.tag}_{at[0]}_{at[1]}"
 
 
 def _cell(raw: Any, what: str) -> tuple[int, int]:  # noqa: ANN401
@@ -189,6 +206,16 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
         if not 1 <= int(it.get("count", 1)) <= 1_000_000:
             raise LevelError(f"items[{i}]: count 1..1000000")
         level.items.append({**it, "at": at})
+    for i, sp in enumerate(doc.get("spawns", [])):
+        at = _cell(sp.get("at"), f"spawns[{i}]")
+        if not level.is_floor(*at) or level.char(*at) not in ".~" or at in level.spawns:
+            raise LevelError(f"spawns[{i}]: needs a free floor or water cell, once")
+        if not (sp.get("npc") and 1 <= int(sp.get("count", 1)) <= 32):
+            raise LevelError(f"spawns[{i}]: needs npc and count 1..32")
+        level.spawns[at] = sp
+    w = doc.get("water", {})
+    if w and not 0.0 < float(w.get("edgeM", 0.2)) < float(w.get("depthM", 1.0)):
+        raise LevelError("water: needs 0 < edgeM < depthM")
     for i, e in enumerate(doc.get("cells", [])):
         at = _cell(e.get("at"), f"cells[{i}]")
         c = level.char(*at)
