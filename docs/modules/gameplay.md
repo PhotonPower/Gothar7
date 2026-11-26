@@ -530,7 +530,7 @@ gegen den Kräuterhexer und einen Wegelagerer:
 10 Mana; Rune `it_rune_light`, Spruchrolle `it_scroll_light` – der alte Mann im Lager verkauft eine Rune und zwei
 Rollen, eine Rolle liegt in der Nische von Ebene 1):
 - Eine Plasmakugel (~12 cm, blassblau-weiß, wandernde Bänder; Partikel-Sprite `plasma` in `fx/light_orb.toml`, Funken
-  `fx/light_sparks.toml`) schwebt 15 cm über der linken Hand, die dabei die Haltung der Fackel einnimmt, und wackelt sanft.
+  `fx/light_sparks.toml`, ein schwacher Schein dreimal so groß in `fx/light_halo.toml`) schwebt 15 cm über der linken Hand, die dabei die Haltung der Fackel einnimmt, und wackelt sanft.
 - Ist die linke Hand belegt (Zweihänder, Bogen, Armbrust, Rune/Rolle, Fackel, Klettern, Schwimmen, Mob, Tiergestalt),
   schwebt sie über der linken Schulter und kehrt danach zurück.
 - Punktlicht 8 m, warm-neutrales Weiß mit leichtem Kaltstich, sanftes Flackern; gepinnt (fällt nie weg, `render.md`),

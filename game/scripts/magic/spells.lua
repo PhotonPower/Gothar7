@@ -100,6 +100,6 @@ Spell "spl_light" {
         warn_flicker = 0.5,          -- ... flackert sie so stark
         fade = 1.0,                  -- s Verlöschen
     },
-    fx = { orb = "light_orb", sparks = "light_sparks" },
+    fx = { orb = "light_orb", halo = "light_halo", sparks = "light_sparks" },
     sounds = { cast = "light_pop", loop = "light_hum", fade = "light_pop" },
 }

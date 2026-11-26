@@ -1585,14 +1585,14 @@ private:
     {
         std::string spell; ///< the Spell instance
         gameplay::LightSpellLook look;
-        std::string orbFx, sparksFx, humSound, fadeSound;
+        std::string orbFx, haloFx, sparksFx, humSound, fadeSound;
         f32 seconds = 0.0f;   ///< left (simulation time); the fade follows
         f32 fade = 0.0f;      ///< > 0: fading out, seconds left of it
         f32 time = 0.0f;      ///< since it was cast (wobble, flicker)
         f32 shoulder = 0.0f;  ///< 0 over the hand .. 1 over the shoulder (eased)
         Vec3 position{0.0f};  ///< where it hovers
         bool holding = false; ///< the hold pose of the left arm is on (this light put it on)
-        std::optional<u32> orb, sparks;
+        std::optional<u32> orb, halo, sparks;
         std::optional<audio::SoundId> hum;
     };
     std::optional<LightOrb> m_lightOrb;

@@ -120,6 +120,7 @@ void Engine::startLight(const gameplay::SpellInfo& spell, f32 seconds)
     o.spell = spell.instance;
     o.look = spell.light;
     o.orbFx = fieldOf(spell.fx, "orb");
+    o.haloFx = fieldOf(spell.fx, "halo");
     o.sparksFx = fieldOf(spell.fx, "sparks");
     o.humSound = fieldOf(spell.sounds, "loop");
     o.fadeSound = fieldOf(spell.sounds, "fade");
@@ -140,7 +141,7 @@ void Engine::stopLight()
     {
         return;
     }
-    for (const auto& fx : {m_lightOrb->orb, m_lightOrb->sparks})
+    for (const auto& fx : {m_lightOrb->orb, m_lightOrb->halo, m_lightOrb->sparks})
     {
         if (fx)
         {
@@ -189,7 +190,7 @@ void Engine::fixedUpdateLight(f32 seconds)
         {
             // Its time is up: no more hum or sparks, the orb's last particles die, the light fades, a "pop".
             o.fade = std::max(o.look.fade, 1e-3f);
-            for (auto* fx : {&o.orb, &o.sparks})
+            for (auto* fx : {&o.orb, &o.halo, &o.sparks})
             {
                 if (*fx)
                 {
@@ -273,6 +274,7 @@ void Engine::fixedUpdateLight(f32 seconds)
         }
     };
     follow(o.orb, o.orbFx);
+    follow(o.halo, o.haloFx);
     follow(o.sparks, o.sparksFx);
     if (m_audio && !o.humSound.empty())
     {

@@ -22,11 +22,12 @@ float plasma(vec2 uv, float time)
     const float z = sqrt(1.0 - r * r);
     const float a = time * 0.7;
     const vec3 n = vec3(p.x * cos(a) + z * sin(a), p.y, -p.x * sin(a) + z * cos(a)); // turning slowly
-    const float bands = 0.5 + 0.5 * sin(11.0 * n.y + 2.5 * sin(4.0 * n.x + time * 1.3) + time * 1.9);
-    const float wisps = 0.5 + 0.5 * sin(7.0 * n.x - 5.0 * n.z + time * 2.6);
-    const float limb = pow(1.0 - z, 2.0);
-    const float core = pow(z, 4.0);
-    return (0.35 * core + 0.9 * limb + 0.5 * bands * wisps * z) * smoothstep(1.0, 0.9, r);
+    // Sharp bright bands over a dim body: it must read as plasma, not as a flat disc.
+    const float bands = pow(0.5 + 0.5 * sin(11.0 * n.y + 2.5 * sin(4.0 * n.x + time * 1.3) + time * 1.9), 4.0);
+    const float wisps = pow(0.5 + 0.5 * sin(7.0 * n.x - 5.0 * n.z + time * 2.6), 2.0);
+    const float limb = pow(1.0 - z, 3.0);
+    const float core = pow(z, 6.0);
+    return (0.12 + 0.25 * core + 0.8 * limb + 1.6 * bands * (0.4 + 0.6 * wisps) * z) * smoothstep(1.0, 0.9, r);
 }
 
 void main()

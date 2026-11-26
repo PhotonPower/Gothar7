@@ -1,0 +1,14 @@
+# Lichtzauber (spl_light): ein weicher, schwacher Schein um die Plasmakugel, etwa dreimal so groß wie sie; geht mit der
+# Hand mit (follow). Liest sich mit dem Bloom als glühendes Plasma statt als flache Scheibe.
+version = 1
+sprite = "soft"
+blend = "additive"
+follow = true
+rate = 10
+lifetime = [0.5, 0.6]
+speed = [0.0, 0.0]
+spread = 0
+radius = 0.003
+size = [0.36, 0.38]
+color_start = [0.55, 0.75, 1.0, 0.09]
+color_end = [0.5, 0.7, 1.0, 0.0]
