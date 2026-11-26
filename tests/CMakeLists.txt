@@ -35,7 +35,9 @@ set(_g7_runtime_groups
     "chapter|*test_engine_chapter_save.cpp"
     "ui|*test_engine_ui.cpp,*test_engine_save_slots.cpp,*test_engine_credits.cpp"
     "slice|*test_engine_vertical_slice.cpp"
-    "jobs|*test_engine_jobs.cpp")
+    "jobs|*test_engine_jobs.cpp"
+    "dungeon_monsters|*test_engine_dungeon_monsters.cpp"
+    "dungeon|*test_engine_dungeon_mobs.cpp,*test_engine_switches.cpp,*test_engine_teleport.cpp,*test_engine_movers.cpp,*test_engine_events.cpp,*test_engine_spawn.cpp")
 set(_g7_runtime_tests runtime)
 set(_g7_runtime_grouped "")
 foreach(_group IN LISTS _g7_runtime_groups)
