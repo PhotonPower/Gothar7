@@ -19,7 +19,8 @@ the room (``at`` [s, t], ``dir`` its front, or ``along`` its long axis). The kin
 ``daylight`` (room -> 0..1) sets the indoor zone's daylight where engine's guess from the window
 lights does not fit (world.md "Zonen": a room without a window light counts as windowless).
 
-Every room gets daylight at one window (the court's first), the hearth its fire, the tower a lantern
+Every room with windows gets daylight at its windows (about every ``windowLightEveryM``,
+alternating court and garden side), the hearth its fire, the tower a lantern
 at each landing. Waypoints: a lane along the doorways of every storey (``doorT``), a point in each
 room's middle on it (``WP_<TAG>_<ROOM>``, the routine place), the doorways, the ways to the portal
 and the tower, the spiral (a point every 30 degrees); places for freepoints and mobs farther than
@@ -377,7 +378,7 @@ class _Castle:
                 spots.append((f"fp:{e['fp']}", (th.centre[0] + th.front[0] * reach,
                                                 th.centre[1] + th.front[1] * reach),
                               (-th.front[0], -th.front[1])))  # fmt: skip
-        lights += self.window_light(key, room, rm, a, b)
+        lights += self.window_light(key, room, rm, a, b, cap - lights)
         self.check(key, room, a, b, things, spots, lights, cap)
         fps: dict[str, int] = {}
         for what, (s, t), d in spots:
@@ -473,18 +474,29 @@ class _Castle:
         start = self.world_of(cask, (0.0, 0.0, hl + 1.3), floor_y)
         self.vob("start", str(spec["arrive"]), start, (-cask.front[0], -cask.front[1]), room)
 
-    def window_light(self, key: str, room: str, rm: str, a: float, b: float) -> int:
-        """Daylight at the room's first window, the court's first."""
-        wins = sorted((w for w in self.windows(key) if a < w[1] < b), key=lambda w: (-w[0], w[1]))
-        if not wins:
+    def window_light(self, key: str, room: str, rm: str, a: float, b: float, free: int) -> int:
+        """Daylight in at the windows: one about every ``windowLightEveryM`` along the room,
+        alternating court and garden side (the court's first), at the window nearest each place;
+        at most ``free`` (the room's light budget left: engine lights a model with 8 at most)."""
+        wins = [w for w in self.windows(key) if a < w[1] < b]
+        if not wins or free <= 0:
             return 0
-        side, u, sill, top = wins[0]
-        t = side * (self.t_in - WINDOW_LIGHT_IN_M)
-        x, z = self.xz(u, t)
-        y = self.storeys[key][0] + (sill + top) / 2
-        self.vob("light", f"LIGHT_{rm}_FENSTER_1", [x, y, z], (0.0, -float(side)),
-                 components={"light": dict(LIGHT["window"])})  # fmt: skip
-        return 1
+        every = float(self.data.get("windowLightEveryM", b - a))
+        n = min(max(1, round((b - a) / every)), free, len(wins))
+        chosen: list[tuple[int, float, float, float]] = []
+        for k in range(n):
+            target = a + (b - a) * (k + 0.5) / n
+            side = 1 if k % 2 == 0 else -1
+            left = [w for w in wins if w not in chosen]
+            same = [w for w in left if w[0] == side] or left
+            chosen.append(min(same, key=lambda w: (abs(w[1] - target), -w[0])))
+        for k, (side, u, sill, top) in enumerate(sorted(chosen, key=lambda w: (w[1], -w[0]))):
+            t = side * (self.t_in - WINDOW_LIGHT_IN_M)
+            x, z = self.xz(u, t)
+            y = self.storeys[key][0] + (sill + top) / 2
+            self.vob("light", f"LIGHT_{rm}_FENSTER_{k + 1}", [x, y, z], (0.0, -float(side)),
+                     components={"light": dict(LIGHT["window"])})  # fmt: skip
+        return n
 
     # --- check ------------------------------------------------------------------------------
     def check(self, key: str, room: str, a: float, b: float, things: list[_Thing],

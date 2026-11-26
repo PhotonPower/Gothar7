@@ -109,7 +109,15 @@ def test_lights_per_room_and_zones():
     for v in lights:
         room = v["name"].split("_")[3]
         per_room[room] = per_room.get(room, 0) + 1
-    assert max(per_room.values()) <= 6 and per_room["TURM"] == 3
+    assert max(per_room.values()) <= 8 and per_room["TURM"] == 3  # engine: 8 lights a model
+    # daylight at the windows about every windowLightEveryM, within the room's budget
+    windows = {}
+    for v in lights:
+        if "_FENSTER_" in v["name"]:
+            room = v["name"].split("_")[3]
+            windows[room] = windows.get(room, 0) + 1
+    assert windows["KUECHE"] == 3 and windows["FESTSAAL"] == 3 and windows["SPEISEKAMMER"] == 1
+    assert "GEWOELBE" not in windows  # the cellar stays dark
     values = {z["value"] for z in p.zones}
     assert "LEO_SCHLOSS_TURM_INNEN" in values and "LEO_SCHLOSS_WEINKELLER_INNEN" in values
     assert all(z["type"] == "indoor" for z in p.zones)
@@ -118,6 +126,7 @@ def test_lights_per_room_and_zones():
     assert daylight["LEO_SCHLOSS_SCHREIBSTUBE_INNEN"] == 0.35
     assert daylight["LEO_SCHLOSS_WACHSTUBE_INNEN"] == 0.15
     assert daylight["LEO_SCHLOSS_HALLE_INNEN"] is None
+    assert daylight["LEO_SCHLOSS_FESTSAAL_INNEN"] == 0.5  # upper floor: windows on one side only
 
 
 def test_castle_models_are_textured_like_the_houses():
@@ -148,3 +157,20 @@ def test_castle_props_are_built_within_budget():
         model = PROPS[name]()
         assert model.triangles() <= 1500
         assert (REPO / "assets" / "source" / "props" / f"{name}.glb").read_bytes() == model.glb()
+
+
+def test_ground_and_upper_rooms_have_beam_ceilings_the_cellar_a_rubble_floor():
+    m = geo.build(BUILT)
+    beams = BUILT["interior"]["beams"]
+    for room, faces in m.rooms.items():
+        storey = room.split("_")[0]
+        if storey in beams["storeys"]:
+            wood = faces.get(beams["material"], [])
+            under = [f for f in wood if all(abs(p[1] - f[0][1]) < 1e-6 for p in f)]
+            assert len(under) >= 3, room  # the beams' bottoms
+            assert "plaster_white" in faces  # the fields between them
+    assert BUILT["textures"]["cellar"]["kinds"]["stone_slab"] == "stone"
+    gl, _ = read_glb((DIR / "schloss_keller_gewoelbe.glb").read_bytes())
+    floor = next(m for m in gl["materials"] if m["name"] == "stone_slab_cellar")
+    uri = gl["images"][floor["pbrMetallicRoughness"]["baseColorTexture"]["index"]]["uri"]
+    assert uri.endswith("/stone_albedo.png")

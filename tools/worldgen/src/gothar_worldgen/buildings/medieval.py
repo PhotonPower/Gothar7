@@ -39,7 +39,7 @@ from gothar_worldgen.buildings.collision import (
     convex_pieces,
     prism_body,
 )
-from gothar_worldgen.buildings.gltf import CollisionPart, MeshData, Primitive
+from gothar_worldgen.buildings.gltf import CollisionPart, MeshData, Primitive, glass_extras
 from gothar_worldgen.buildings.massing import (
     Mass,
     _add_mass,
@@ -50,7 +50,7 @@ from gothar_worldgen.buildings.massing import (
 )
 
 # *_low: the dirty foot band of a textured house (W5)
-ROLES = ("wall_ground", "infill", "timber", "roof", "roof_north", "frame", "chimney",
+ROLES = ("wall_ground", "infill", "timber", "roof", "roof_north", "frame", "glass", "chimney",
          "wall_ground_low", "infill_low", "wall_ground_streak", "infill_streak",
          "room_wall", "room_floor", "room_ceiling", "room_beam")  # fmt: skip
 ROOM_ROLES = ("room_wall", "room_floor", "room_ceiling", "room_beam")  # outside the house budget
@@ -102,6 +102,13 @@ class Rules:
         key = name if name and name in t["patterns"] else t["pattern"]
         return [tuple(map(float, s)) for s in t["patterns"][key]["segments"]]  # type: ignore[misc]
 
+    def glass(self, style: str) -> dict[str, Any]:
+        """glTF extras of the window panes of a house style (M17 contract "Fensterglas":
+        ``glass``, ``glass_pattern``, ``glass_tint``), from ``building_rules.json`` ``glass``."""
+        g = self.data["glass"]
+        pattern = g["styles"].get(style, g["pattern"])
+        return glass_extras(pattern, g["tints"][pattern])
+
     def is_brustung(self, name: str | None) -> bool:
         p = self.data["timber"]["patterns"].get(name or "")
         return bool(isinstance(p, dict) and p.get("brustung"))
@@ -110,7 +117,7 @@ class Rules:
 def load_rules(path: Path) -> Rules:
     data = json.loads(path.read_text(encoding="utf-8"))
     palette = {k for k in data.get("palette", {}) if k != "note"}
-    for name in ("stone", "frame", "roof_old", "roof_old_moss", "timber_dark"):
+    for name in ("stone", "frame", "window_glass", "roof_old", "roof_old_moss", "timber_dark"):
         if name not in palette:
             raise ValueError(f"{path.name}: palette entry '{name}' missing")
     for style, prof in data.get("styles", {}).items():
@@ -459,6 +466,11 @@ def _wall(
 LOD_PANEL_M = 0.01  # lod 1: openings as flat panels this far in front of the wall
 
 
+def _pane(ctx: _Context, op: Opening) -> _Builder:
+    """Builder of an opening's closed panel: a window's pane is glass (M17), a door's is wood."""
+    return ctx.builders["glass" if op.kind == "window" else "frame"]
+
+
 def _flat_opening(frame_b: _Builder, f: Frame, op: Opening) -> None:
     """lod 1: a window or door as one dark panel just in front of the closed wall."""
     u0, u1, v0, v1 = op.u, op.u + op.w, op.v, op.v + op.h
@@ -468,15 +480,16 @@ def _flat_opening(frame_b: _Builder, f: Frame, op: Opening) -> None:
 
 
 def _reveal(frame_b: _Builder, f: Frame, op: Opening, depth: float, panel: bool = True,
-            start: float = 0.0) -> None:  # fmt: skip
+            start: float = 0.0, pane: _Builder | None = None) -> None:  # fmt: skip
     """Recessed panel (window/door) with the four reveal faces; ``panel=False``: open through;
-    ``start``: the faces begin this deep in the wall (a niche continued)."""
+    ``start``: the faces begin this deep in the wall (a niche continued); ``pane``: the panel's
+    builder (a window's glass), else ``frame_b``."""
     u0, u1, v0, v1 = op.u, op.u + op.w, op.v, op.v + op.h
     n = f.n3()
     if panel:
         quad = [f.point(u0, v0, -depth), f.point(u1, v0, -depth), f.point(u1, v1, -depth),
                 f.point(u0, v1, -depth)]  # fmt: skip
-        frame_b.polygon(quad, [(u0, v0), (u1, v0), (u1, v1), (u0, v1)], n)
+        (pane or frame_b).polygon(quad, [(u0, v0), (u1, v0), (u1, v1), (u0, v1)], n)
     ax = (float(f.axis[0]), 0.0, float(f.axis[1]))
     sides = [
         ((u0, v1), (u1, v1), (0.0, -1.0, 0.0)),  # lintel faces down
@@ -1611,9 +1624,10 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
             else:
                 ctx.upper_windows.append((f, op, depth))
         elif ctx.lod:
-            _flat_opening(ctx.builders["frame"], f, op)
+            _flat_opening(_pane(ctx, op), f, op)
         else:
-            _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
+            _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")),
+                    pane=_pane(ctx, op))  # fmt: skip
     role = "wall_ground" if massive else "timber"  # lintel in the house's style
     for u0, u1, v in lintels:
         mid = v + LINTEL_M / 2
@@ -1890,7 +1904,8 @@ def _wall_side(ctx: _Context, f: Frame, s: int, outline: Sequence[tuple[float, f
     _wall(ctx.builders["wall_ground"], f, Polygon(outline), plan)
     for op in plan:
         if op.kind != "passage":
-            _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
+            _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")),
+                    pane=_pane(ctx, op))  # fmt: skip
     depth = float(rules.get("timber", "depthM"))
     for u0, u1, v in lintels:
         mid_v = v + LINTEL_M / 2
@@ -2310,7 +2325,7 @@ def _materials(st: HouseStyle) -> dict[str, str]:
     """Role -> palette entry for one house."""
     north = "roof_old_moss" if st.roof == "roof_old" else st.roof
     return {"wall_ground": st.wall, "infill": st.infill, "timber": st.timber_color,
-            "roof": st.roof, "roof_north": north, "frame": "frame",
+            "roof": st.roof, "roof_north": north, "frame": "frame", "glass": "window_glass",
             "chimney": st.chimney, "wall_ground_low": st.wall,
             "infill_low": st.infill, "wall_ground_streak": st.wall,
             "infill_streak": st.infill, "room_wall": "plaster_white",
@@ -2414,7 +2429,9 @@ def build_house(
             return materials[role]
 
         split = bool(ctx.room_parts) and not lod  # W7: each room its own mesh (its own lights)
-        prims = [Primitive(name(r), rules.color(materials[r]), builders[r].mesh())
+        glass = rules.glass(style.style)  # M17: the panes' extras (pattern, tint)
+        prims = [Primitive(name(r), rules.color(materials[r]), builders[r].mesh(),
+                           extras=glass if r == "glass" else None)
                  for r in ROLES if builders[r].idx and not (split and r in ROOM_ROLES)]  # fmt: skip
         room_prims: dict[str, list[Primitive]] = {}
         room_cols: dict[str, list[CollisionPart]] = {}
@@ -2929,7 +2946,8 @@ def _dormer(ctx: _Context, roof: _Roof, dm: Dormer) -> None:
     op = Opening("gate" if dm.hatch else "window", (dm.w - ow) / 2, float(o["sill"]), ow,
                  float(o["h"]))  # fmt: skip
     _wall(wall, f, outline, [op])
-    _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
+    _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")),
+            pane=_pane(ctx, op))  # fmt: skip
 
     g = tan if dm.kind == "schlepp" else 0.0  # slope of the cheeks' top edge
     for u, sign in ((u0, -1.0), (u1, 1.0)):

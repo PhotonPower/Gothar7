@@ -69,6 +69,18 @@
       "status": "entwurf"
     },
     "data.guilds.name_12": {
+      "de": "Kristallkrebse",
+      "text": "Crystal crabs",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_13": {
+      "de": "Kellermutter",
+      "text": "Cellar mothers",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_14": {
       "de": "Beinhauswarte",
       "text": "Charnel wardens",
       "context": "data/guilds.lua",
@@ -1058,6 +1070,12 @@
       "context": "items/food.lua",
       "status": "entwurf"
     },
+    "it_brood_gland.name": {
+      "de": "Brutdrüse",
+      "text": "Brood gland",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
     "it_broom.name": {
       "de": "Besen",
       "text": "Broom",
@@ -1164,6 +1182,12 @@
       "de": "Hüttenschlüssel",
       "text": "Hut Key",
       "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_kristall.name": {
+      "de": "Leuchtkristall",
+      "text": "Glow crystal",
+      "context": "items/goods.lua",
       "status": "entwurf"
     },
     "it_ladle.name": {
@@ -1334,6 +1358,12 @@
       "context": "items/goods.lua",
       "status": "entwurf"
     },
+    "it_scythe_claw.name": {
+      "de": "Sensenklaue",
+      "text": "Scythe claw",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
     "it_shears.name": {
       "de": "Schere",
       "text": "Shears",
@@ -1452,6 +1482,18 @@
       "de": "Keiler",
       "text": "Boar",
       "context": "npcs/animals.lua",
+      "status": "entwurf"
+    },
+    "mon_kellermutter.name": {
+      "de": "Kellermutter",
+      "text": "Cellar Mother",
+      "context": "npcs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mon_kristallkrebs.name": {
+      "de": "Kristallkrebs",
+      "text": "Crystal Crab",
+      "context": "npcs/dungeon.lua",
       "status": "entwurf"
     },
     "mon_laufvogel.name": {

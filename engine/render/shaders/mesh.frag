@@ -23,6 +23,7 @@ in vec3 vWorldPosition;
 in vec3 vNormal;
 in vec4 vTangent;
 in vec2 vUv;
+flat in vec3 vOrigin;
 out vec4 fragColor;
 #ifdef SKINNED
 // M17 part G: a spell's glow on a figure (render::FigureGlow, premultiplied colours; all zero: none).
@@ -70,7 +71,7 @@ void main()
     if (uGlass.x > 0.5 && uLighting.skyZenith.w > 0.5)
     {
         // Window glass (render.md "Spiegelnde Fenster"); with window reflections off it is drawn like any material.
-        vec3 glass = glassColor(vWorldPosition, uCameraPosition, n, albedo, uGlass.yzw, int(uGlass.x + 0.5));
+        vec3 glass = glassColor(vWorldPosition, uCameraPosition, n, albedo, uGlass.yzw, int(uGlass.x + 0.5), vOrigin);
         glass += uEmissive * texture(uEmissiveTexture, vUv).rgb;
         glass *= shadowDebugTint(vWorldPosition);
         fragColor = vec4(applyFog(glass, distance(vWorldPosition, uCameraPosition)), base.a);

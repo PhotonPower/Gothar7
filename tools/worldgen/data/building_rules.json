@@ -145,15 +145,22 @@
     "lehm": [0.34, 0.22, 0.11, 1.0],
     "brick": [0.25, 0.07, 0.04, 1.0],
     "timber_dark": [0.045, 0.024, 0.013, 1.0],
-    "timber_oxblood": [0.13, 0.018, 0.012, 1.0],
+    "timber_oxblood": [0.13, 0.018, 0.012, 1.0], "timber_floor": [0.28, 0.18, 0.1, 1.0],
     "roof_old": [0.094, 0.0506, 0.0437, 1.0],
     "roof_old_moss": [0.0647, 0.059, 0.0287, 1.0],
     "roof_red": [0.2029, 0.0757, 0.0605, 1.0],
     "roof_shingles": [0.0884, 0.0679, 0.0466, 1.0],
     "roof_thatch": [0.39, 0.28, 0.11, 1.0],
     "frame": [0.026, 0.017, 0.011, 1.0],
+    "window_glass": [0.03, 0.033, 0.032, 1.0],
     "hedge": [0.045, 0.085, 0.03, 1.0],
     "water": [0.03, 0.05, 0.06, 1.0]
+  },
+  "glass": {
+    "note": "M17 Fensterglas (Vertrag coordination.md): Scheiben geschlossener Fenster als window_glass mit extras glass, glass_pattern, glass_tint; Muster je Hausstil (Rauten an Bürger-, Amts- und Handwerkerhäusern, schlicht an Ackerbürger-, Stein- und Mauerhäusern und Scheunen, Butzen an Kirchen); Tönung je Muster (Butzen grünes Waldglas)",
+    "pattern": "plain",
+    "styles": {"buergerhaus": "diamond", "amtshaus": "diamond", "handwerkerhaus": "diamond", "kirche": "bullseye"},
+    "tints": {"bullseye": [0.8, 0.93, 0.82], "diamond": [0.86, 0.95, 0.88], "plain": [0.9, 0.95, 0.91]}
   },
   "socleM": 0.6,
   "interior": {

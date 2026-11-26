@@ -631,7 +631,7 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   mit dem Wind, der Fuß nicht; ohne Wind und unmarkiert steht alles still; Mehrfach-Zeichnen und Tiefen-Pass
   biegen gleich), `test_engine_render.cpp` (Wind folgt der Lage, aus in den Einstellungen).
 
-### Spiegelnde Fenster (M17 Fenster, Teil F1 umgesetzt; Plan unten) – `Glass.hpp`, `common/glass.glsl`
+### Spiegelnde Fenster (M17 Fenster, Teile F1, F1b, F2 und F3 umgesetzt; Plan unten) – `Glass.hpp`, `ReflectionProbes.hpp`, `ScreenHistory.hpp`, `common/glass.glsl`, `common/ssr.glsl`
 ```cpp
 enum class asset::GlassPattern { Bullseye, Diamond, Plain };  parseGlassPattern(text); glassPatternName(p);
 asset::MaterialInfo::glass, glassTint (Vorgabe kDefaultGlassTint), glassPattern   // aus glTF extras, .g7mesh v5
@@ -639,6 +639,8 @@ enum class WindowReflections { Off, Low, Medium, High };  parseWindowReflections
 f32 glassFresnel(cosTheta);                 // Schlick f0 0,04, höchstens 0,5 (= Shader)
 struct GlassLook { bool enabled; GlassPattern pattern; Vec3 tint; };  Material::glass
 Environment::skyZenith, windowReflections   // im Lighting-Block: vec4 skyZenith (w = Stufe 0..3)
+f32 windowsAwake(hours);  f32 windowGlowNight(sunHeight);   // F1b
+Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Block: vec4 glassGlow
 ```
 - **Markierung (Vertrag mit welt, freigegeben 2026-11-23):** glTF-Material mit `extras.glass = true` (Name frei,
   Vorschlag `window_glass`), optional `extras.glass_tint` [r, g, b] 0..1 (Vorgabe leicht grünlich 0,86/0,95/0,88,
@@ -658,14 +660,86 @@ Environment::skyZenith, windowReflections   // im Lighting-Block: vec4 skyZenith
   Scheibe eine Wölbung und eine kleine Schräglage, Bleirute in den Zwickeln; Rauten 10 × 14 cm zwischen Bleiruten,
   jede leicht verkippt; alle mit langsamer Welligkeit. Blei ist stumpf und dunkel.
 - **Option:** `[render] window_reflections` = `off`, `low`, `medium` (Vorgabe), `high`. `off` zeichnet Glas wie jedes
-  Material (bytegleich zu vorher). Bis die Teile F2 (Proben) und F3 (SSR) kommen, zeichnen `medium` und `high` Stufe A.
+  Material (bytegleich zu vorher). `medium` zeichnet Stufe A mit den Reflexions-Proben (F2), `high` dazu die
+  Bildraum-Spiegelung (F3).
   Der Menüeintrag kommt mit dem Abschluss-Teil.
 - **Batching:** Glas-Materialien haben Muster und Tönung im Gruppenschlüssel; andere Materialien bündeln wie bisher.
   Schatten und Tiefen-Vorpass behandeln Glas wie jedes undurchsichtige Material.
-- **Noch offen in F1:** der warme Schimmer bei Licht im Raum dahinter (Entscheidung 4) – kommt als eigener Schritt.
+- **Warmer Schimmer nachts (F1b, Entscheidung 4):** Hinter der Scheibe brennt Licht, warm (Kerze, Herd), durch die
+  Scheibe gestreut (jede Butze anders, wo sie sich zum Auge wölbt am hellsten), unten im Raum etwas heller, mit
+  leichtem Flackern; der Spiegel liegt darüber wie am Tag. Zwei Quellen:
+  - **Räume der Welt** (Innenzonen nahe der Kamera, dieselben 32 wie fürs Umgebungslicht): Liegt 40 cm hinter der
+    Scheibe ein Raum, leuchtet sie nach dessen Punktlichtern hinter der Scheibe (die Lichter des Objekts, höchstens
+    8); ohne brennendes Licht bleibt sie dunkel. Ein Licht vor dem Fenster (Straße) zählt nicht.
+  - **Alle übrigen Häuser:** zufällig je **Fensterreihe** (Haus = Ursprung des Modells, Geschoss je 2,8 m, Seite
+    nach der Normalen), leuchtend, wenn ihre Zahl unter dem Anteil der noch Wachen liegt (`windowsAwake`: abends um
+    19 Uhr 55 %, um Mitternacht 8 %, gegen 3 Uhr 4–5 %, vor Sonnenaufgang wieder 25–30 %); die Helligkeit
+    schwankt etwas je Reihe.
+  - **Sichtbar nach der Dunkelheit** (`windowGlowNight` aus der Sonnenhöhe: ab 0,12 über dem Horizont einblendend,
+    voll ab −0,08); am Tag keiner. Welten mit eigener Umgebung (Dungeon) haben keinen.
+  - Grenze: Ein begehbares Haus außerhalb der 32 nächsten Räume gilt als „übriges Haus“; kommt man näher, entscheiden
+    seine Lichter (die Reihe kann dabei umspringen).
+- **Reflexions-Proben (F2, Stufe B; `medium`, `high`)** – `ReflectionProbes.hpp`, `runtime/EngineProbes.cpp`:
+  ```cpp
+  placeReflectionProbes(junctions, segments, {spacing 20, height 2.5, merge 10});  // deterministisch
+  struct ReflectionProbe { Vec3 position; AABB box; };   probeFaceCamera(position, face, range);
+  kProbeFaceForward/kProbeFaceUp (6 Seiten, x = cross(forward, up), = glass.glsl)
+  ProbeSchedule { setProbes; invalidate; update(eye, budget, faces); faceDone; shaderProbes; slotsUsed/Ready; }
+  ReflectionProbes::create(device, {faceSize 64, slots 96, radius 80, range 60}); beginFace/endFace; atlas();
+  Environment::probes, probeParams  // im Lighting-Block: vec4 probeParams, je 32 probeCenter/BoxMin/BoxMax
+  MeshRenderer::setReflectionProbes(atlas)   // Einheit 10, nur Glas liest sie
+  Engine::reflectionProbes(), probeSchedule(), probeFacesLastFrame()
+  ```
+  - **Platzierung** beim Laden der Welt (nach ihrer Kollision): zuerst die Kreuzungen des Wegnetzes (≥ 3 Nachbarn),
+    dann alle 20 m entlang jeder Kante, verworfen, wenn näher als 10 m an einer schon gesetzten; 2,5 m über dem Weg.
+    Punkte in Räumen zählen nicht. Welten ohne Wegnetz (Testszene): ein 20-m-Raster über der Szene auf dem Boden.
+    Welts Marker `VOB_PROBE_*` (Frage 9) sind noch nicht eingebaut.
+  - **Einflusskasten:** je Probe Strahlen entlang ±X/±Z bis zur ersten Wand (höchstens 25 m), nach oben bis 8 m, nach
+    unten bis 0,5 m unter den Weg – die Fassaden der Straße für die Parallaxen-Korrektur.
+  - **Atlas** statt Cubemap-Array (das RHI kennt keine Cubemaps): RGBA16F 3072 × 768 (8 Plätze je Zeile, je 6 Seiten
+    64²) plus Tiefe Depth32F = 28 MB; keine Mips (die Scheiben streuen ohnehin). Sie entsteht erst mit `medium`/`high`
+    und wird bei `low`/`off` freigegeben.
+  - **Plätze:** Die bis zu 96 Proben im Umkreis von 80 m um die Kamera, die nächsten zuerst; weiter entfernte geben
+    ihren Platz ab. **Zeichnen:** eine Würfelseite je Bild, nächste Probe zuerst (eine neue Welt: die 4 nächsten
+    sofort); alle neu alle 10 Spielminuten und wenn sich Himmel oder Sonne (Wetter) merklich ändern – bis dahin gilt
+    das alte Bild. Eine Seite zeigt Himmel, Gelände und Gebäude (gröbste Detailstufe, nichts unter 1,5 m, keine
+    Möbel in Räumen, keine Figuren, Partikel, Wasser, Gras) bis 60 m, mit Sonne und Schatten des Bildes, ohne
+    Punktlichter; das Glas darin spiegelt nur den Himmel.
+  - **Im Glas:** Der Shader bekommt die bis zu 32 fertigen Proben nächst der Kamera und nimmt je Pixel die zwei
+    nächsten (Abweichung vom Plan: je Pixel statt je Instanz – Gruppen bleiben gleich, Übergänge weich): Richtung mit
+    Kasten-Parallaxe, halb und halb, wo beide gleich nah sind, die nähere allein ab 60 % des anderen Abstands; ab 25 m
+    Abstand zur nächsten Probe blendet das Bild bis 45 m in den Himmel allein über.
+- **Bildraum-Spiegelung (F3, Stufe C; `high`)** – `ScreenHistory.hpp`, `common/ssr.glsl`:
+  ```cpp
+  class ScreenHistory { create(device, shaders); capture(device, color, depth, camera); invalidate(); valid();
+                        color(); depth() /*R32F*/; camera(); }
+  kGlassSsrSteps = 16; kGlassSsrDistance = 30;
+  Environment::ssr, ssrViewProjection, ssrCameraPosition, ssrCameraForward  // Lighting-Block: ssrViewProjection,
+                                                                            // ssrInverseViewProjection, ssrCamera, ssrForward
+  MeshRenderer::setScreenHistory(color, depth)   // Einheiten 11 und 12
+  ```
+  - Das Glas wird im undurchsichtigen Pass gezeichnet, bevor das Bild fertig ist, das es spiegeln soll. Deshalb
+    läuft sein Strahl durch eine **Kopie des vorigen Bildes** (Farbe und Tiefe nach Szene, Gras, Wasser und
+    Effekten, vor Regen und Nachbearbeitung) mit dessen Kamera (Abweichung vom Plan, der die Szene desselben Bildes
+    annahm). Bewegtes hinkt ein Bild nach – in den welligen Scheiben nicht zu sehen. Die Kopie entsteht nur mit
+    `high` in Welten mit Glas (Shader `water_copy`, RGBA16F + R32F in Bildgröße).
+  - Der Strahl: 16 Schritte, höchstens 30 m, je Pixel versetzt; ein Treffer ersetzt Probe und Himmel nach seinem
+    Gewicht (zum Bildrand und zum Strahlende hin weich), sonst bleibt die Probe. Die Strahlfunktion ist mit dem
+    Wasser geteilt (`common/ssr.glsl`, `ssrTrace`; das Wasser zeichnet bytegleich wie vorher).
+  - Grenze (wie im Plan): Senkrechte Scheiben spiegeln meist, was hinter der Kamera liegt – dort gilt die Probe;
+    der Strahl trifft vor allem bei schrägem Blick die Häuser und Menschen daneben.
 - **Tests:** `tests/render/test_glass.cpp` (Stufen, Fresnel, Lighting-Block), `tests/asset/test_material.cpp`
   (Extras, Fehler → Vorgabe), `test_mesh_file.cpp` (Version 5, Version 4 ohne Glas, falsches Muster), GPU
   `test_glass.cpp` (frontal schwach, schräg stark, Muster zeichnen, `off` bytegleich, Mehrfach-Zeichnen gleich).
+  F1b: CPU Anteil der Wachen über den Tag, Nachtfaktor, Lighting-Block; GPU nachts warm, wenn die Reihe wach ist,
+  dunkel sonst und am Tag; im Raum nach seinem Licht dahinter, nicht nach einem Licht davor.
+  F2: CPU `test_reflection_probes.cpp` (Platzierung: Abstände, Zusammenlegen, deterministisch; Seitenkameras = Tabellen
+  des Shaders; Plätze nur im Umkreis, Budget je Bild, nur fertige Proben für den Shader, neu nach invalidate, Atlas
+  ohne Überlappung); GPU `test_reflection_probes.cpp` (das Feld landet auf der Seite, die es sieht; Glas zeigt es
+  richtig herum und auf der richtigen Seite, `low` liest keine Proben, eine Probe 80 m weg zählt nicht),
+  `test_engine_probes.cpp` (Testszene: Raster mit Kästen, erst die nächsten, dann eine Seite je Bild; `low` und eine
+  Welt ohne Glas: keine). F3: GPU `test_glass_ssr.cpp` (ein Feld auf dem Bild erscheint mit `high` im Glas darunter;
+  findet der Strahl im vorigen Bild nichts, ist das Bild gleich `medium`).
 
 ### Gras (M17 Teile G1–G3, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
 - **Büschel auf der GPU:** Jedes Büschel ist ein Eintrag von 16 Byte (Fuß als drei Floats, gepackte Bits: Drehung,
@@ -1401,7 +1475,7 @@ Projektinhaber (2026-11-23): alle 10 Fragen nach Vorschlag; umgesetzt **nach** S
   eine flache dunkle Fläche 1 cm vor der Wand. Offene Fenster der begehbaren Räume (W7) haben keine Scheibe: Laibung,
   Fensterkreuz, Läden.
 - Leonberg: 1405 Häuser mit vielen Fenstern, dazu Kirche und Schloss (Bleiglas, teils verglaste Türen).
-- **Was die Engine kann:** SSR auf dem Wasser (W2, `water.frag`; Strahl im Bildraum, 32 Schritte, nur `high`),
+- **Was die Engine kann:** SSR auf dem Wasser (W2, `water.frag`; Strahl im Bildraum, 32 Schritte, nur `high`; seit F3 in `common/ssr.glsl`),
   Himmelsfarben aus `background.frag`, Fresnel und Glanz in `common/lighting.glsl` (Nässe, N), Tiefen-Vorpass (P3).
   Es gibt keine Cubemaps und keine Reflexions-Proben.
 - **Historisch** (Leonberg um 1700, `leonberg-stil.md`): kleine Scheiben, oft Butzen- oder Rautenglas in Bleiruten,

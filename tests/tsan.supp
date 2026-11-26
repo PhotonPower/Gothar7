@@ -1,0 +1,6 @@
+# ThreadSanitizer suppressions (preset tsan, .github/workflows/tsan.yml). Only Gothar's own code is instrumented; the
+# vcpkg libraries are not, so TSan cannot see their synchronisation and may report races inside them. Suppress those
+# by library only - never a race in engine/, game/ or tools/ code.
+race:JPH::
+race:SDL_
+deadlock:JPH::

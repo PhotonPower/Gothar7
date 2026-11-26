@@ -130,6 +130,9 @@ Ein Spielstand ist geschrieben (M15).
 ### `on("hero_blinded", fn(npc: string))`
 Eine Laterne blendet den Helden (`Creatures.<art>.flash`, Beinhauswart).
 
+### `on("hero_grabbed", fn(npc: string))`
+Eine Schere hält den Helden fest (`Creatures.<art>.grab`, Kristallkrebs).
+
 ### `on("hero_teleported", fn(teleporter: string))`
 Ein Teleporter derselben Welt (Dungeon D4) hat den Helden versetzt; `teleporter` ist sein Name. In eine andere Ebene folgt stattdessen `world_loaded`.
 
@@ -372,6 +375,9 @@ Kampfzustand: ready, attack, parry, dodge, stagger, down (bewusstlos), dead; `he
 ### `hero_attack(kind?: "front"|"left"|"right") -> boolean`
 Ein Schlag des Helden (sonst über die Steuerung).
 
+### `hero_held() -> string?`
+Wer den Helden gerade festhält (Schere des Kristallkrebses), nil: niemand.
+
 ### `hero_parry() -> boolean`
 Parade des Helden.
 
@@ -548,6 +554,9 @@ Setzt, ob der NPC ruht (Dungeon D6); `false` beendet auch seine Ruhe-Pose. Das V
 ### `npc_set_stat(npc: string, name: string, value: integer)`
 Setzt ein Attribut eines NPCs; `hp`/`mana` bleiben zwischen 0 und dem Maximum.
 
+### `npc_set_weak(npc: string, open: boolean)`
+Öffnet bzw. schließt die Schwachstelle eines Monsters (`Creatures.<art>.weak`; die Kellermutter in Phase 3): offen zählen Treffer von hinten mehrfach, schwere lassen es taumeln.
+
 ### `npc_shout(npc: string, text: string)`
 Ruft sofort (ohne Warteschlange, z. B. beim Weglaufen); sonst wie npc_say.
 
@@ -580,6 +589,9 @@ Reiht ein: ein Mob des Typs benutzen (wie Gothics AI_UseMob) - zuerst ein eigene
 
 ### `npc_wait(npc: string, seconds: number)`
 Reiht ein: warten.
+
+### `npc_weak(npc: string) -> boolean`
+Ob die Schwachstelle offen ist (`npc_set_weak`).
 
 ### `route_length(from: string, to: string) -> number | nil`
 Länge des Weges (Meter) zwischen zwei Wegpunkten bzw. Freepoints, wie ein NPC ihn gehen würde; `nil`, wenn es keinen gibt (Prüfung der Routinen-Orte, Inhalte).

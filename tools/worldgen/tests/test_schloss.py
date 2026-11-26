@@ -65,7 +65,7 @@ def test_openings_stay_above_the_ground_of_each_side():
     wings = [geo.Wing(w) for w in SPEC["wings"]]
     lowest_sill = min(min(w.terrain(s, w.length * f) for f in geo.TERRAIN_F for s in (1, -1))
                       for w in wings)  # fmt: skip
-    frames = [p for f in m.faces["frame"] for p in f]
+    frames = [p for mat in ("frame", "window_glass") for f in m.faces[mat] for p in f]
     assert min(p[1] for p in frames) >= lowest_sill + geo.SOCLE_M - 1e-6
     main = wings[0]
     s = main.length * SPEC["portal"]["t"]
@@ -220,4 +220,25 @@ def test_castle_roof_has_no_moss_and_dormers_have_open_windows():
     m = model()
     assert "roof_old_moss" not in m.faces
     # Every dormer window panel is visible: no plaster face covers its centre in the front plane.
-    assert len(m.faces["frame"]) > 100
+    assert len(m.faces["window_glass"]) > 100
+
+
+def test_closed_windows_are_glass_seen_from_inside_by_their_back():
+    """M17 "Fensterglas": the panes of the facade face out; the rooms' niche panes face out
+    too (the room sees their back, milky) and lie just behind the facade's pane; the glass is
+    marked in schloss.json (Butzen, double-sided), slits and the lantern stay frame."""
+    m = model()
+    glass = SPEC["glass"]["window_glass"]
+    assert glass["pattern"] == "bullseye" and glass["doubleSided"] is True
+    assert m.faces["frame"]  # stair slits, lantern
+    main = geo.Wing(next(w for w in SPEC["wings"] if w["key"] == SPEC["interior"]["wing"]))
+    niches = [f for room in m.rooms.values() for f in room.get("window_glass", [])]
+    assert niches
+    for f in niches:
+        a, b, c = (np.asarray(p, dtype=float) for p in f[:3])
+        n = np.cross(b - a, c - a)
+        t = _t(main, f[0])
+        side = 1.0 if t > 0 else -1.0
+        out = np.array([main.n[0] * side, 0.0, main.n[1] * side])
+        assert np.dot(n, out) > 0  # faces out of the wing
+        assert abs(t) == pytest.approx(main.half - 0.2, abs=1e-6)  # behind the facade's pane

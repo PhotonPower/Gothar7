@@ -1,6 +1,7 @@
 // Window glass on the GPU (M17 windows F1, label "gpu"): a pane marked as glass mirrors a bright sky - weakly
 // head-on, strongly at grazing views; with window reflections off it is byte-equal to the plain material; the
-// batched path draws it like single draws.
+// batched path draws it like single draws. F1b: at night a light behind the pane glows warm through it - by
+// chance in houses without rooms, by its own lights in a room of the world.
 
 #include "GlFixture.hpp"
 
@@ -12,6 +13,7 @@
 #include <g7/render/Mesh.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 
+#include <utility>
 #include <vector>
 
 using namespace g7;
@@ -92,11 +94,16 @@ struct Scene
         renderer.setLighting(*gl.device, environment, none);
     }
 
-    std::vector<u8> draw(const asset::MeshData& data, const Mat4& model, WindowReflections quality)
+    std::vector<u8> draw(const asset::MeshData& data, const Mat4& model, WindowReflections quality,
+                         const LightList* lights = nullptr)
     {
         const Mesh mesh = require(Mesh::create(*gl.device, data));
         const MaterialSet materials = require(MaterialSet::create(*gl.device, data, {}, renderer.defaults()));
         begin(quality);
+        if (lights != nullptr)
+        {
+            renderer.setLighting(*gl.device, environment, *lights);
+        }
         renderer.draw(*gl.device, mesh, materials, model, camera);
         return gl.device->readPixels(0, 0, kSize, kSize, &target);
     }
@@ -191,5 +198,81 @@ TEST_CASE("Glass GPU: batched draws show glass like single draws, in a group of 
     s.renderer.drawBatched(*s.gl.device, items, s.camera);
     CHECK(s.gl.device->readPixels(0, 0, kSize, kSize, &s.target) == single);
     CHECK(s.renderer.lastBatch().groups == 2); // glass does not share the plain pane's group
+    CHECK(s.gl.device->debugErrorCount() == 0);
+}
+
+namespace
+{
+/// Sum of red and blue over an image: a warm glow has far more red.
+std::pair<u64, u64> redBlue(const std::vector<u8>& pixels)
+{
+    u64 red = 0;
+    u64 blue = 0;
+    for (usize i = 0; i < pixels.size(); i += 4)
+    {
+        red += pixels[i];
+        blue += pixels[i + 2];
+    }
+    return {red, blue};
+}
+
+/// A night: dark sky, no sun; `awake` the share of lit window rows.
+void night(Scene& s, f32 awake)
+{
+    s.environment.fogColor = Vec3(0.01f);
+    s.environment.skyZenith = Vec3(0.005f, 0.006f, 0.012f);
+    s.environment.windowsAwake = awake;
+    s.environment.windowGlowNight = 1.0f;
+}
+} // namespace
+
+TEST_CASE("Glass GPU: at night a pane glows warm when its window row is awake, not by day (F1b)")
+{
+    Scene s;
+    night(s, 1.0f); // every window row lit
+    const auto lit = s.draw(pane(true), Mat4(1.0f), WindowReflections::Low);
+    const auto [red, blue] = redBlue(lit);
+    CHECK(red > 2 * blue); // warm
+    CHECK(red > u64(kSize) * kSize * 20);
+
+    night(s, 0.0f); // all asleep
+    const u64 asleep = brightness(s.draw(pane(true), Mat4(1.0f), WindowReflections::Low));
+    CHECK(asleep * 4 < brightness(lit));
+
+    night(s, 1.0f);
+    s.environment.windowGlowNight = 0.0f; // daylight hides it
+    CHECK(brightness(s.draw(pane(true), Mat4(1.0f), WindowReflections::Low)) == asleep);
+    s.environment.windowGlowNight = 1.0f;
+    // With window reflections off there is no glass and no glow.
+    CHECK(brightness(s.draw(pane(true), Mat4(1.0f), WindowReflections::Off)) == 0);
+    CHECK(s.gl.device->debugErrorCount() == 0);
+}
+
+TEST_CASE(
+    "Glass GPU: in a room of the world the pane glows by the room's light behind it, not by chance (F1b)")
+{
+    Scene s;
+    night(s, 1.0f); // chance alone would light it: in a room only its lights count
+    // The room behind the pane (z < 0), its wall in the pane's plane.
+    s.environment.indoor = {
+        IndoorVolume{.center = Vec3(0.0f, 0.0f, -2.5f), .halfExtents = Vec3(4.0f, 4.0f, 2.0f)}};
+    LightList dark;
+    const u64 unlit = brightness(s.draw(pane(true), Mat4(1.0f), WindowReflections::Low, &dark));
+
+    LightList candle;
+    candle.add(
+        PointLight{.position = Vec3(0.0f, 0.0f, -1.5f), .radius = 5.0f, .color = Vec3(1.0f, 0.6f, 0.3f)});
+    const auto lit = s.draw(pane(true), Mat4(1.0f), WindowReflections::Low, &candle);
+    const auto [red, blue] = redBlue(lit);
+    CHECK(brightness(lit) > 4 * unlit);
+    CHECK(red > 2 * blue);
+
+    // A light in front of the window (in the street) does not glow through it.
+    LightList street;
+    street.add(
+        PointLight{.position = Vec3(0.0f, 0.0f, 1.5f), .radius = 5.0f, .color = Vec3(1.0f, 0.6f, 0.3f)});
+    const auto [streetRed, streetBlue] =
+        redBlue(s.draw(pane(true), Mat4(1.0f), WindowReflections::Low, &street));
+    CHECK(streetRed < red / 2);
     CHECK(s.gl.device->debugErrorCount() == 0);
 }
