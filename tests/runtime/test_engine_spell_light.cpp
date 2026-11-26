@@ -103,6 +103,8 @@ TEST_CASE(
     runSeconds(engine, 1.5f);
     CHECK_FALSE(engine.lightOrbAtShoulder());
     CHECK(glm::length(*engine.lightOrbPosition() - overHand(engine)) < 0.05f);
+    // The open hand held up (figuren #511): raised, then held.
+    CHECK(engine.playerOverlayClip() == "none/a_light_hold");
     // It follows the hand: the hero walks on, the orb with him.
     run(engine, "teleport(30, 0, 18)");
     runSeconds(engine, 0.5f);
@@ -121,6 +123,7 @@ TEST_CASE(
     runSeconds(engine, 1.5f);
     CHECK(engine.lightOrbAtShoulder());
     CHECK(glm::length(*engine.lightOrbPosition() - overShoulder(engine)) < 0.05f);
+    CHECK(engine.playerOverlayClip() != "none/a_light_hold"); // the arm is lowered for the weapon
     run(engine, "draw_weapon()");
     runSeconds(engine, 1.5f);
     CHECK_FALSE(engine.lightOrbAtShoulder());
