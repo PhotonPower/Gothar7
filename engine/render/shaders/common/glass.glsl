@@ -2,7 +2,10 @@
 // Fresnel (Schlick, f0 0.04, at most 0.5 at grazing views), the sun's glint, and the panes of the time around
 // 1700: bullseye panes (one bulge per small round pane) or diamond panes in lead, slightly green and wavy.
 // Stage A of render::WindowReflections; with medium and high the reflection probes (B, render::ReflectionProbes)
-// show the streets and houses around instead of the sky alone; SSR (C) comes later. Needs common/lighting.glsl.
+// show the streets and houses around instead of the sky alone; with high (C) a short ray through the previous
+// frame's scene (common/ssr.glsl, render::ScreenHistory) shows what is on the screen - figures and movement too -
+// where it hits, the probe elsewhere. Needs common/lighting.glsl.
+#include "common/ssr.glsl"
 
 const float kGlassF0 = 0.04;
 const float kGlassMaxFresnel = 0.5;
@@ -37,6 +40,10 @@ vec3 glassSky(vec3 r)
 // looks along kProbeFaceForward[f] with kProbeFaceUp[f] up, its x axis is cross(forward, up) - the same tables as
 // render::kProbeFaceForward / kProbeFaceUp.
 layout(binding = 10) uniform sampler2D uProbeAtlas;
+layout(binding = 11) uniform sampler2D uHistoryColor; // F3: the previous frame's scene (linear HDR)
+layout(binding = 12) uniform sampler2D uHistoryDepth; // F3: its depth (R32F, reverse-Z)
+const int kGlassSsrSteps = 16;          // render::kGlassSsrSteps
+const float kGlassSsrDistance = 30.0;   // render::kGlassSsrDistance
 const vec3 kProbeFaceForward[6] = vec3[6](vec3(1.0, 0.0, 0.0), vec3(-1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0),
                                           vec3(0.0, -1.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.0, 0.0, -1.0));
 const vec3 kProbeFaceUp[6] = vec3[6](vec3(0.0, 1.0, 0.0), vec3(0.0, 1.0, 0.0), vec3(0.0, 0.0, -1.0),
@@ -246,6 +253,15 @@ vec3 glassColor(vec3 worldPosition, vec3 cameraPosition, vec3 n, vec3 albedo, ve
         float weight;
         const vec3 probe = probeReflection(worldPosition, r, weight);
         mirrored = mix(mirrored, probe, weight);
+    }
+    if (uLighting.ssrCamera.w > 0.5)
+    {
+        // Stage C (high): what the previous frame showed where the ray hits it; the probe and sky elsewhere.
+        const SsrView view = SsrView(uLighting.ssrViewProjection, uLighting.ssrInverseViewProjection,
+                                     uLighting.ssrCamera.xyz, uLighting.ssrForward.xyz);
+        const vec3 hit = ssrTrace(uHistoryDepth, view, worldPosition + n * 0.02, r, kGlassSsrSteps,
+                                  kGlassSsrDistance, glassHash(gl_FragCoord.xy));
+        mirrored = mix(mirrored, texture(uHistoryColor, hit.xy).rgb, hit.z);
     }
     const vec3 glass = mix(behind + glow, mirrored * tint, fresnel) + glint * fresnel;
     const vec3 came = albedo * 0.5 * incomingLight(worldPosition, n); // lead: dull and dark

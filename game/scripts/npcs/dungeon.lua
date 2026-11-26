@@ -36,6 +36,30 @@ Npc "mon_kristallkrebs" { -- Grotte (Ebene 7): Kristalle auf dem Rücken, Schere
     inventory = { it_kristall = 1 }, -- Beute; stumpfe Treffer schlagen bis zu drei weitere ab (Creatures.splinter)
 }
 
+Npc "mon_kellermutter" { -- Boss im Hort (Ebene 8, monsters.md); Werte Platzhalter
+    name = "Kellermutter",
+    guild = "kellermutter",
+    level = 25,
+    species = "kellermutter",
+    attributes = { str = 80, dex = 10, hp = 600 },
+    damage = { edge = 40 }, -- Sensenarme
+    protection = { edge = 40, point = 50, blunt = 30, fire = 20, magic = 20, fall = 1000 },
+    senses = { angle = 160 },
+    inventory = { it_scythe_claw = 2, it_brood_gland = 1 }, -- Beute
+}
+
+Npc "mon_beinhauswart" { -- Beinhaus (Ebene 4, monsters.md): lebender Totengräber, kein Untoter; Werte Platzhalter
+    name = "Beinhauswart",
+    guild = "beinhauswart",
+    level = 9,
+    species = "beinhauswart",
+    attributes = { str = 35, dex = 15, hp = 110 },
+    damage = { blunt = 18 }, -- Spaten
+    protection = { edge = 10, point = 10, blunt = 5, fire = 0, magic = 5, fall = 0 },
+    senses = { angle = 150 },
+    inventory = { it_lantern_beinhaus = 1, it_shroud_rag = 1 }, -- Beute (die Laterne, solange er sie nicht fallen ließ)
+}
+
 Npc "mon_mauerschlupfer" {
     name = "Mauerschlupfer",
     guild = "mauerschlupfer",

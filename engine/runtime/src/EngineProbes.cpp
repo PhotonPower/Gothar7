@@ -97,6 +97,8 @@ void Engine::updateReflectionProbes(const render::ShadowFrame* shadows)
     m_environment.probes = {};
     m_environment.probeParams = Vec4(0.0f);
     m_meshRenderer.setReflectionProbes(nullptr);
+    m_meshRenderer.setScreenHistory(nullptr, nullptr);
+    m_environment.ssr = false;
     const bool stage = m_device != nullptr && (m_windowReflections == render::WindowReflections::Medium ||
                                                m_windowReflections == render::WindowReflections::High);
     if (!stage)
@@ -187,6 +189,48 @@ void Engine::updateReflectionProbes(const render::ShadowFrame* shadows)
     m_environment.probes = m_probes.schedule().shaderProbes();
     m_environment.probeParams = m_probes.shaderParams();
     m_meshRenderer.setReflectionProbes(&m_probes.atlas());
+    // F3 (high): the previous frame's scene, if it has this frame's size.
+    if (m_windowReflections == render::WindowReflections::High && m_screenHistory.valid() &&
+        m_screenHistory.width() == m_sceneTarget.color().desc().width &&
+        m_screenHistory.height() == m_sceneTarget.color().desc().height)
+    {
+        const render::Camera& previous = m_screenHistory.camera();
+        m_environment.ssr = true;
+        m_environment.ssrViewProjection = previous.viewProjection();
+        m_environment.ssrCameraPosition = previous.transform.position;
+        m_environment.ssrCameraForward = previous.transform.forward();
+        m_meshRenderer.setScreenHistory(&m_screenHistory.color(), &m_screenHistory.depth());
+    }
+}
+
+void Engine::captureScreenHistory(u32 width, u32 height)
+{
+    if (m_windowReflections != render::WindowReflections::High || !m_probeGlass || !m_probes.ready())
+    {
+        m_screenHistory.invalidate();
+        return;
+    }
+    if (!m_screenHistory.ready())
+    {
+        auto created = render::ScreenHistory::create(*m_device, *m_shaders);
+        if (!created)
+        {
+            G7_LOG_WARN("engine", "glass reflections: {} (window reflections medium)",
+                        created.error().message);
+            m_windowReflections = render::WindowReflections::Medium;
+            return;
+        }
+        m_screenHistory = std::move(created).value();
+    }
+    if (auto captured =
+            m_screenHistory.capture(*m_device, m_sceneTarget.color(), m_sceneTarget.depth(), m_camera);
+        !captured)
+    {
+        G7_LOG_WARN("engine", "glass reflections: {}", captured.error().message);
+        m_screenHistory.invalidate();
+    }
+    m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
+    m_device->setViewport(0, 0, width, height);
 }
 
 void Engine::drawProbeFace(const render::ProbeFace& face)

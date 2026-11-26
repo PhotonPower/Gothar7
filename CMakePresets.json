@@ -15,6 +15,7 @@
     { "name": "package", "displayName": "Paket (Release ohne Repo-Mounts, M17)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "G7_DEV_ASSETS": "OFF" } },
     { "name": "profile", "displayName": "Profiling mit Tracy (ADR 0024, M17)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "G7_PROFILING": "ON", "G7_TRACY": "ON", "VCPKG_MANIFEST_FEATURES": "profiling" } },
     { "name": "coverage", "displayName": "Debug + Testabdeckung (GCC/Clang)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "G7_COVERAGE": "ON" } },
+    { "name": "tsan", "displayName": "Debug + ThreadSanitizer (clang, Linux; perf.md Teil C)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CXX_COMPILER": "clang++", "G7_SANITIZE": "thread" } },
     {
       "name": "nodeps",
       "displayName": "Debug ohne vcpkg (nur Kern, keine Tests)",
@@ -29,11 +30,13 @@
     { "name": "package", "configurePreset": "package" },
     { "name": "profile", "configurePreset": "profile" },
     { "name": "coverage", "configurePreset": "coverage" },
+    { "name": "tsan", "configurePreset": "tsan" },
     { "name": "nodeps",  "configurePreset": "nodeps" }
   ],
   "testPresets": [
     { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },
     { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
-    { "name": "coverage", "configurePreset": "coverage", "output": { "outputOnFailure": true } }
+    { "name": "coverage", "configurePreset": "coverage", "output": { "outputOnFailure": true } },
+    { "name": "tsan", "configurePreset": "tsan", "output": { "outputOnFailure": true }, "environment": { "TSAN_OPTIONS": "halt_on_error=1 second_deadlock_stack=1 suppressions=${sourceDir}/tests/tsan.supp" } }
   ]
 }

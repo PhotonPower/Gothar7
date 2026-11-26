@@ -91,6 +91,12 @@ struct Environment
     /// must stay alive until packLighting.
     std::span<const GpuProbe> probes;
     Vec4 probeParams{0.0f};
+    /// M17 windows F3 (high): the glass traces reflection rays through the previous frame's scene
+    /// (render::ScreenHistory), seen by this camera; false: no trace (probes and sky alone).
+    bool ssr = false;
+    Mat4 ssrViewProjection{1.0f};
+    Vec3 ssrCameraPosition{0.0f};
+    Vec3 ssrCameraForward{0.0f, 0.0f, -1.0f};
 };
 
 inline constexpr u32 kMaxIndoorVolumes = 32;
@@ -193,6 +199,10 @@ struct GpuLighting
     std::array<Vec4, kMaxShaderProbes> probeCenter; ///< xyz centre, w atlas slot
     std::array<Vec4, kMaxShaderProbes> probeBoxMin;
     std::array<Vec4, kMaxShaderProbes> probeBoxMax;
+    Mat4 ssrViewProjection; ///< M17 windows F3: the previous frame's camera
+    Mat4 ssrInverseViewProjection;
+    Vec4 ssrCamera;  ///< xyz its position, w 1 = trace
+    Vec4 ssrForward; ///< xyz its forward
     std::array<Vec4, 2 * kMaxIndoorVolumes>
         indoorBoxes; ///< per room: centre + cos yaw, half extents + sin yaw
     std::array<Vec4, kMaxIndoorVolumes / 4> indoorAmbient; ///< per room its ambient factor, four to a vec4
@@ -200,8 +210,9 @@ struct GpuLighting
     std::array<Vec4, LightList::kMaxPerFrame> pointColor; ///< rgb * intensity
 };
 static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64 + 4 * 16 +
-                                         3 * 16 * kMaxShaderProbes + 2 * 16 * kMaxIndoorVolumes +
-                                         4 * kMaxIndoorVolumes + 2 * 16 * LightList::kMaxPerFrame,
+                                         3 * 16 * kMaxShaderProbes + 2 * 64 + 2 * 16 +
+                                         2 * 16 * kMaxIndoorVolumes + 4 * kMaxIndoorVolumes +
+                                         2 * 16 * LightList::kMaxPerFrame,
               "must match std140 (common/lighting.glsl)");
 
 [[nodiscard]] GpuLighting packLighting(const Environment& environment, const LightList& lights) noexcept;

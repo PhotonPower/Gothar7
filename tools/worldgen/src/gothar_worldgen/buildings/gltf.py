@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import struct
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -235,6 +235,10 @@ def glb_bytes_multi(
         doc["images"] = images
         doc["samplers"] = [{"magFilter": 9729, "minFilter": 9987, "wrapS": 10497, "wrapT": 10497}]
         doc["textures"] = [{"sampler": 0, "source": i} for i in range(len(images))]
+    return _container(doc, binary)
+
+
+def _container(doc: dict, binary: bytes) -> bytes:
     js = _pad(json.dumps(doc, separators=(",", ":")).encode("utf-8"), b" ")
     total = 12 + 8 + len(js) + 8 + len(binary)
     return b"".join([
@@ -242,6 +246,37 @@ def glb_bytes_multi(
         struct.pack("<II", len(js), _CHUNK_JSON), js,
         struct.pack("<II", len(binary), _CHUNK_BIN), binary,
     ])  # fmt: skip
+
+
+def glass_extras(pattern: str, tint: Sequence[float]) -> dict[str, Any]:
+    """glTF extras of a window pane (M17 contract "Fensterglas", coordination.md)."""
+    if pattern not in GLASS_PATTERNS:
+        raise ValueError(f"glass pattern '{pattern}' unknown")
+    if len(tint) != 3 or not all(0.0 <= float(c) <= 1.0 for c in tint):
+        raise ValueError("glass tint needs three values 0..1")
+    return {"glass": True, "glass_pattern": pattern, "glass_tint": [float(c) for c in tint]}
+
+
+GLASS_PATTERNS = ("bullseye", "diamond", "plain")
+
+
+def with_glass(data: bytes, glass: Mapping[str, Mapping[str, Any]], require: bool = True) -> bytes:
+    """The .glb ``data`` with its named materials marked as window glass: ``glass`` maps a
+    material name to ``pattern``, ``tint`` and optionally ``doubleSided`` (panes seen from
+    inside, e.g. the castle's rooms); ``require``: every named material must be in the file."""
+    doc, binary = read_glb(data)
+    names = {m.get("name") for m in doc.get("materials", [])}
+    missing = sorted(set(glass) - names)
+    if missing and require:
+        raise ValueError(f"glass materials not in the model: {', '.join(missing)}")
+    for m in doc.get("materials", []):
+        g = glass.get(m.get("name", ""))
+        if g is None:
+            continue
+        m["extras"] = {**m.get("extras", {}), **glass_extras(str(g["pattern"]), g["tint"])}
+        if g.get("doubleSided"):
+            m["doubleSided"] = True
+    return _container(doc, binary)
 
 
 def write_glb(path: Path, mesh: MeshData, name: str) -> None:

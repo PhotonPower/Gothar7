@@ -383,7 +383,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   voll durch, Zauber treffen immer den Panzer; Lua-Ereignis `npc_curled(npc)`. Werte vom Projektinhaber bestätigt
   (2026-11-24, Bauch-Variante 2026-11-25); dass Fäuste den flachen Kriecher nicht treffen (der Schwung geht über ihn hinweg), ist gewollt.
 - **Kristallkrebs** (figuren #463): Graph wie der Mauerkriecher, Erwachen = `t_wake`, läuft seitwärts (`move_axis` "x",
-  Körper quer), Instanz `mon_kristallkrebs` (Beute `it_kristall`, noch ohne Modell). Mechanik in C++, Werte in
+  Körper quer), Instanz `mon_kristallkrebs` (Beute `it_kristall`). Mechanik in C++, Werte in
   `Creatures.kristallkrebs`:
   - `grab = { chance, seconds, reach }`: Dieser Anteil seiner Angriffe ist ein Griff (`t_grab`, Aktion 7; das
     Trefferfenster kneift). Steht der Held beim Clip-Event `grab` bis `reach` m vor ihm (±70°), hält ihn die Schere:
@@ -394,6 +394,26 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   - `splinter = { item, max }`: Jeder Nahkampftreffer mit stumpfem Schaden schlägt ein `item` ab (in sein Inventar,
     also Beute), höchstens `max`.
   - Noch offen: Leuchten am `socket_glow`, Klänge `kristallkrebs_*`.
+- **Kellermutter** (Boss, figuren #471): Graph wie der Mauerkriecher (Erwachen `t_wake`; Aktionen 9 `t_call`,
+  10 `t_rage`, 11 `t_stagger`; Bool `guard` für `s_guard`), Kapsel r 1,0 / h 2,4, Instanz `mon_kellermutter` (Beute
+  `it_scythe_claw` ×2, `it_brood_gland`). Ablauf in `ai/kellermutter.lua`, Werte in
+  `Creatures.kellermutter`: Phase 1 kämpft sie (`zs_mm_attack`); unter `phases.rage` (2/3) tobt sie einmal
+  (`zs_km_rage`) und ruft dann alle `brood.call_seconds` (15 s) ihre Brut (`zs_km_call`, Clip-Event `spawn_brood`:
+  `brood.count` 3 `mon_mauerkriecher` rings um sie, höchstens `brood.max` 6 lebend, sie greifen sofort an); unter
+  `phases.guard` (1/3) geht sie zum Hort (ihr Spawn-Marker) und hütet ihn (`zs_km_guard`, `s_guard`; kommt der Held
+  näher als 6 m, kämpft sie und kehrt danach zurück), und ihre Schwachstelle ist offen (`npc_set_weak`). Mechanik
+  `Creatures.<art>.weak = { degrees, factor, stagger_share }`: offen zählen Nahkampf und Geschosse von hinten (Brutsack,
+  bis 60° neben der Gegenrichtung) doppelt, ab 5 % ihres Lebens taumelt sie (`t_stagger`). Lua: `npc_set_weak`,
+  `npc_weak`, `boss_phase`, `brood_alive`. Noch nicht: `t_scythe_l/r`, Leuchten an `socket_glow`, Klänge.
+- **Beinhauswart** (figuren #461): Graph wie der Gatterbock (Erwachen `t_wake`, Drohen = Laterne entgegenstoßen
+  `t_threaten`, Aktion 4), Kapsel stehend r 0,35 / h 2,0, Instanz `mon_beinhauswart` (Beute `it_lantern_beinhaus`,
+  `it_shroud_rag`). Mechanik `Creatures.<art>.flash = { distance, degrees, seconds, colour }`: Beim
+  Clip-Event `flash` wird der Held geblendet (Bildschirm `colour`, `seconds` abklingend, kurzes Taumeln), wenn er bis
+  `distance` (7 m) vor ihm steht und zu ihm schaut (bis `degrees` 60° neben seiner Blickrichtung) – nur, solange er
+  etwas in der Hand hält (`npc_hold`). Lua-Ereignis `hero_blinded(npc)`. Ablauf in `ai/beinhauswart.lua`: Laterne an
+  `socket_lantern` (`arm_warden`, beim Spawn von selbst), nach dem Erwachen erst drohen (`zs_mm_threaten`), im Kampf
+  alle `flash.every` (10 s) wieder; unter `lantern_drop` (die Hälfte) seines Lebens fällt die Laterne zu Boden
+  (Rasend-Phase, danach nur der Spaten). Noch nicht: grünes Licht der Laterne, Klänge `beinhauswart_*`.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am

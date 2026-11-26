@@ -94,5 +94,9 @@
       "west_gable"
     ],
     "belowM": 0.3
+  },
+  "glass": {
+    "note": "M17 Fensterglas: die Gläser des Projektinhabers (Material glass, Farbe bleibt) als Butzen in grünem Waldglas; farbiges Bleiglas später",
+    "glass": {"pattern": "bullseye", "tint": [0.8, 0.93, 0.82]}
   }
 }

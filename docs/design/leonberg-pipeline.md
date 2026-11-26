@@ -351,7 +351,17 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   - `<name>` (lod0): das volle Haus.
   - `<name>_lod1`, ca. 31 %: geschlossene Wände, Fenster und Türen als dunkle Flächen davor, Fachwerk nur als
     Frontflächen ohne Figuren (nie mehr Fachwerk als lod0), keine Gauben, keine Verwitterungs-Teilung.
-  - `<name>_lod2`, ca. 5 %: die Baukörper mit Dach in den Hausfarben, dazu die Fensterflächen von lod1.
+  - `<name>_lod2`, ca. 5 %: die Baukörper mit Dach in den Hausfarben, dazu die Fensterflächen von lod1 (als `frame`,
+    ohne Glas).
+  - **Fensterglas (M17, Vertrag „Fensterglas“ in `coordination.md`):** Die Scheiben geschlossener Fenster (lod0 die
+    zurückgesetzte Füllung, lod1 die flache Fläche) sind das Material `window_glass` (Palette, dunkel: der Raum
+    dahinter) mit `extras.glass`, `glass_pattern` und `glass_tint` aus `building_rules.json` `glass`: Rauten
+    (`diamond`) an Bürger-, Amts- und Handwerkerhäusern, Butzen (`bullseye`, grünes Waldglas) an Kirchen, sonst
+    schlicht (`plain`: Ackerbürger-, Stein-, Mauerhäuser, Scheunen). Türen, Tore und offene Fenster haben keine
+    Scheibe; die Stadtmauer-Türme auch nicht. Schloss (`schloss.json` `glass`): Butzen an Fassade, Giebeln, Gauben
+    und Erker, dazu die Nischen der Räume (Scheibe nach außen gewandt, doppelseitig: von innen sieht man die
+    Rückseite, die die Engine milchig hell zeichnet); Treppenturm-Schlitze und Laterne bleiben `frame`. Kirche
+    (`kirche.json` `glass`): die Gläser des Projektinhabers (Material `glass`, Farbe bleibt) als Butzen.
   - Leonberg: 1,76 Mio. Dreiecke in lod0, 0,54 Mio. in lod1, 0,09 Mio. in lod2.
   - Die Engine wählt je Vob nach Entfernung (60/150 m); ohne Auswahl zeichnet sie lod0.
   - `building_rules.json` → `lod`: `enabled`, `suffixes`; `preview` (1 oder 2) zeichnet für Prüfbilder diese Stufe als
@@ -440,7 +450,8 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     Wand, bestimmt die Straßenwand nur die Fußbodenhöhe; eine Tür wird nicht gezeichnet (kein Rahmen in der
     gemeinsamen Wand), im Index `blocked`, im Wegnetz-Bericht `doorsWithoutAccess` („ohne Zugang“). Wichtige
     Häuser bekommen später gezielt einen Zugang per `passages` bzw. Hof-Override.
-    Öffnungen sind ausgeschnitten, mit Laibung und zurückgesetzter Füllung (Rolle `frame`). Bei Gebäuden mit
+    Öffnungen sind ausgeschnitten, mit Laibung und zurückgesetzter Füllung (Rolle `frame`; die Scheibe geschlossener
+    Fenster ist Rolle `glass`, siehe „Fensterglas“). Bei Gebäuden mit
     LoD2-Teilen wird `frontFacade` ignoriert (Hinweis), weil sich die Kanten auf den Gesamtgrundriss beziehen.
   - **Fachwerk in den Obergeschossen:** Schwelle und Rähm laufen über die ganze Breite. Ständer stehen an den Ecken,
     neben jeder Öffnung und im Feldraster. Ein Muster ist eine Liste von Balkensegmenten in normierten
@@ -455,7 +466,7 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     auf dem größten Satteldach (Regeln in `leonberg-stil.md`).
   - **Seeds:** Variation (Erdgeschoss-Höhe, Fensterraster) ist deterministisch aus `hash(id, seed)`;
     `seed` der Annotation überschreibt. `locked` und `keep` wie bei `massing`.
-  - **Material-Rollen** `wall_ground`, `infill`, `timber`, `roof`, `roof_north`, `frame`, `chimney` mit **exakt
+  - **Material-Rollen** `wall_ground`, `infill`, `timber`, `roof`, `roof_north`, `frame`, `glass`, `chimney` mit **exakt
     gleichen Werten in allen Häusern**. Die Engine bündelt nach Materialwerten (Multi-Draw, M4 Teil B); Vertexfarben verwirft sie.
     Je `.glb` gibt es ein Primitive pro Rolle.
   - **Budget:** 2000 Dreiecke je Haus, im Kern ≤ 2 Mio. (mit engine abgestimmt). Darüber wird das Fachwerk stufenweise
@@ -799,8 +810,11 @@ eigenen Aufnahmen.
     - Die Prüfung (`check`) meldet Dinge außerhalb des Raums, Überschneidungen, Möbel auf der Laufbahn
       (`doorT` ± 1,2 m) oder den Wegen zu Portal und Turm, Hohes vor Fenstern, Plätze auf Möbeln, zu viele Lichter;
       `assemble` bricht dann ab.
-  - **Licht:** je Raum Tageslicht am ersten Fenster (Hofseite zuerst), Herdfeuer, Kerzen auf den Tischen, Laternen
-    bzw. im Keller Fackeln; höchstens 4 je Raum, im Festsaal 6; eine Laterne an jedem Absatz des Turms.
+  - **Licht:** Tageslicht an den Fenstern etwa alle `windowLightEveryM` (4,5 m) entlang des Raums, abwechselnd Hof- und
+    Gartenseite, am jeweils nächsten Fenster (Koordinator 2026-11-25); Herdfeuer, Kerzen auf den Tischen, Laternen bzw.
+    im Keller Fackeln (der Keller hat keine Fenster und bleibt dunkel); höchstens `roomLights` 8 je Raum (die Engine
+    beleuchtet ein Modell mit höchstens 8 Lichtern), die Fensterlichter füllen das Budget nur auf; eine Laterne an jedem
+    Absatz des Turms.
   - **Riesenfass** im Weinkeller an der Trennwand zum Verlies: Front `WALL_SCHLOSS_FASS` (`mesh` mit `mover`,
     `secret_wall`, schwenkt um das Scharnier: `offset` 0, `axis` +Y, `angle` −95°, 2,5 s, geschlossen) und
     daneben der schiefe Fackelhalter `LEVER_SCHLOSS_FASS` (Mob `lever`, `targets` [`WALL_SCHLOSS_FASS`], `toggle`,
@@ -820,7 +834,7 @@ eigenen Aufnahmen.
     `schloss_kueche` – die Klänge dazu legt engine in `ambient.toml` an. Musik: das Schloss liegt in `STADT`.
   - **Innenlicht:** `castle_inside.json` `daylight` (Raum → 0..1) setzt `daylight` an der Innenzone, wo die Ableitung
     der Engine aus den Fensterlichtern nicht passt (world.md „Zonen“): Schreibstube 0,35, Wachstube (Schießscharten)
-    0,15. Fensterlichter der Häuser liegen immer in einer Box ihrer Innenzone (sonst 0,1 m hinein geklemmt, z. B. an
+    0,15, die Räume des OG 0,5 (Fenster nur zum Hof). Fensterlichter der Häuser liegen immer in einer Box ihrer Innenzone (sonst 0,1 m hinein geklemmt, z. B. an
     schrägen Wänden; `WINDOW_LIGHT_IN_M` bleibt).
 - **Texturen (W7):** wie die Häuser (`textures/models.py`): `gothar-worldgen schloss` liest die Modelle aus Blender
   nach, gibt jedem Eckpunkt Texturkoordinaten in Metern (Wände entlang und hoch, flache Flächen entlang des Hauptbaus,
@@ -832,6 +846,7 @@ eigenen Aufnahmen.
 - **Balkendecken (W7, Koordinator 2026-11-25):** EG und OG haben Putzdecken mit Holzbalken quer zum Flügel wie in den
   Häusern (`interior.beams` in `schloss.json`: 0,24 × 0,26 m, gleichmäßig etwa alle 1,1 m je Raum, `timber_dark`,
   ohne Kollision über Kopfhöhe); so bleiben die Decken zwischen den Wandlaternen lesbar. Räume zusammen 2312 Dreiecke.
+  Der OG-Boden ist helles Dielenholz (`timber_floor`, neuer Palettenwert 0,28/0,18/0,10, Textur `boards`).
 
 ### W-E4 Marktbrunnen (`gothar-worldgen marktbrunnen <ort>`, W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Das Modell, das der Projektinhaber selbst aus

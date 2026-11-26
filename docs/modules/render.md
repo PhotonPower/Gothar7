@@ -631,7 +631,7 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   mit dem Wind, der Fuß nicht; ohne Wind und unmarkiert steht alles still; Mehrfach-Zeichnen und Tiefen-Pass
   biegen gleich), `test_engine_render.cpp` (Wind folgt der Lage, aus in den Einstellungen).
 
-### Spiegelnde Fenster (M17 Fenster, Teile F1, F1b und F2 umgesetzt; Plan unten) – `Glass.hpp`, `ReflectionProbes.hpp`, `common/glass.glsl`
+### Spiegelnde Fenster (M17 Fenster, Teile F1, F1b, F2 und F3 umgesetzt; Plan unten) – `Glass.hpp`, `ReflectionProbes.hpp`, `ScreenHistory.hpp`, `common/glass.glsl`, `common/ssr.glsl`
 ```cpp
 enum class asset::GlassPattern { Bullseye, Diamond, Plain };  parseGlassPattern(text); glassPatternName(p);
 asset::MaterialInfo::glass, glassTint (Vorgabe kDefaultGlassTint), glassPattern   // aus glTF extras, .g7mesh v5
@@ -660,8 +660,8 @@ Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Bloc
   Scheibe eine Wölbung und eine kleine Schräglage, Bleirute in den Zwickeln; Rauten 10 × 14 cm zwischen Bleiruten,
   jede leicht verkippt; alle mit langsamer Welligkeit. Blei ist stumpf und dunkel.
 - **Option:** `[render] window_reflections` = `off`, `low`, `medium` (Vorgabe), `high`. `off` zeichnet Glas wie jedes
-  Material (bytegleich zu vorher). `medium` und `high` zeichnen Stufe A mit den Reflexions-Proben (F2); bis F3 (SSR)
-  kommt, sind beide gleich.
+  Material (bytegleich zu vorher). `medium` zeichnet Stufe A mit den Reflexions-Proben (F2), `high` dazu die
+  Bildraum-Spiegelung (F3).
   Der Menüeintrag kommt mit dem Abschluss-Teil.
 - **Batching:** Glas-Materialien haben Muster und Tönung im Gruppenschlüssel; andere Materialien bündeln wie bisher.
   Schatten und Tiefen-Vorpass behandeln Glas wie jedes undurchsichtige Material.
@@ -709,6 +709,25 @@ Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Bloc
     nächsten (Abweichung vom Plan: je Pixel statt je Instanz – Gruppen bleiben gleich, Übergänge weich): Richtung mit
     Kasten-Parallaxe, halb und halb, wo beide gleich nah sind, die nähere allein ab 60 % des anderen Abstands; ab 25 m
     Abstand zur nächsten Probe blendet das Bild bis 45 m in den Himmel allein über.
+- **Bildraum-Spiegelung (F3, Stufe C; `high`)** – `ScreenHistory.hpp`, `common/ssr.glsl`:
+  ```cpp
+  class ScreenHistory { create(device, shaders); capture(device, color, depth, camera); invalidate(); valid();
+                        color(); depth() /*R32F*/; camera(); }
+  kGlassSsrSteps = 16; kGlassSsrDistance = 30;
+  Environment::ssr, ssrViewProjection, ssrCameraPosition, ssrCameraForward  // Lighting-Block: ssrViewProjection,
+                                                                            // ssrInverseViewProjection, ssrCamera, ssrForward
+  MeshRenderer::setScreenHistory(color, depth)   // Einheiten 11 und 12
+  ```
+  - Das Glas wird im undurchsichtigen Pass gezeichnet, bevor das Bild fertig ist, das es spiegeln soll. Deshalb
+    läuft sein Strahl durch eine **Kopie des vorigen Bildes** (Farbe und Tiefe nach Szene, Gras, Wasser und
+    Effekten, vor Regen und Nachbearbeitung) mit dessen Kamera (Abweichung vom Plan, der die Szene desselben Bildes
+    annahm). Bewegtes hinkt ein Bild nach – in den welligen Scheiben nicht zu sehen. Die Kopie entsteht nur mit
+    `high` in Welten mit Glas (Shader `water_copy`, RGBA16F + R32F in Bildgröße).
+  - Der Strahl: 16 Schritte, höchstens 30 m, je Pixel versetzt; ein Treffer ersetzt Probe und Himmel nach seinem
+    Gewicht (zum Bildrand und zum Strahlende hin weich), sonst bleibt die Probe. Die Strahlfunktion ist mit dem
+    Wasser geteilt (`common/ssr.glsl`, `ssrTrace`; das Wasser zeichnet bytegleich wie vorher).
+  - Grenze (wie im Plan): Senkrechte Scheiben spiegeln meist, was hinter der Kamera liegt – dort gilt die Probe;
+    der Strahl trifft vor allem bei schrägem Blick die Häuser und Menschen daneben.
 - **Tests:** `tests/render/test_glass.cpp` (Stufen, Fresnel, Lighting-Block), `tests/asset/test_material.cpp`
   (Extras, Fehler → Vorgabe), `test_mesh_file.cpp` (Version 5, Version 4 ohne Glas, falsches Muster), GPU
   `test_glass.cpp` (frontal schwach, schräg stark, Muster zeichnen, `off` bytegleich, Mehrfach-Zeichnen gleich).
@@ -718,8 +737,9 @@ Environment::windowsAwake, windowGlowNight, glassTime        // im Lighting-Bloc
   des Shaders; Plätze nur im Umkreis, Budget je Bild, nur fertige Proben für den Shader, neu nach invalidate, Atlas
   ohne Überlappung); GPU `test_reflection_probes.cpp` (das Feld landet auf der Seite, die es sieht; Glas zeigt es
   richtig herum und auf der richtigen Seite, `low` liest keine Proben, eine Probe 80 m weg zählt nicht),
-  `test_engine_probes.cpp` (Lager: Proben am Wegnetz mit Kasten, erst die nächsten, dann eine Seite je Bild; `low`
-  keine).
+  `test_engine_probes.cpp` (Testszene: Raster mit Kästen, erst die nächsten, dann eine Seite je Bild; `low` und eine
+  Welt ohne Glas: keine). F3: GPU `test_glass_ssr.cpp` (ein Feld auf dem Bild erscheint mit `high` im Glas darunter;
+  findet der Strahl im vorigen Bild nichts, ist das Bild gleich `medium`).
 
 ### Gras (M17 Teile G1–G3, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
 - **Büschel auf der GPU:** Jedes Büschel ist ein Eintrag von 16 Byte (Fuß als drei Floats, gepackte Bits: Drehung,
@@ -1455,7 +1475,7 @@ Projektinhaber (2026-11-23): alle 10 Fragen nach Vorschlag; umgesetzt **nach** S
   eine flache dunkle Fläche 1 cm vor der Wand. Offene Fenster der begehbaren Räume (W7) haben keine Scheibe: Laibung,
   Fensterkreuz, Läden.
 - Leonberg: 1405 Häuser mit vielen Fenstern, dazu Kirche und Schloss (Bleiglas, teils verglaste Türen).
-- **Was die Engine kann:** SSR auf dem Wasser (W2, `water.frag`; Strahl im Bildraum, 32 Schritte, nur `high`),
+- **Was die Engine kann:** SSR auf dem Wasser (W2, `water.frag`; Strahl im Bildraum, 32 Schritte, nur `high`; seit F3 in `common/ssr.glsl`),
   Himmelsfarben aus `background.frag`, Fresnel und Glanz in `common/lighting.glsl` (Nässe, N), Tiefen-Vorpass (P3).
   Es gibt keine Cubemaps und keine Reflexions-Proben.
 - **Historisch** (Leonberg um 1700, `leonberg-stil.md`): kleine Scheiben, oft Butzen- oder Rautenglas in Bleiruten,

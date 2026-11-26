@@ -89,6 +89,26 @@
     hinter denselben Makros.
   - `Engine::run` markiert Frames und misst die Zonen `Engine::frame`, `Engine::fixedUpdate`, `Engine::render`.
 
+- `Jobs.hpp` – Job-System (M17, `perf.md` Teil C): fester Pool aus `std::jthread` mit einer Warteschlange (Mutex +
+  Bedingungsvariable), kein Work-Stealing, keine Aufgaben-Graphen.
+  - `JobSystem(threads)`: `threads` = Threads, die an einem `parallelFor` rechnen, **der Aufrufer eingeschlossen**
+    (Arbeiter = `threads − 1`). `0` = automatisch (`autoThreads()`: logische Kerne − 1, mindestens 1, höchstens 8),
+    `1` = alles seriell auf dem Aufrufer. `threads()`, `workers()`.
+  - `parallelFor(count, chunk, fn(begin, end))`: jeder Index genau einmal, in Stücken `[k·chunk, min(count, (k+1)·chunk))`
+    (`chunk = 0`: etwa 4 Stücke je Thread). Der Aufrufer rechnet mit und kehrt zurück, wenn alle Stücke fertig sind.
+    Seriell (Stücke in Reihenfolge auf dem Aufrufer) bei einem Thread, bei nur einem Stück und **verschachtelt** (Aufruf
+    aus einem Job heraus; `JobSystem::insideJob()`).
+  - `JobGroup(jobs)`: `run(fn)` reiht einen Job ein (ohne Arbeiter bzw. aus einem Job heraus: sofort ausgeführt),
+    `wait()` arbeitet eingereihte Jobs mit ab und wartet auf die Gruppe. Der Destruktor wartet ebenfalls.
+  - **Ausnahmen** aus Jobs werden gefangen und auf dem wartenden Thread neu geworfen (die erste; Stücke, die danach
+    noch nicht begonnen hatten, entfallen). Das ist die einzige Stelle, an der core Ausnahmen weiterreicht – sie sind
+    Programmierfehler des Job-Codes, kein erwartbarer Fehler.
+  - Tracy-Threadnamen `job worker 1` … `job worker 8`; jeder Job eines Arbeiters ist eine Zone `job`.
+  - Regeln für Job-Code: kein Lua, keine Zufallszahlen, kein Schreiben in geteilte Daten (jeder Job in sein eigenes
+    Ergebnis-Feld, der Aufrufer übernimmt in fester Reihenfolge).
+  - Die `Engine` besitzt eine Instanz (`Engine::jobs()`), Größe aus `[jobs] threads` in `engine.toml` (Vorgabe 0).
+  - Prüfung auf Datenrennen: Preset `tsan` (clang, `G7_SANITIZE=thread`, Linux) und der CI-Workflow `tsan.yml`.
+
 ## Später
 - `Ray` (Editor-Auswahl, M4).
-- Job-System (M17), Frame-/Pool-Allokatoren bei Bedarf, Zufallszahlen (deterministisch, seedbar – wichtig für Saves/Tests).
+- Frame-/Pool-Allokatoren bei Bedarf, Zufallszahlen (deterministisch, seedbar – wichtig für Saves/Tests).
