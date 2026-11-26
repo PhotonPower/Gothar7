@@ -97,6 +97,11 @@ Result<void> Engine::init()
     // AI LOD by count (M17 perf part D), also headless.
     m_simulationLimit =
         static_cast<u32>(std::max<i64>(0, m_config.settings.get<i64>("ai.max_simulated", 32)));
+    // Job system (perf.md part C): [jobs] threads, 0 = automatic (cores - 1, at most 8), 1 = everything
+    // serial.
+    m_jobs = std::make_unique<JobSystem>(
+        static_cast<u32>(std::clamp<i64>(m_config.settings.get<i64>("jobs.threads", 0), 0, 64)));
+    G7_LOG_INFO("engine", "jobs: {} thread(s)", m_jobs->threads());
     const std::string startTime = m_config.startTime.empty()
                                       ? m_config.settings.get<std::string>("time.start", "08:00")
                                       : m_config.startTime;
@@ -2307,7 +2312,9 @@ void Engine::drawScene(u32 width, u32 height)
     // anything; terrain can (hills shade valleys).
     updateGrass(); // M17 G1: new tiles around the camera (high: they cast shadows)
     render::ShadowFrame shadowFrame;
-    if ((!m_instances.empty() || m_hasTerrain) && m_environment.sunIntensity > 0.0f)
+    const bool sunShadows = (!m_instances.empty() || m_hasTerrain) && m_environment.sunIntensity > 0.0f;
+    prepareCreaturePoses(sunShadows); // M17 perf C2: poses and skinning palettes of the figures, in parallel
+    if (sunShadows)
     {
         m_cascades = render::computeCascades(m_camera, m_environment.sunDirection, m_shadowMap.settings());
         if (m_cascadesDrawn.size() != m_cascades.size())

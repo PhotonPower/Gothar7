@@ -184,6 +184,7 @@ void Engine::loadAnimalBodies()
     m_grabRules.clear();
     m_reflectShares.clear();
     m_splinterRules.clear();
+    m_weakSpots.clear();
     const script::Value creatures = m_scripts ? m_scripts->global("Creatures") : script::Value();
     if (creatures.asTable() == nullptr)
     {
@@ -246,6 +247,16 @@ void Engine::loadAnimalBodies()
                 m_splinterRules.insert_or_assign(species, std::move(rule));
             }
         }
+        if (const script::Value* weak = field(def.asTable(), "weak");
+            weak != nullptr && weak->asTable() != nullptr)
+        {
+            // weak = { degrees, factor, stagger_share }: the open weak spot behind it (Kellermutter's sac).
+            WeakSpot spot;
+            number(weak, "degrees", spot.degrees);
+            number(weak, "factor", spot.factor);
+            number(weak, "stagger_share", spot.staggerShare);
+            m_weakSpots.insert_or_assign(species, spot);
+        }
         if (const script::Value* curl = field(def.asTable(), "curl");
             curl != nullptr && curl->asTable() != nullptr)
         {
@@ -283,6 +294,29 @@ void Engine::loadAnimalBodies()
         b.across = b.lying && axis != nullptr && axis->asString() == "x";
         m_animalBodies.insert_or_assign(species, b);
     }
+}
+
+i32 Engine::weakSpotDamage(const Combatant& target, i32 damage, const Vec3& from, bool& staggered) const
+{
+    staggered = false;
+    const auto it = m_weakSpots.find(target.species);
+    if (it == m_weakSpots.end() || target.creature == nullptr || !target.creature->weakOpen || damage <= 0)
+    {
+        return damage;
+    }
+    Vec3 toSource = from - target.position;
+    toSource.y = 0.0f;
+    const f32 length = glm::length(toSource);
+    if (length < 1e-4f || glm::dot(toSource / length, -gameplay::forwardOf(target.yaw)) <
+                              std::cos(glm::radians(it->second.degrees)))
+    {
+        return damage; // the armoured forebody
+    }
+    const i32 dealt = static_cast<i32>(std::lround(static_cast<f32>(damage) * it->second.factor));
+    staggered = static_cast<f32>(dealt) >=
+                it->second.staggerShare * static_cast<f32>(target.character->attribute("hp_max"));
+    G7_LOG_INFO("engine", "{} is hit on its weak spot{}", target.name, staggered ? " and staggers" : "");
+    return dealt;
 }
 
 i32 Engine::curledDamage(const Combatant& target, i32 damage, std::optional<Vec3> from) const
@@ -872,7 +906,9 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
         weapon, attacker.character->attribute("str"),
         [&](std::string_view type) { return target.character->protection(type); }, talent, roll, m_combat);
 
-    const i32 damage = curledDamage(target, hit.damage, attacker.position);
+    bool weakHit = false;
+    const i32 damage = curledDamage(target, weakSpotDamage(target, hit.damage, attacker.position, weakHit),
+                                    attacker.position);
     const i32 hp = target.character->attribute("hp") - damage;
     (void)target.character->setAttribute("hp", std::max(hp, 0));
     splinterOnHit(target, weapon);
@@ -881,6 +917,12 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
                 hit.critical ? " (critical)" : "", std::max(hp, 0));
     if (hp > 0)
     {
+        if (weakHit)
+        {
+            target.fighter->stagger();
+            target.creature->action = 11; // t_stagger: the forebody buckles
+            return;
+        }
         if (curlOnHit(target, damage))
         {
             return; // rolled up: the shell takes it (no stagger, no knockback)
@@ -1506,11 +1548,15 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
     {
         wakeUp(targetId); // Z6
     }
-    const i32 damage = curledDamage(
-        *target,
-        gameplay::rangedDamage(
-            p.damage, [&](std::string_view type) { return target->character->protection(type); }, m_combat),
-        p.position - p.velocity); // from where it came
+    bool weakHit = false;
+    const i32 damage =
+        curledDamage(*target,
+                     weakSpotDamage(*target,
+                                    gameplay::rangedDamage(
+                                        p.damage, [&](std::string_view type)
+                                        { return target->character->protection(type); }, m_combat),
+                                    p.position - p.velocity, weakHit),
+                     p.position - p.velocity); // from where it came
     const i32 hp = target->character->attribute("hp") - damage;
     (void)target->character->setAttribute("hp", std::max(hp, 0));
     target->character->addItem(p.ammo, 1); // R3: it stays in the target (looting)
@@ -1532,7 +1578,7 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
         playReaction(*target, "none/t_hit_light");
         if (target->creature != nullptr && target->animal)
         {
-            target->creature->action = 3;
+            target->creature->action = weakHit ? 11 : 3;
         }
         return;
     }

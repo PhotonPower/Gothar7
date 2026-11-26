@@ -186,7 +186,10 @@ class Inside:
             if ws != side or not (s0 < u < s1) or not (wy0 >= y0 + 0.2 and wy1 <= y1 - 0.1):
                 continue
             a, b = u - 0.6, u + 0.6
-            self.quad("frame", a, t_back, b, t_back, wy0, wy1, inward)  # the dark pane
+            # the pane facing out, seen from inside as glass's back face (milky, by daylight;
+            # its material is double-sided, schloss.json "glass"); just behind the facade's pane
+            outward = (-inward[0], 0.0, -inward[2])
+            self.quad("window_glass", a, t_back, b, t_back, wy0, wy1, outward)
             self.quad("plaster_white", a, t_in, b, t_back, wy0, wy0, self.up(), horizontal=False)
             p = self.w.p
             self.m.quad("stone", p(a, t_in, wy0), p(b, t_in, wy0), p(b, t_back, wy0),
