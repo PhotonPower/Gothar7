@@ -36,10 +36,12 @@ struct ProbePlacement
     f32 merge = 10.0f;   ///< m: nearer than this to a probe already placed, no new one
 };
 
-/// Probe positions: first the `junctions` (squares, crossings), then points every `spacing` along each
-/// segment (both ends included), each kept only when no probe so far is nearer than `merge`; all raised by
-/// `height`. Deterministic: same input, same probes in the same order.
-[[nodiscard]] std::vector<Vec3> placeReflectionProbes(std::span<const Vec3> junctions,
+/// Probe positions: first the `markers` as they are (welt's VOB_PROBE_* vobs, question 9), then the
+/// `junctions` (squares, crossings), then points every `spacing` along each segment (both ends included); a
+/// junction or path point is kept only when no probe so far is nearer than `merge`, and raised by `height`.
+/// Deterministic: same input, same probes in the same order.
+[[nodiscard]] std::vector<Vec3> placeReflectionProbes(std::span<const Vec3> markers,
+                                                      std::span<const Vec3> junctions,
                                                       std::span<const std::pair<Vec3, Vec3>> segments,
                                                       const ProbePlacement& placement = {});
 

@@ -24,8 +24,8 @@ constexpr f32 kRingRadius = 1.5f; ///< m: the second and further NPCs of a marke
 constexpr f32 kProbeAbove = 0.5f; ///< m: the ground below a marker (a room's ceiling is not ground)
 constexpr f32 kProbeBelow = 3.0f; ///< m: how far below the marker the ground may lie
 constexpr f32 kDropAhead = 0.4f;  ///< m: an item an NPC lets fall lies this far before its feet
-constexpr std::array<std::string_view, 6> kScriptEvents = {
-    "steal", "emerge", "grab", "release", "reflect", "spawn_brood"}; ///< characters-pipeline.md 7.5
+constexpr std::array<std::string_view, 7> kScriptEvents = {
+    "steal", "emerge", "grab", "release", "reflect", "spawn_brood", "flash"}; ///< characters-pipeline.md 7.5
 
 f32 yawOfMatrix(const Mat4& m)
 {

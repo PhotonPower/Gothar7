@@ -12,6 +12,7 @@ Npc "mon_gatterbock" {
     -- Klingen prallen ab, stumpfe Waffen und Magie wirken (monsters.md)
     protection = { edge = 60, point = 80, blunt = 10, fire = 40, magic = 0, fall = 1000 },
     senses = { angle = 140 },
+    inventory = { it_ember_eye = 2 }, -- Beute
 }
 
 Npc "mon_mauerkriecher" { -- Brut der Kellermutter, kommt zu 3-6 aus den Ritzen (spawn count, monsters.md)
@@ -22,6 +23,7 @@ Npc "mon_mauerkriecher" { -- Brut der Kellermutter, kommt zu 3-6 aus den Ritzen 
     attributes = { str = 10, dex = 20, hp = 30 },
     damage = { edge = 5 }, -- Zangenbiss
     protection = { edge = 15, point = 25, blunt = 0, fire = 0, magic = 0, fall = 0 }, -- Panzer gegen Klingen
+    inventory = { it_crawler_plate = 1 }, -- Beute
 }
 
 Npc "mon_kristallkrebs" { -- Grotte (Ebene 7): Kristalle auf dem Rücken, Scheren halten fest (monsters.md)
@@ -48,6 +50,30 @@ Npc "mon_kellermutter" { -- Boss im Hort (Ebene 8, monsters.md); Werte Platzhalt
     inventory = { it_scythe_claw = 2, it_brood_gland = 1 }, -- Beute
 }
 
+Npc "mon_beinhauswart" { -- Beinhaus (Ebene 4, monsters.md): lebender Totengräber, kein Untoter; Werte Platzhalter
+    name = "Beinhauswart",
+    guild = "beinhauswart",
+    level = 9,
+    species = "beinhauswart",
+    attributes = { str = 35, dex = 15, hp = 110 },
+    damage = { blunt = 18 }, -- Spaten
+    protection = { edge = 10, point = 10, blunt = 5, fire = 0, magic = 5, fall = 0 },
+    senses = { angle = 150 },
+    inventory = { it_lantern_beinhaus = 1, it_shroud_rag = 1 }, -- Beute (die Laterne, solange er sie nicht fallen ließ)
+}
+
+Npc "mon_brunnenmolch" { -- Zisterne (Ebenen 3 und 7, monsters.md); Werte Platzhalter
+    name = "Brunnenmolch",
+    guild = "brunnenmolch",
+    level = 7,
+    species = "brunnenmolch",
+    attributes = { str = 30, dex = 10, hp = 90 },
+    damage = { edge = 15 }, -- Biss
+    protection = { edge = 5, point = 5, blunt = 10, fire = 30, magic = 0, fall = 0 }, -- an Land verletzlich
+    senses = { sight = 0, hearing = 2 }, -- blind: hört statt zu sehen (Schleichen hilft)
+    inventory = { it_newt_skin = 1, it_newt_gills = 2 }, -- Beute (Alchemie)
+}
+
 Npc "mon_mauerschlupfer" {
     name = "Mauerschlupfer",
     guild = "mauerschlupfer",
@@ -56,4 +82,5 @@ Npc "mon_mauerschlupfer" {
     attributes = { str = 12, dex = 30, hp = 45 },
     damage = { edge = 4 }, -- Biss und Kralle
     senses = { sight = 0, hearing = 2 }, -- blind: hört statt zu sehen (große Ohren)
+    inventory = { it_bat_ear = 2 }, -- Beute
 }

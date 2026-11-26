@@ -48,3 +48,15 @@ radius = 1.0 # die Höhe muss den doppelten Radius übersteigen
 height = 2.4
 step_height = 0.5
 max_slope_degrees = 40.0
+
+[beinhauswart] # Dungeon (figuren #461): 2,0 m bis zur Kapuze, gebeugt; Kapsel stehend wie ein Mensch
+radius = 0.35 # die Höhe muss den doppelten Radius übersteigen
+height = 2.0
+step_height = 0.4
+max_slope_degrees = 45.0
+
+[brunnenmolch] # Dungeon (figuren #472): 2,6 m lang, flach; liegende Kapsel
+radius = 0.3 # die Höhe muss den doppelten Radius übersteigen
+height = 0.7
+step_height = 0.3
+max_slope_degrees = 40.0

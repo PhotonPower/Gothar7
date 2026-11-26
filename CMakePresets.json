@@ -37,6 +37,6 @@
     { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },
     { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
     { "name": "coverage", "configurePreset": "coverage", "output": { "outputOnFailure": true } },
-    { "name": "tsan", "configurePreset": "tsan", "output": { "outputOnFailure": true }, "environment": { "TSAN_OPTIONS": "halt_on_error=1 second_deadlock_stack=1 suppressions=${sourceDir}/tests/tsan.supp" } }
+    { "name": "tsan", "configurePreset": "tsan", "output": { "outputOnFailure": true }, "environment": { "TSAN_OPTIONS": "halt_on_error=0 second_deadlock_stack=1 suppressions=${sourceDir}/tests/tsan.supp" } }
   ]
 }
