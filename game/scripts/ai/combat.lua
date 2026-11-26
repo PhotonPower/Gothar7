@@ -214,5 +214,8 @@ on("npc_hit", function(attacker, target)
     if Summoned and Summoned[target] == attacker then -- ein Versehen des Rufenden (M12): kein Zurückschlagen
         return
     end
+    if string.sub(npc_state(target).state, 1, 6) == "zs_km_" then
+        return -- die Kellermutter tobt oder ruft gerade ihre Brut (ai/kellermutter.lua): danach kämpft sie weiter
+    end
     fight(target, attacker)
 end)

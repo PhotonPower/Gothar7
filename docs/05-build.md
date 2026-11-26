@@ -93,6 +93,7 @@ das Spiel dort mit `--no-render` starten.
 | `release` | `RelWithDebInfo`, Profiling/Performance |
 | `profile` | `RelWithDebInfo` + `G7_PROFILING` + `G7_TRACY`, vcpkg-Feature `profiling` (Tracy, ADR 0024); Zonen an den Tracy-Viewer (on-demand: misst nur bei verbundenem Viewer), nicht für Auslieferungen |
 | `coverage` | Debug + `G7_COVERAGE` (nur GCC/Clang), für die Abdeckungsmessung |
+| `tsan` | Debug + ThreadSanitizer (`G7_SANITIZE=thread`, `clang++`, nur Linux): Datenrennen im Job-System (`perf.md` Teil C); Testpreset `tsan` mit `tests/tsan.supp` (nur Meldungen aus den nicht instrumentierten vcpkg-Bibliotheken unterdrückt) |
 | `nodeps` | Schnelltest ohne vcpkg |
 | `package` | Paket (M17, `release.md` Teil C): `RelWithDebInfo` mit `G7_DEV_ASSETS=OFF`; `cmake -P tools/release/make_release.cmake` baut damit Spiel, Daten (`g7_release_data`), ZIP (CPack) und prüft das entpackte Paket |
 
@@ -105,6 +106,7 @@ das Spiel dort mit `--no-render` starten.
 | `G7_PROFILING` | OFF | aktiviert die `G7_PROFILE_*`-Zonen (eingebauter Sammler: Debug-Overlay, `--perf`) |
 | `G7_TRACY` | OFF | meldet die Zonen zusätzlich an Tracy (nur mit `G7_PROFILING`; braucht das vcpkg-Feature `profiling`, Preset `profile`) |
 | `G7_COVERAGE` | OFF | Testabdeckung (`--coverage`, nur GCC/Clang); Auswertung mit gcovr |
+| `G7_SANITIZE` | leer | Sanitizer für den ganzen eigenen Code (`-fsanitize=<wert>`, nur GCC/Clang), z. B. `thread` im Preset `tsan` |
 | `G7_DEV_ASSETS` | ON | Entwicklungs-Builds mounten `<repo>/assets/source`, `assets/cooked` und `assets/cooked/*.g7pak` (`[assets] dev_mounts`); für Auslieferungen OFF |
 
 ## Konfigurationsdateien
@@ -195,6 +197,9 @@ Push auf `main` und bei Pull Requests. GPU-Tests laufen unter Linux mit Xvfb + M
 (`-LE gpu`). Der Release-Job baut mit dem Preset `release` (RelWithDebInfo) und testet ohne GPU-Tests und ohne gebaute
 Figuren (`ctest --preset release -LE gpu`): Physik und Zeitverhalten können sich vom Debug-Build unterscheiden (welt #246:
 eine NPC-Kapsel verkeilte sich nur im Release-Build).
+`.github/workflows/tsan.yml` (Job `tsan`, M17 `perf.md` Teil C): ThreadSanitizer mit dem Preset `tsan` (clang) über alle Tests außer
+den GPU-Tests. **Kein Pflichtcheck**, läuft nur nach einem Push auf `main` und auf Wunsch (`workflow_dispatch`), nie bei
+Pull Requests. Die Ubuntu-24.04-Kerne brauchen dafür `vm.mmap_rnd_bits=28`.
 **vcpkg-Binärcache:** `VCPKG_BINARY_SOURCES=files,<workspace>/vcpkg-binary-cache` + `actions/cache` – jeder Lauf
 speichert einen neuen Eintrag, PRs lesen die Einträge von `main`. Ohne Treffer baut vcpkg alle Abhängigkeiten neu
 (SDL3, simdjson, fastgltf … – mehrere Minuten pro Job). Das Repository ist öffentlich; Actions-Minuten auf

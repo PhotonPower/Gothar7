@@ -26,6 +26,7 @@ SINK_M = 1.0
 WINDOW = (1.2, 1.8)  # width, height
 WINDOW_SPACING = 3.3
 REVEAL = 0.18
+GLASS = "window_glass"  # panes of the closed windows (M17 contract "Fensterglas"); slits stay frame
 SURROUND = 0.16  # width of the stone surround
 SURROUND_DEPTH = 0.06
 OVERHANG = 0.35
@@ -324,7 +325,7 @@ def _window(m: Model, w: Wing, side: int, u: float, y0: float, y1: float) -> Non
     want = w.out(side)
     u0, u1 = u - WINDOW[0] / 2, u + WINDOW[0] / 2
     tin = t - side * REVEAL
-    m.quad("frame", w.p(u0, tin, y0), w.p(u1, tin, y0), w.p(u1, tin, y1), w.p(u0, tin, y1), want)
+    m.quad(GLASS, w.p(u0, tin, y0), w.p(u1, tin, y0), w.p(u1, tin, y1), w.p(u0, tin, y1), want)
     m.quad(
         "plaster_white",
         w.p(u0, t, y1),
@@ -519,9 +520,7 @@ def _gable_window(m: Model, w: Wing, s: float, sign: float, y0: float) -> None:
     want = w.along(sign)
     s_in = s - sign * REVEAL
     t0, t1, y1 = -ww / 2, ww / 2, y0 + wh
-    m.quad(
-        "frame", w.p(s_in, t0, y0), w.p(s_in, t1, y0), w.p(s_in, t1, y1), w.p(s_in, t0, y1), want
-    )
+    m.quad(GLASS, w.p(s_in, t0, y0), w.p(s_in, t1, y0), w.p(s_in, t1, y1), w.p(s_in, t0, y1), want)
     d = s + sign * SURROUND_DEPTH
     sw = SURROUND
     for a0, a1, b0, b1 in (
@@ -676,7 +675,7 @@ def _dormer(
         want,
     )
     tin = tf - side * 0.12
-    m.quad("frame", w.p(a0, tin, y0), w.p(a1, tin, y0), w.p(a1, tin, y1), w.p(a0, tin, y1), want)
+    m.quad(GLASS, w.p(a0, tin, y0), w.p(a1, tin, y0), w.p(a1, tin, y1), w.p(a0, tin, y1), want)
     for (pa, pb), wn in (
         ((w.p(a0, tf, y1), w.p(a1, tf, y1)), (0.0, -1.0, 0.0)),
         ((w.p(a0, tf, y0), w.p(a1, tf, y0)), (0.0, 1.0, 0.0)),
@@ -830,7 +829,7 @@ def _oriel(m: Model, spec: dict, w: Wing) -> None:
             s = a + width * f
             d = t1 + side * 0.03
             m.quad(
-                "frame",
+                GLASS,
                 w.p(s - 0.35, d, wy0),
                 w.p(s + 0.35, d, wy0),
                 w.p(s + 0.35, d, wy0 + 1.2),

@@ -24,6 +24,7 @@ from gothar_worldgen.assemble.world import (
     write_world,
 )
 from gothar_worldgen.buildings.batch import generate, write_index
+from gothar_worldgen.buildings.gltf import with_glass
 from gothar_worldgen.buildings.gltf_scene import bounds as mesh_bounds
 from gothar_worldgen.buildings.medieval import StreetIndex, load_rules
 from gothar_worldgen.buildings.rueckbau import Protection, split_building
@@ -81,6 +82,7 @@ from gothar_worldgen.handmade import (
     build_schloss,
     find_blender,
     garden_plan,
+    glass_spec,
     marktbrunnen_item,
     put_item,
     schloss_item,
@@ -1059,11 +1061,15 @@ def _cmd_kirche(args: argparse.Namespace, out: TextIO) -> int:
         job = prepare_owner_job(spec, spec_path, rules["palette"], out_glb, work / "kirche.blend",
                                 foundation=foundation)  # fmt: skip
         line = run_owner_blender(Path(blender), job, work / "job.json", subprocess.run)
+        glass = glass_spec(spec)  # M17: the owner's panes as window glass
+        if glass:
+            out_glb.write_bytes(with_glass(out_glb.read_bytes(), glass))
         mesh = f"worlds/{site.name}/handmade/kirche/kirche.glb"
         doc = put_item(load_handmade(data_dir / "handmade.json"),
                        owner_item(place, mesh, spec.get("replaces")))  # fmt: skip
         save_handmade(data_dir / "handmade.json", doc)
-    except (OSError, json.JSONDecodeError, OwnerModelError, KeyError, ExportError) as e:
+    except (OSError, json.JSONDecodeError, OwnerModelError, KeyError, ExportError,
+            ValueError) as e:  # fmt: skip
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     print(f"  {line}", file=out)

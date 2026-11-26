@@ -58,8 +58,10 @@ Rähm und Ständer Balken. Die Muster sind eigene Geometrie in normierten Feldko
     die Traufe bleibt.
   - Dächer ab 35° behalten ihre gemessene Form.
 - **Balken:** dunkelbraun bis schwarzbraun; etwa 15 % ochsenblutrot an repräsentativen Häusern (Bürger-, Amtshaus).
-- **Fenster:** dunkle Holzrahmen, kleine Scheiben.
-- **Palette:** 16 feste Materialwerte (14 für die Häuser, dazu `hedge` und `water` für den Schlossgarten) mit gleichem Wert in allen Häusern; die Engine bündelt danach.
+- **Fenster:** dunkle Holzrahmen, kleine Scheiben. Glas (M17, `window_glass`): Rauten in Bleiruten an Bürger-, Amts-
+  und Handwerkerhäusern, schlichte Scheiben an Ackerbürger-, Stein- und Mauerhäusern, Butzen in grünem Waldglas an
+  Kirche und Schloss.
+- **Palette:** feste Materialwerte (für die Häuser, dazu `hedge` und `water` für den Schlossgarten, `timber_floor` für den Dielenboden im Schloss-OG, `window_glass` für die Scheiben) mit gleichem Wert in allen Häusern; die Engine bündelt danach.
 
 ## Alterung
 Vorgesehen:
@@ -141,7 +143,7 @@ Stand (Entscheidung Projektinhaber bzw. Koordinator im Auftrag, 2026-10-03; Wert
 ## Schloss
 Eigenes Modell (Blender-Python-Skript, W-E3), eigene Interpretation eines Renaissance-Schlosses um 1700:
 - weißer Putz (`plaster_white`), Sockel, Eckquader, Gesimse, Fenstergewände und Ziergiebel-Abdeckungen in `stone`;
-  Dächer `roof_old` ohne Moos (gepflegter Bau); Schornsteine `brick`; Portaltür `timber_dark`; Fenster `frame`.
+  Dächer `roof_old` ohne Moos (gepflegter Bau); Schornsteine `brick`; Portaltür `timber_dark`; Fenster `frame`, Scheiben `window_glass` (Butzen).
 - Garten: Rasenbeete und Kieswege (Splat), Buchs-Einfassungen `hedge` (dunkles Grün), Brunnenwasser `water`
   (dunkles Blaugrau); beide Einträge sind für das Schloss neu in der Palette (jetzt 16 Werte).
 - Ziergiebel gestuft mit Voluten und Obelisken, achteckiger Treppenturm mit welscher Haube und Laterne, Erker, Gauben.
@@ -150,7 +152,8 @@ Eigenes Modell (Blender-Python-Skript, W-E3), eigene Interpretation eines Renais
   und die Steinböden als Quader-Mauerwerk (`ashlar`: regelmäßige Schichten, Läuferverband, feine Kalkfugen, etwa so
   hell wie die Palette); Putz, Dach, Holz, Fensterflächen und Schornsteine mit den Texturen der Häuser. Der Keller ist
   Bruchstein (die dunkle Sockel-Textur, auch der Boden) und zusätzlich 25 % dunkler. EG und OG haben Balkendecken:
-  dunkle Holzbalken quer zum Flügel, dazwischen Putzfelder.
+  dunkle Holzbalken quer zum Flügel, dazwischen Putzfelder. Das OG hat einen hellen Dielenboden (`timber_floor`, eigener
+  Palettenwert nur für das Schloss).
 
 ## Erste Bilder und Justierung (Platzhalter, 2026-10-03)
 Ablage `C:\GotharData\review\w5\` (nicht im Repo).

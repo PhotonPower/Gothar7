@@ -232,6 +232,17 @@ class TextReport:
         return bool(self.added or self.changed or self.removed)
 
 
+def _unique_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """A JSON object whose keys are unique: a merge of two branches can leave a key twice (two monsters' guilds
+    both as data.guilds.name_12), and json.loads would silently keep the last one."""
+    out: dict[str, object] = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f"Schlüssel doppelt: {key} (nach einem Merge: gothar-voice texts --write)")
+        out[key] = value
+    return out
+
+
 class ScriptTexts:
     def __init__(self, root: Path, lang: str) -> None:
         self.root = Path(root)  # assets/source/text
@@ -246,7 +257,7 @@ class ScriptTexts:
     def load(cls, root: Path, lang: str) -> ScriptTexts:
         db = cls(root, lang)
         if db.path.exists():
-            raw = json.loads(db.path.read_text(encoding="utf-8"))
+            raw = json.loads(db.path.read_text(encoding="utf-8"), object_pairs_hook=_unique_keys)
             if raw.get("schema") != SCHEMA:
                 raise ValueError(f"{db.path}: unbekanntes Schema {raw.get('schema')}")
             for key, d in raw["texts"].items():

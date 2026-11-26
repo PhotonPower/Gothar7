@@ -73,6 +73,40 @@ Creatures = {
         -- Die Kristalle leuchten im Dunkeln blassblau und verraten ihn (socket_glow); tot erlöschen sie.
         glow = { socket = "socket_glow", colour = { 0.45, 0.75, 1.0 }, radius = 5, intensity = 1.2 },
     },
+    kellermutter = { -- Boss: Stammmutter der Kriecher über dem Hort, drei Phasen (ai/kellermutter.lua)
+        territory = 15,
+        attack_distance = 25,
+        wake_seconds = 2.0,
+        chase_gait = "run", -- 0,6 / 1,5 m/s
+        body = { shape = "lying", radius = 0.9, length = 5.0, offset = { 0, 1.0, 0.4 } },
+        -- Phasen nach dem Anteil des Lebens: unter rage tobt sie (t_rage) und ruft alle call_seconds die Brut
+        -- (t_call, Event spawn_brood: count Mauerkriecher, höchstens max zugleich); unter guard schleppt sie sich
+        -- zum Hort und schützt ihn (s_guard), die Schwachstelle am Brutsack ist offen.
+        phases = { rage = 2 / 3, guard = 1 / 3 },
+        brood = { npc = "mon_mauerkriecher", count = 3, max = 6, call_seconds = 15 },
+        -- Offene Schwachstelle (Brutsack hinten): Treffer von hinten (bis 60° neben der Gegenrichtung) zählen
+        -- doppelt; ab stagger_share des Lebens taumelt sie (t_stagger).
+        weak = { degrees = 60, factor = 2.0, stagger_share = 0.05 },
+        -- Die Schwachstelle am Brutsack glüht orange (socket_glow).
+        glow = { socket = "socket_glow", colour = { 1.0, 0.55, 0.2 }, radius = 6, intensity = 1.5 },
+    },
+    beinhauswart = { -- wartet an einer Gruft (zs_dormant), blendet mit der grünen Laterne, schlägt mit dem Spaten
+        territory = 12,
+        attack_distance = 20,
+        wake_seconds = 1.4,
+        threaten_distance = 8, -- nach dem Erwachen und alle flash.every Sekunden: Laterne entgegenstoßen
+        threaten_seconds = 1.2,
+        chase_gait = "run", -- 0,8 / 3,2 m/s: langsamer als der rennende Held
+        body = { shape = "upright", radius = 0.3, length = 2.0, offset = { 0, 1.0, 0 } },
+        -- Event flash von t_threaten: Wer bis distance m vor ihm steht und zu ihm schaut (bis degrees neben der
+        -- Blickrichtung), sieht seconds lang grünweiß und taumelt. Nur mit der Laterne in der Hand; bei
+        -- lantern_drop des Lebens lässt er sie fallen (Rasend-Phase: danach nur noch der Spaten).
+        flash = { distance = 7, degrees = 60, seconds = 1.5, colour = { 0.75, 1.0, 0.8 }, every = 10 },
+        lantern = "it_lantern_beinhaus",
+        lantern_drop = 0.5,
+        -- Die Laterne wirft grünes Licht, solange er sie trägt (socket_lantern).
+        glow = { socket = "socket_lantern", colour = { 0.5, 1.0, 0.6 }, radius = 6, intensity = 1.3, holding = true },
+    },
 }
 
 --- Die Werte des Tieres aus Creatures; nil für Menschen (Npc ohne `species`).

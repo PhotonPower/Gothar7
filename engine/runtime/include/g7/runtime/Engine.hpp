@@ -18,6 +18,7 @@
 #include <g7/audio/Music.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Config.hpp>
+#include <g7/core/Jobs.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 #include <g7/gameplay/Character.hpp>
@@ -46,6 +47,7 @@
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/Rain.hpp>
 #include <g7/render/ReflectionProbes.hpp>
+#include <g7/render/ScreenHistory.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/SpellFx.hpp>
 #include <g7/render/Ssao.hpp>
@@ -468,6 +470,8 @@ public:
     /// and `world` (VFS path of a .g7world) is loaded with the camera on its start point `start`. An unknown
     /// world or start point is a warning and nothing changes. Game time stays (it is not part of a world).
     void requestWorldChange(std::string world, std::string start);
+    /// The job system ([jobs] threads: 0 = automatic, 1 = serial; perf.md part C). Valid after init().
+    [[nodiscard]] JobSystem& jobs() noexcept { return *m_jobs; }
     /// Game time (global across worlds): day, time of day, speed; jumps with setTime/advanceTo.
     [[nodiscard]] world::GameTime& gameTime() noexcept { return m_gameTime; }
     /// Light, fog and sky of the last frame (from the day cycle).
@@ -787,6 +791,10 @@ public:
     [[nodiscard]] usize creatureCount() const noexcept;
     /// Creatures the AI LOD simulates this step (walked and animated; M17 perf).
     [[nodiscard]] usize simulatedCreatureCount() const noexcept;
+    /// A digest of every creature's simulated state (position, yaw, animation state and pose, face, fight,
+    /// the last clip events): the same run with 1 and with several job threads must give the same value (M17
+    /// perf C2, tests).
+    [[nodiscard]] u32 creatureDigest() const;
     [[nodiscard]] std::string_view creatureState(u32 id) const noexcept;
     [[nodiscard]] std::optional<Vec3> creaturePosition(u32 id) const;
     [[nodiscard]] f32 creatureYaw(u32 id) const noexcept;
@@ -1122,6 +1130,12 @@ private:
     static void applyGlowBones(AnimatedFigure& figure, render::FigureGlow& glow);
     // Animals (EngineCreatures.cpp)
     void fixedUpdateCreatures(f32 seconds);
+    /// One clip event of creature `c` (fired after the parallel animation, in creature order; M17 perf C2).
+    void creatureClipEvent(Creature& c, std::string_view clip, std::string_view event);
+    /// Before drawing: the poses and skinning palettes of the creatures that may be drawn this frame (in
+    /// view, or within the shadow distance when `shadows`), in parallel; the morph weights then go to the
+    /// GPU.
+    void prepareCreaturePoses(bool shadows);
     void drawCreatures(bool shadow, u32 cascade);
     /// Whether shadow cascade `i` is drawn this frame (m_cascades holds the fresh fit).
     [[nodiscard]] bool shadowRedraw(u32 i) const;
@@ -1595,6 +1609,13 @@ private:
     void fixedUpdateHeroHold(gameplay::MoveInput& input, f32 seconds);
     /// Creatures.<species>.splinter: a blunt blow knocks a crystal off (into its inventory, the loot).
     void splinterOnHit(Combatant& target, const gameplay::DamageByType& weapon);
+    /// Creatures.<species>.weak (Kellermutter): while open, a hit coming from `from` behind it counts
+    /// `factor` times; a heavy one makes it stagger (`staggered`).
+    [[nodiscard]] i32 weakSpotDamage(const Combatant& target, i32 damage, const Vec3& from,
+                                     bool& staggered) const;
+    /// Creatures.<species>.flash (Beinhauswart): at the clip event "flash" its lantern blinds the hero if he
+    /// stands within distance and looks at it - a white screen for a moment and a stagger.
+    void creatureFlash(const Creature& c);
     /// Creatures.<species>.curl (Mauerkriecher): the damage through the shell while rolled up - in full when
     /// it comes from `from` within belly_degrees of the front (the soft belly), else damage_factor of it.
     [[nodiscard]] i32 curledDamage(const Combatant& target, i32 damage, std::optional<Vec3> from) const;
@@ -1781,6 +1802,8 @@ private:
     void updateReflectionProbes(const render::ShadowFrame* shadows);
     void placeReflectionProbes();
     void drawProbeFace(const render::ProbeFace& face);
+    /// M17 windows F3 (high, a world with glass): copies the finished scene for the next frame's glass.
+    void captureScreenHistory(u32 width, u32 height);
     /// The sky (background pass) for `camera` into the bound target.
     void drawBackground(const render::Camera& camera);
     void drawGrassShadow(const render::Cascade& cascade);
@@ -1887,6 +1910,7 @@ private:
     // Assets: the manager is destroyed before the VFS it reads from (member order).
     asset::Vfs m_vfs;
     std::unique_ptr<asset::AssetManager> m_assets;
+    std::unique_ptr<JobSystem> m_jobs; // [jobs] threads (perf.md part C); created in init()
     std::unique_ptr<platform::Window> m_window;
     std::unique_ptr<platform::GlContext> m_glContext; // must outlive m_device
     std::unique_ptr<render::Device> m_device;
@@ -1999,6 +2023,7 @@ private:
     world::DayCycle m_dayCycle = world::DayCycle::fallback();
     world::Weather m_weather = world::Weather::fallback(); // M17 E1: data/weather.toml
     render::RainRenderer m_rain;                           // M17 R
+    render::ScreenHistory m_screenHistory;                 // M17 windows F3 (high)
     render::ReflectionProbes m_probes;                     // M17 windows F2 (medium, high)
     bool m_probesDirty = true;                             // place them anew (world loaded or changed)
     bool m_probesFresh = false;                            // just placed: the nearest are drawn at once
@@ -2172,9 +2197,11 @@ private:
     std::string m_weaponDrawn; // Item instance of the melee weapon being drawn
     bool m_drawWeaponRequested = false;
     f32 m_runNoiseTimer = 0.0f;
-    u64 m_routineMinute = ~0ull;      // the game minute routines were last checked
-    f32 m_simulationDistance = 80.0f; // [ai] simulation_distance: AI LOD
-    u32 m_simulationLimit = 32;       // [ai] max_simulated: the nearest this many (0: no limit)
+    u64 m_routineMinute = ~0ull;            // the game minute routines were last checked
+    f32 m_simulationDistance = 80.0f;       // [ai] simulation_distance: AI LOD
+    u32 m_simulationLimit = 32;             // [ai] max_simulated: the nearest this many (0: no limit)
+    std::vector<usize> m_animatedCreatures; // this step's creatures to animate (indices into m_creatures)
+    std::vector<Creature*> m_poseCreatures; // this frame's figures whose pose prepareCreaturePoses computes
     // Dialogue (M10 part A)
     struct DialogLine
     {
@@ -2289,6 +2316,21 @@ private:
         f32 seconds = 0.0f; ///< left at most
     };
     std::optional<HeroHold> m_heroHeld; // held fast by a pincer: the hero cannot walk (not saved)
+    struct WeakSpot
+    {
+        f32 degrees = 60.0f;      ///< around straight behind it
+        f32 factor = 2.0f;        ///< damage there while open
+        f32 staggerShare = 0.05f; ///< a hit there of this share of hp_max or more: t_stagger
+    };
+    std::map<std::string, WeakSpot, std::less<>> m_weakSpots; // Creatures.<species>.weak (Kellermutter)
+    struct FlashRule
+    {
+        f32 distance = 7.0f; ///< m in front of it
+        f32 degrees = 60.0f; ///< the hero looks at it within this angle
+        f32 seconds = 1.5f;  ///< the screen stays bright this long (fading)
+        Vec3 colour{1.0f};   ///< of the light
+    };
+    std::map<std::string, FlashRule, std::less<>> m_flashRules; // Creatures.<species>.flash (Beinhauswart)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline
