@@ -4,3 +4,14 @@
 race:JPH::
 race:SDL_
 deadlock:JPH::
+
+# miniaudio (header compiled into engine/audio, so instrumented): the spatializer and listener parameters (position,
+# direction, world up, cone ...) are plain floats that the setters write on the main thread and the audio thread
+# reads while mixing - miniaudio's design, not a lock we skipped. A torn read costs one buffer of slightly wrong
+# panning.
+race:ma_spatializer_
+
+# The crash handler (engine/platform/src/CrashHandler.cpp) formats and writes its report inside the signal handler
+# (allocations, stdio). Not async-signal-safe by intent: the process is dying anyway, and the report is best
+# effort (docs/modules/release.md part B). The crash test then sees TSan's report instead of ours.
+signal:CrashHandler.cpp
