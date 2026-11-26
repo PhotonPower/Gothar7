@@ -241,6 +241,8 @@ deshalb additiv über `none`-, `fist`- und `1h`-Clips (Referenz `none/a_neutral`
 | `none/a_neutral` | Referenzpose der `none`-Overlays (1 Frame, erster Frame von `none/s_idle` ohne Atmung) | – | – | K | platzhalter-K |
 | `none/a_torch_hold` | Fackel tragen: linker Arm angewinkelt, Fackel aufrecht neben dem Körper, leicht vor (Schleife) | 1 s | – | K | platzhalter-K (Haltung per Gittersuche) |
 | `none/a_torch_hold_in`, `a_torch_hold_out` | in die Tragehaltung bzw. zurück zum freien Arm | 0,33 s | – | K | platzhalter-K |
+| `none/a_light_hold` | Lichtzauber (2026-11-26): linker Unterarm schräg vor Brust/Bauch, Handfläche offen nach oben, Finger leicht gespreizt, die Lichtkugel schwebt darüber; leichtes Atmen (Schleife, additiv wie `a_torch_hold`, Maske ab `clavicle_l`) | 2 s | – | K | platzhalter-K (Haltung per Suche) |
+| `none/a_light_hold_in`, `a_light_hold_out` | in die Lichthaltung bzw. zurück zum freien Arm | 0,4 s | – | K | platzhalter-K |
 | `none/t_torch_light` | Fackel vom Gürtel nehmen, hochheben, mit rechts anzünden; endet in der Tragehaltung | 1,2 s | torch_take, torch_light | K | platzhalter-K |
 | `none/t_torch_drop` | Fackel nach vorn links wegwerfen (liegt brennend am Boden) | 0,67 s | torch_drop | K | platzhalter-K |
 
