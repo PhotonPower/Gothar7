@@ -1,9 +1,9 @@
 -- Runen (dauerhaft, brauchen den Kreis des Zaubers) und Spruchrollen (ohne Kreis, verbraucht) - M12, Z2/Z3.
 -- Modelle von figuren (#222): eine Datei je Rune (gleiche Form, eigenes Material), eine für alle Rollen.
-local function rune(id, spell, name, value, mesh)
+local function rune(id, spell, name, value)
     Item(id) {
         name = "Rune: " .. name,
-        mesh = mesh or ("items/" .. id .. ".glb"),
+        mesh = "items/" .. id .. ".glb",
         category = "rune",
         value = value,
         weight = 0.2,
@@ -11,10 +11,10 @@ local function rune(id, spell, name, value, mesh)
     }
 end
 
-local function scroll(id, spell, name, value, mesh)
+local function scroll(id, spell, name, value)
     Item(id) {
         name = "Spruchrolle: " .. name,
-        mesh = mesh or "items/it_scroll.glb",
+        mesh = "items/it_scroll.glb",
         category = "scroll",
         value = value,
         weight = 0.1,
@@ -35,7 +35,16 @@ scroll("it_scroll_heal", "spl_heal", "Heilung", 25)
 scroll("it_scroll_sleep", "spl_sleep", "Schlaf", 50)
 scroll("it_scroll_fear", "spl_fear", "Schrecken", 40)
 scroll("it_scroll_telekinesis", "spl_telekinesis", "Telekinese", 50) -- M17 T, Entscheidung 7
-scroll("it_scroll_light", "spl_light", "Licht", 35, "items/it_scroll_light.glb") -- eigene Rolle (figuren #508)
+
+-- Lichtzauber (2026-11-26): eine eigene Rolle von figuren (#508), daher ausgeschrieben statt mit scroll().
+Item "it_scroll_light" {
+    name = "Spruchrolle: Licht",
+    mesh = "items/it_scroll_light.glb",
+    category = "scroll",
+    value = 35,
+    weight = 0.1,
+    spell = "spl_light",
+}
 
 Item "it_potion_mana_small" {
     name = "Kleiner Manatrank",
