@@ -135,9 +135,13 @@ Result<EmitterDef> EmitterDef::parse(std::string_view toml, std::string_view sou
     {
         d.sprite = ParticleSprite::Spark;
     }
+    else if (sprite == "plasma")
+    {
+        d.sprite = ParticleSprite::Plasma;
+    }
     else
     {
-        return Error{std::format("{}: sprite: soft, smoke or spark, not \"{}\"", source, sprite)};
+        return Error{std::format("{}: sprite: soft, smoke, spark or plasma, not \"{}\"", source, sprite)};
     }
     const std::string blend = c.get<std::string>("blend", "additive");
     if (blend != "additive" && blend != "alpha")
@@ -173,6 +177,7 @@ Result<EmitterDef> EmitterDef::parse(std::string_view toml, std::string_view sou
         }
     }
     d.burst = static_cast<u32>(burst);
+    d.follow = c.get<bool>("follow", false);
     for (usize i = 0; i < c.arraySize("with"); ++i)
     {
         const auto name = c.find<std::string>(std::format("with[{}]", i));
@@ -292,6 +297,14 @@ void ParticleSystem::move(u32 id, const Vec3& position, const Vec3& direction)
     {
         if (e.id == id)
         {
+            if (e.def->follow)
+            {
+                const Vec3 delta = position - e.position;
+                for (Particle& p : e.particles)
+                {
+                    p.position += delta;
+                }
+            }
             e.position = position;
             e.direction = direction;
         }
@@ -398,6 +411,10 @@ void ParticleSystem::collect(const Vec3& eye, std::vector<ParticleInstance>& add
             i.size = glm::mix(d.size[0], d.size[1], t);
             i.color = glm::mix(d.colorStart, d.colorEnd, t);
             i.velocity = p.velocity;
+            if (d.sprite == ParticleSprite::Plasma)
+            {
+                i.velocity = Vec3(e.age, t, 0.0f); // the shader's bands drift with the emitter's age
+            }
             i.sprite = static_cast<f32>(d.sprite);
             (d.additive ? additive : alpha).push_back(i);
         }
@@ -467,6 +484,9 @@ std::vector<u8> ParticleRenderer::spriteImage(ParticleSprite sprite, u32 size)
                 a = std::clamp(1.0f - r, 0.0f, 1.0f) * std::clamp(n * 1.6f - 0.2f, 0.0f, 1.0f);
                 break;
             }
+            case ParticleSprite::Plasma: // drawn in the shader; the layer is its soft disc
+                a = std::clamp((1.0f - r) * 8.0f, 0.0f, 1.0f);
+                break;
             case ParticleSprite::Spark:
                 // Thin along u (the shader stretches it along the motion), bright core.
                 a = std::pow(std::clamp(1.0f - std::abs(u) * 4.0f, 0.0f, 1.0f), 1.5f) *
@@ -522,13 +542,13 @@ Result<ParticleRenderer> ParticleRenderer::create(Device& device, ShaderLibrary&
     }
     r.m_distort = std::move(distort).value();
 
-    auto sprites = device.createTexture({kSpriteSize, kSpriteSize, rhi::Format::RGBA8, 0, 3, true});
+    auto sprites = device.createTexture({kSpriteSize, kSpriteSize, rhi::Format::RGBA8, 0, 4, true});
     if (!sprites)
     {
         return sprites.error();
     }
     r.m_sprites = std::move(sprites).value();
-    for (u32 layer = 0; layer < 3; ++layer)
+    for (u32 layer = 0; layer < 4; ++layer)
     {
         if (auto up =
                 r.m_sprites.upload(0, spriteImage(static_cast<ParticleSprite>(layer), kSpriteSize), layer);

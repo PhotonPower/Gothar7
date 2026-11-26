@@ -134,6 +134,7 @@ Result<void> Engine::initScripts()
     bindMusicFunctions();
     bindFootstepFunctions();
     bindTorchFunctions();
+    bindLightFunctions();
     bindVoiceFunctions();
     if (m_config.randomSeed)
     {

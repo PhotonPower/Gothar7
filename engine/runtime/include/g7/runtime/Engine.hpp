@@ -844,6 +844,13 @@ public:
     [[nodiscard]] bool npcSeesPlayer(u32 id) const;
     /// The hero's drawn weapon: 0 none, 1 one-handed, 2 fists.
     [[nodiscard]] u8 weaponMode() const noexcept { return m_weaponMode; }
+    /// The light spell (EngineSpellLight.cpp): seconds the orb still shines (0: none), where it hovers,
+    /// whether it hovers over the shoulder (the left hand busy), and its point light this step (nullopt:
+    /// none).
+    [[nodiscard]] f32 lightSecondsLeft() const noexcept;
+    [[nodiscard]] std::optional<Vec3> lightOrbPosition() const;
+    [[nodiscard]] bool lightOrbAtShoulder() const noexcept;
+    [[nodiscard]] std::optional<render::PointLight> lightOrbLight() const;
     /// Draws the equipped melee weapon (fists without one) or puts it away.
     void toggleWeapon();
     /// The figure's "draw"/"sheath" events: the weapon model appears in or leaves the hand.
@@ -1572,6 +1579,30 @@ private:
     [[nodiscard]] gameplay::MovementSettings boostedMovement() const;
     void fixedUpdateBoost(f32 seconds);
     void bindTorchFunctions();
+    // The light spell (EngineSpellLight.cpp): an orb of plasma over the hero's left hand, a point light with
+    // it.
+    struct LightOrb
+    {
+        std::string spell; ///< the Spell instance
+        gameplay::LightSpellLook look;
+        std::string orbFx, sparksFx, humSound, fadeSound;
+        f32 seconds = 0.0f;   ///< left (simulation time); the fade follows
+        f32 fade = 0.0f;      ///< > 0: fading out, seconds left of it
+        f32 time = 0.0f;      ///< since it was cast (wobble, flicker)
+        f32 shoulder = 0.0f;  ///< 0 over the hand .. 1 over the shoulder (eased)
+        Vec3 position{0.0f};  ///< where it hovers
+        bool holding = false; ///< the hold pose of the left arm is on (this light put it on)
+        std::optional<u32> orb, sparks;
+        std::optional<audio::SoundId> hum;
+    };
+    std::optional<LightOrb> m_lightOrb;
+    void castLight(const gameplay::SpellInfo& spell);
+    /// Starts (or renews) the orb with `seconds` left.
+    void startLight(const gameplay::SpellInfo& spell, f32 seconds);
+    void stopLight(); ///< at once, without the fade (level reset, load)
+    [[nodiscard]] bool heroLeftHandBusy() const;
+    void fixedUpdateLight(f32 seconds);
+    void bindLightFunctions();
     struct Torch
     {
         std::string item;

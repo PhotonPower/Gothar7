@@ -78,3 +78,28 @@ Spell "spl_telekinesis" {
     fx = { on_target = "telekinesis" },
     sounds = { cast = "spell_cast" },
 }
+
+-- Licht (Wunsch des Projektinhabers, 2026-11-26: „eine Art Plasmasphäre, die Licht macht und auf der Hand schwebt"):
+-- eine Kugel aus blassblauem Plasma über der offenen linken Hand; ist die Hand belegt (Zweihänder, Bogen, Rune,
+-- Fackel, Klettern, Schwimmen, Mob), schwebt sie über der linken Schulter. 300 s Spielzeit (Simulation, steht in der
+-- Pause), erneutes Wirken erneuert sie; in den letzten Sekunden flackert sie stärker, dann verlischt sie.
+Spell "spl_light" {
+    name = "Licht",
+    circle = 1,
+    mana = 10,
+    kind = "light",
+    duration = 300,
+    light = {
+        color = { 0.86, 0.92, 1.0 }, -- linear: warm-neutrales Weiß mit leichtem Kaltstich
+        range = 8,                   -- m
+        intensity = 3.0,
+        flicker = 0.08,              -- sanft
+        hover = 0.15,                -- m über der offenen Hand
+        shoulder = 0.25,             -- m über der linken Schulter, solange die Hand belegt ist
+        warn = 10,                   -- die letzten Sekunden ...
+        warn_flicker = 0.5,          -- ... flackert sie so stark
+        fade = 1.0,                  -- s Verlöschen
+    },
+    fx = { orb = "light_orb", sparks = "light_sparks" },
+    sounds = { cast = "light_pop", loop = "light_hum", fade = "light_pop" },
+}

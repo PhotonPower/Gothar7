@@ -12,7 +12,7 @@ Mob "mob_dng_e1_chest" {
 Mob "mob_dng_e1_niche" {
     name = "Nische",
     type = "niche",
-    contents = { it_scroll_heal = 1, it_gulden = 10 },
+    contents = { it_scroll_heal = 1, it_scroll_light = 1, it_gulden = 10 },
 }
 
 -- Ebene 2 „Verlies“

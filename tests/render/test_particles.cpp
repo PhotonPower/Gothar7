@@ -148,3 +148,35 @@ TEST_CASE("Particles: alpha ones back to front; lights while emitting; the sprit
         }
     }
 }
+
+TEST_CASE("Particles: a plasma orb that follows its emitter (the light spell)")
+{
+    const auto orb = def("sprite = \"plasma\"\nfollow = true\nrate = 20\nlifetime = [1, 1]\nspeed = [0, 0]\n"
+                         "size = [0.12, 0.12]\n");
+    CHECK(orb->sprite == ParticleSprite::Plasma);
+    CHECK(orb->follow);
+    CHECK_FALSE(def("rate = 1\n")->follow);
+    ParticleSystem system(1);
+    const u32 id = system.spawn(orb, Vec3(0.0f));
+    for (int i = 0; i < 30; ++i)
+    {
+        system.update(0.01f);
+    }
+    // Moved: its particles go along (not a trail behind the hand).
+    system.move(id, Vec3(2.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f));
+    std::vector<ParticleInstance> additive;
+    std::vector<ParticleInstance> alpha;
+    system.collect(Vec3(0.0f, 0.0f, 10.0f), additive, alpha);
+    REQUIRE_FALSE(additive.empty());
+    for (const ParticleInstance& p : additive)
+    {
+        CHECK(p.position.x == doctest::Approx(2.0f));
+        CHECK(p.sprite == doctest::Approx(3.0f));
+        CHECK(p.velocity.x == doctest::Approx(0.3f).epsilon(0.05)); // the emitter's age drives the bands
+    }
+    // The fourth sprite layer exists (a soft disc; the shader draws the bands).
+    const auto image = ParticleRenderer::spriteImage(ParticleSprite::Plasma, 16);
+    CHECK(image.size() == 16u * 16u * 4u);
+    CHECK(image[(8 * 16 + 8) * 4 + 3] > 200);
+    CHECK(image[3] == 0);
+}

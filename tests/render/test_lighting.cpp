@@ -57,6 +57,38 @@ TEST_CASE("Lighting: per-object selection takes reaching lights, nearest first, 
     CHECK(selected.empty());
 }
 
+TEST_CASE(
+    "Lighting: a pinned light (the light spell) is never pushed out - not from the frame, not from an object")
+{
+    const Frustum view =
+        Frustum::fromViewProjection(perspectiveReverseZ(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f) *
+                                    glm::lookAt(Vec3(0.0f), Vec3(0.0f, 0.0f, -1.0f), Vec3(0.0f, 1.0f, 0.0f)));
+    const PointLight orb{Vec3(0.0f, 1.0f, -3.0f), 8.0f, Vec3(1.0f), 3.0f};
+    const std::vector<PointLight> effects(300, PointLight{Vec3(0.0f, 1.0f, -2.0f), 4.0f}); // more than fit
+    std::vector<PointLight> world(50, PointLight{Vec3(0.0f, 1.0f, -6.0f), 5.0f});
+    LightList out;
+    LightBudget budget;
+    budget.maxLights = 4;
+    selectFrameLights(std::vector<PointLight>{orb}, effects, world, {}, Vec3(0.0f), view, budget, out);
+    REQUIRE(out.lights().size() == 4);
+    CHECK(out.pinned() == 1);
+    CHECK(out.lights()[0].position.z == doctest::Approx(-3.0f)); // the orb first, the budget filled after it
+    // An object with many nearer lights (all inside it): the orb still among its 8, and first.
+    const AABB box{Vec3(-1.0f, 0.0f, -3.0f), Vec3(1.0f, 2.0f, -1.0f)};
+    budget.maxLights = 128;
+    selectFrameLights(std::vector<PointLight>{orb}, effects, world, {}, Vec3(0.0f), view, budget, out);
+    std::vector<u32> selected;
+    out.selectFor(box, selected);
+    REQUIRE(selected.size() == LightList::kMaxPerObject);
+    CHECK(selected[0] == 0);
+    // Out of reach of an object it is not chosen for it.
+    out.selectFor(AABB{Vec3(100.0f), Vec3(101.0f)}, selected);
+    CHECK(std::ranges::find(selected, 0u) == selected.end());
+    // Without pinned lights it is as before.
+    selectFrameLights({}, effects, world, {}, Vec3(0.0f), view, budget, out);
+    CHECK(out.pinned() == 0);
+}
+
 TEST_CASE("Lighting: frame limit and GPU packing")
 {
     LightList lights;

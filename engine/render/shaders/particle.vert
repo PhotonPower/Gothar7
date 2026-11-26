@@ -3,7 +3,7 @@
 
 layout(location = 0) in vec4 aPositionSize; // xyz world, w size (m)
 layout(location = 1) in vec4 aColor;        // linear rgb, alpha
-layout(location = 2) in vec4 aVelocitySprite; // xyz velocity, w sprite layer (0 soft, 1 smoke, 2 spark)
+layout(location = 2) in vec4 aVelocitySprite; // xyz velocity, w sprite layer (0 soft, 1 smoke, 2 spark, 3 plasma)
 
 uniform mat4 uViewProjection;
 uniform vec3 uCameraRight;
@@ -13,6 +13,7 @@ uniform vec3 uCameraPosition;
 out vec2 vUv;
 out vec4 vColor;
 flat out float vLayer;
+flat out vec3 vMotion; // plasma: x the emitter's age (s), y the particle's life 0..1
 
 void main()
 {
@@ -21,7 +22,7 @@ void main()
     vec3 right = uCameraRight;
     vec3 up = uCameraUp;
     float radius = aPositionSize.w * 0.5;
-    if (aVelocitySprite.w > 1.5)
+    if (aVelocitySprite.w > 1.5 && aVelocitySprite.w < 2.5)
     {
         // A spark: its long side along the motion as seen from the camera.
         const vec3 toCamera = normalize(uCameraPosition - aPositionSize.xyz);
@@ -42,4 +43,5 @@ void main()
     vUv = c * 0.5 + 0.5;
     vColor = aColor;
     vLayer = aVelocitySprite.w;
+    vMotion = aVelocitySprite.xyz;
 }

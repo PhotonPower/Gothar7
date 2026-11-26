@@ -2078,6 +2078,12 @@
       "context": "magic/spells.lua",
       "status": "entwurf"
     },
+    "spl_light.name": {
+      "de": "Licht",
+      "text": "Light",
+      "context": "magic/spells.lua",
+      "status": "entwurf"
+    },
     "spl_sleep.name": {
       "de": "Schlaf",
       "text": "Sleep",

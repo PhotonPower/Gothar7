@@ -526,6 +526,23 @@ gegen den Kräuterhexer und einen Wegelagerer:
 - Heilung heilt genau 50 abzüglich der Treffer währenddessen.
 - In Wolfsgestalt greift die Torwache an, der alte Mann flieht; „1“ macht den Helden wieder zum Menschen.
 
+**Lichtzauber** (Wunsch des Projektinhabers 2026-11-26, `EngineSpellLight.cpp`; Spell `spl_light`, Art `light`, Kreis 1,
+10 Mana; Rune `it_rune_light`, Spruchrolle `it_scroll_light` – der alte Mann im Lager verkauft eine Rune und zwei
+Rollen, eine Rolle liegt in der Nische von Ebene 1):
+- Eine Plasmakugel (~12 cm, blassblau-weiß, wandernde Bänder; Partikel-Sprite `plasma` in `fx/light_orb.toml`, Funken
+  `fx/light_sparks.toml`) schwebt 15 cm über der linken Hand, die dabei die Haltung der Fackel einnimmt, und wackelt sanft.
+- Ist die linke Hand belegt (Zweihänder, Bogen, Armbrust, Rune/Rolle, Fackel, Klettern, Schwimmen, Mob, Tiergestalt),
+  schwebt sie über der linken Schulter und kehrt danach zurück.
+- Punktlicht 8 m, warm-neutrales Weiß mit leichtem Kaltstich, sanftes Flackern; gepinnt (fällt nie weg, `render.md`),
+  ohne Schatten. Leises Summen (`light_hum`), „Plopp“ beim Wirken und Verlöschen (`light_pop`).
+- Dauer 300 s Simulationszeit (steht in der Pause); erneutes Wirken erneuert sie. Die letzten 10 s flackert sie
+  stärker, dann 1 s Verlöschen ohne Summen. Werte im Spell-Feld `light` (`color`, `range`, `intensity`, `flicker`,
+  `hover`, `shoulder`, `warn`, `warn_flicker`, `fade`).
+- Spielstand: `hero.light`/`hero.lightSeconds` (die Restzeit; ältere Stände haben keine). Lua: `hero_light_seconds()`,
+  Ereignisse `light_on(spell, seconds)`, `light_out(spell)`. NPCs wirken ihn nicht.
+- Läuft im festen Schritt seriell auf dem Hauptthread (nicht in der parallelen Animationsphase).
+- Tests: `tests/runtime/test_engine_spell_light.cpp`.
+
 **Nicht umgesetzt in M12:** Telekinese und Shader-Effekte, verschoben nach M17 (Entscheidung Projektinhaber
 2026-10-08); Plan unten.
 

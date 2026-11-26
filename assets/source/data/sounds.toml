@@ -51,6 +51,18 @@ files = ["sounds/heal.wav"]
 volume = 0.6
 max_distance = 15
 
+[light_pop] # Lichtzauber: die Kugel erscheint bzw. verlischt (Platzhalter)
+files = ["sounds/light_pop.wav"]
+volume = 0.5
+pitch_jitter = 0.08
+max_distance = 15
+
+[light_hum] # Lichtzauber: leises Summen der Kugel, solange sie leuchtet (Platzhalter, Schleife)
+files = ["sounds/amb_light_hum.wav"]
+loop = true
+volume = 0.18
+max_distance = 6
+
 [summon]
 files = ["sounds/summon.wav"]
 volume = 0.8

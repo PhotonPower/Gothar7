@@ -27,9 +27,10 @@ struct Camera;
 
 enum class ParticleSprite : u8
 {
-    Soft,  ///< a soft round dot (fire, magic, glow)
-    Smoke, ///< a cloudy blot
-    Spark, ///< a thin streak along the motion
+    Soft,   ///< a soft round dot (fire, magic, glow)
+    Smoke,  ///< a cloudy blot
+    Spark,  ///< a thin streak along the motion
+    Plasma, ///< a glowing sphere with drifting bands (the light spell's orb), drawn in the shader
 };
 
 /// One emitter type: data/fx/<name>.toml, version 1.
@@ -47,8 +48,9 @@ struct EmitterDef
     f32 radius = 0.0f;                ///< start positions within this sphere
     f32 gravity = 0.0f;               ///< m/s² along -Y (negative: rises)
     f32 drag = 0.0f;                  ///< 1/s
-    f32 wind = 0.0f;    ///< M17 W: how much the particles drift with the wind (smoke 1, sparks less, magic 0)
-    f32 distort = 0.0f; ///< M17 V: how strongly its particles distort the picture behind them (0: not)
+    f32 wind = 0.0f; ///< M17 W: how much the particles drift with the wind (smoke 1, sparks less, magic 0)
+    bool follow = false; ///< its particles move along when the emitter is moved (an orb held in the hand)
+    f32 distort = 0.0f;  ///< M17 V: how strongly its particles distort the picture behind them (0: not)
     DistortShape distortShape = DistortShape::Haze; ///< `distort_shape` = haze, ring or swirl
     f32 distortSize = 1.5f;                         ///< the distortion's size as a factor on the particle's
     std::vector<std::string> with;        ///< `with`: effects started together with it (Engine::startEffect)

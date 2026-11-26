@@ -157,6 +157,12 @@ Der Held hat ein Item benutzt (nach seiner Wirkung).
 ### `on("level_up", fn(level: integer))`
 Der Held hat eine neue Stufe erreicht.
 
+### `on("light_on", fn(spell: string, seconds: number))`
+Der Held hat einen Lichtzauber gewirkt (auch erneuert); `seconds` ist seine Dauer.
+
+### `on("light_out", fn(spell: string))`
+Die Lichtkugel des Helden ist verloschen.
+
 ### `on("lock_picked", fn(mob: string))`
 Ein Schloss wurde mit dem Dietrich geknackt.
 
@@ -447,6 +453,9 @@ Hält die Zaubertasten gedrückt (true: aufladen bzw. sofort wirken) bzw. lässt
 
 ### `hero_casting() -> string | nil`
 Der Zauber, den der Held gerade auflädt bzw. wirkt, mit der Aufladestufe ("spl_firebolt 0"); nil ohne.
+
+### `hero_light_seconds() -> number`
+Wie viele Sekunden die Lichtkugel des Helden noch leuchtet (0: keine).
 
 ### `hero_rune(place: integer)`
 Wählt den Runenplatz 1-7 wie die Tasten 4-9 (Z4): zieht ihn bzw. wechselt die Rune in der Hand.
