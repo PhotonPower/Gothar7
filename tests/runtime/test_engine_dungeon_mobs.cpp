@@ -45,5 +45,5 @@ TEST_CASE("Dungeon mobs: chests and niches with existing items")
             CHECK(type == "chest"); // niches have no lid
         }
     }
-    CHECK(definitions >= 45);
+    CHECK(definitions >= 50);
 }

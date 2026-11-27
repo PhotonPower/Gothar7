@@ -344,3 +344,47 @@ Mob "mob_dng_e7_niche_kristall" {
     type = "niche",
     contents = { it_kristall = 2, it_potion_mana_medium = 1, it_gulden = 15 },
 }
+
+-- Ebene 8 „Hort der Kellermutter“ (welt #523). Die Vorkammer bereitet auf den Kampf vor; der Hort ist der große Lohn
+-- des Dungeons (neben 500 losen Gulden): deutlich reicher als Ebene 4–7.
+-- Vorkammer vor dem Boss: Tränke als Vorbereitung.
+Mob "mob_dng_e8_chest_vorkammer" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_potion_heal_medium = 3, it_potion_mana_medium = 1, it_potion_strength = 1, it_gulden = 30 },
+}
+
+-- Hort: Rüstung und Gold.
+Mob "mob_dng_e8_chest_hort_1" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_armor_leather = 1, it_ring_gold = 1, it_potion_heal_medium = 2, it_gulden = 250 },
+}
+
+-- Hort: verschlossen, die Rune des Wolfsrufs und Schmuck.
+Mob "mob_dng_e8_chest_hort_2" {
+    name = "Verschlossene Truhe",
+    type = "chest",
+    lock = "LRLRRLL",
+    contents = {
+        it_rune_summon_wolf = 1,
+        it_amulet = 1,
+        it_chain_gold = 1,
+        it_potion_mana_medium = 2,
+        it_gulden = 300,
+    },
+}
+
+-- Hort: Schlafrune, Armbrust mit Bolzen, Ring.
+Mob "mob_dng_e8_chest_hort_3" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_rune_sleep = 1, it_crossbow = 1, it_bolt = 30, it_ring_silver = 1, it_gulden = 200 },
+}
+
+-- Nische im Hort: was von der Brut der Kellermutter blieb, und ein altes Amulett.
+Mob "mob_dng_e8_niche_hort" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_brood_gland = 1, it_amulet_old = 1 },
+}
