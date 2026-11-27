@@ -81,13 +81,23 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 18.0,
         },
     ),
-    "grotte": (  # Ebene 7 (stub): crystal light later; the vault's sound until engine has "grotte"
+    "grotte": (  # Ebene 7: crystal light, a faint blue fill; engine's ambient "grotte" (#517)
+        "grotte",
+        {
+            "ambient": [0.1, 0.14, 0.2],
+            "ambient_ground": [0.05, 0.075, 0.1],
+            "fog_color": [0.025, 0.045, 0.07],
+            "fog_start": 4.0,
+            "fog_distance": 30.0,
+        },
+    ),
+    "hort": (  # Ebene 8 (stub): the Kellermutter's lair; the vault's sound for now
         "gewoelbe",
         {
-            "ambient": [0.04, 0.046, 0.058],
-            "fog_color": [0.014, 0.018, 0.026],
+            "ambient": [0.045, 0.042, 0.04],
+            "fog_color": [0.02, 0.017, 0.015],
             "fog_start": 2.0,
-            "fog_distance": 18.0,
+            "fog_distance": 20.0,
         },
     ),
     "labyrinth": (  # Ebene 6: engine's ambient "labyrinth" (#514)
@@ -118,7 +128,22 @@ SURFACES = {
     "beinhaus": ("flag_dust", "vault_rock", "ashlar", False),
     "werkstatt": ("flag", "vault_brick", "oak_beam", True),
     "labyrinth": ("flag", "vault_brick", "ashlar", False),
+    "grotte": ("cave_floor", "cave_ceiling", None, False),  # a natural cave: no ribs
 }
+WALLS = {"grotte": "cave_wall"}  # wall material per theme (else rubble)
+CAVE_THEMES = {"grotte"}  # rough rock walls and ceilings instead of masonry (W8 E7)
+ROUGH_WALL_M = 0.7  # the rock steps back from the cell's edge by up to this much
+ROUGH_CEIL_M = 0.9  # and rises above the ceiling's height by up to this much
+ROUGH_ALONG, ROUGH_UP, ROUGH_CEIL = 10, 12, 8  # subdivisions of a wall face and a ceiling cell
+ROUGH_FADE_M = 0.6  # the rock eases to the cell's edge over this far (floor, corners, walls)
+LIGHT_CRYSTAL = {"color": [0.35, 0.8, 1.0], "range": 10.0, "intensity": 9.0, "flicker": 0.0}
+CRYSTAL_LIGHT_AT = {  # kind -> (out from the wall, up from the prop's origin) of its light
+    "crystal_cluster": (0.9, 1.3),
+    "crystal_ceiling": (0.0, -1.2),
+    "crystal_spire": (0.0, None),  # just above the water's surface
+}
+LIGHTS_PER_BLOCK = 8  # plan 3.4, torches and crystals together
+DROP_M = 3.3  # a fall into the same level arrives this high above the floor (below 4 m: unhurt)
 RIB_CELLS = 2  # a rib every 6 m
 RIB_W, RIB_D = 0.36, 0.24  # width across the boundary, depth below the ceiling
 CORBEL_D, CORBEL_H = 0.28, 0.75  # where a rib meets the wall
@@ -175,9 +200,23 @@ class _Gen:
         self.walk = set(level.cells(FLOOR_CHARS))
         self.wells: dict[Cell, Cell] = {level.well(at): at for at in level.cells("<>")}
         self.shafts = {st["at"] for st in level.starts if st.get("shaft")}
+        self.drops = {
+            st["name"] for at in level.cells("P") if (st := level.same_level_fall(at)) is not None
+        }
         self.tag = level.tag
         floor, ceiling, rib, inlay = SURFACES.get(level.theme, SURFACES["gewoelbe"])
         self.floor_mat, self.ceil_mat, self.rib_mat, self.inlay = floor, ceiling, rib, inlay
+        self.wall_mat = WALLS.get(level.theme, "rubble")
+        self.cave = level.theme in CAVE_THEMES
+        self.corner_h: dict[tuple[int, int], float] = {}
+        if level.heights:  # corner (gx, gz) -> mean lift of the land cells round it
+            land = {a for a in self.walk if level.char(*a) != "~"}
+            for gz in range(level.height + 1):
+                for gx in range(level.width + 1):
+                    round_ = [(gx - i, gz - j) for j in (1, 0) for i in (1, 0)]
+                    dys = [level.dy(a) for a in round_ if a in land]
+                    if dys:
+                        self.corner_h[(gx, gz)] = sum(dys) / len(dys)
 
     # --- geometry helpers ---------------------------------------------------------------------
     def x0(self, x: int) -> float:
@@ -204,8 +243,31 @@ class _Gen:
     def y(self, v: float) -> float:
         return self.lv.origin[1] + v
 
+    def base(self, at: Cell) -> float:
+        """A water cell's bottom, else 0 (the floor before ``heights``)."""
+        return -self.lv.depth(at) if self.lv.char(*at) == "~" else 0.0
+
     def floor(self, at: Cell) -> float:
-        return -self.lv.water_depth if self.lv.char(*at) == "~" else 0.0
+        """The floor's height in the middle of the cell."""
+        if self.lv.char(*at) == "~" or not self.corner_h:
+            return self.base(at)
+        ha, hb, hc, hd = self.corners(at)
+        return max(ha + hc, hb + hd) / 2  # the upper diagonal (the collision hull's top)
+
+    def corners(self, at: Cell) -> tuple[float, float, float, float]:
+        """Floor heights at (x0, z0), (x1, z0), (x1, z1), (x0, z1) of a land cell."""
+        x, y = at
+        g = self.corner_h
+        return (g.get((x, y), 0.0), g.get((x + 1, y), 0.0), g.get((x + 1, y + 1), 0.0),
+                g.get((x, y + 1), 0.0))  # fmt: skip
+
+    def edge_floor(self, at: Cell, side: str) -> tuple[float, float]:
+        """Floor heights at the two ends of ``side`` (left, right seen from inside, as
+        ``edge``)."""
+        if self.lv.char(*at) == "~" or not self.corner_h:
+            return (self.base(at), self.base(at))
+        ha, hb, hc, hd = self.corners(at)
+        return {"N": (hb, ha), "S": (hd, hc), "W": (ha, hd), "E": (hc, hb)}[side]
 
     def ceil(self, at: Cell) -> float:
         if at in self.wells and self.lv.char(*self.wells[at]) == "<":
@@ -244,11 +306,13 @@ class _Gen:
         side: str,
         y0: float,
         y1: float,
-        material: str = "rubble",
+        material: str | None = None,
         a: float = 0.0,
         b: float = 1.0,
     ) -> None:
-        """A wall face on ``side`` of ``at`` facing into it, from ``a`` to ``b`` (0..1) along."""
+        """A wall face on ``side`` of ``at`` facing into it, from ``a`` to ``b`` (0..1) along
+        (``material`` None: the theme's wall)."""
+        material = material or self.wall_mat
         (xa, za), (xb, zb) = self.edge(at, side)
         p = (xa + (xb - xa) * a, za + (zb - za) * a)
         q = (xa + (xb - xa) * b, za + (zb - za) * b)
@@ -284,12 +348,15 @@ class _Gen:
         self.merge_empty()
         self.mechanics()
         self.torches()
+        self.check_lights()
         self.waynet()
         self.zones()
         return self.plan
 
     def floor_material(self, at: Cell) -> str:
         """Flagstones; in the workshops some cells have planks or an iron plate instead."""
+        if at in self.lv.jetty:
+            return "oak"
         if self.inlay and self.lv.char(*at) == ".":
             k = (at[0] * 7 + at[1] * 13) % 9
             if k == 0:
@@ -304,6 +371,8 @@ class _Gen:
     def ribs(self) -> None:
         """Ribs under the ceiling every ``RIB_CELLS`` cells across the boundary of two ceiled
         cells: cross arches in a corridor, a grid in a room; a corbel where a rib meets a wall."""
+        if self.rib_mat is None:  # a cave has none
+            return
         c, top = self.c, self.y(self.h)
         hw = RIB_W / 2
         for at in sorted(self.walk, key=lambda a: (a[1], a[0])):
@@ -361,10 +430,14 @@ class _Gen:
             self.flight(at)
         elif ch == "P":
             self.shaft_down(at)
+        elif self.corner_h and ch != "~":
+            self.floor_tris(at, self.floor_material(at))
         else:
             self.flat(at, self.floor(at), True, self.floor_material(at))
         if at in self.shafts:
             self.shaft_up(at)
+        elif self.cave and self._ceiled(at):
+            self.rough_ceiling(at)
         else:
             self.flat(at, self.ceil(at), False, self.ceil_mat)
         for side, (dx, dy) in DIRS.items():
@@ -372,12 +445,9 @@ class _Gen:
             if self.connected(at, nb):
                 if self.ceil(nb) > self.ceil(at):
                     self.face(nb, OPPOSITE[side], self.ceil(at), self.ceil(nb))
-                if (
-                    at not in self.wells
-                    and nb not in self.wells
-                    and self.floor(nb) < self.floor(at)
-                ):
-                    self.face(nb, OPPOSITE[side], self.floor(nb), self.floor(at))
+                if at not in self.wells and nb not in self.wells and self.base(nb) < self.base(at):
+                    mat = "oak_beam" if at in lv.jetty else None
+                    self.face(nb, OPPOSITE[side], self.base(nb), self.base(at), mat)
                 continue
             back = at in self.wells and nb == (
                 2 * at[0] - self.wells[at][0],
@@ -385,10 +455,204 @@ class _Gen:
             )
             if lv.char(*nb) == "N" and at not in self.wells and self._faces(nb) == at:
                 self.niche_face(at, side)
+            elif self._rough(at, side):
+                self.rough_face(at, side)
             else:
-                self.face(at, side, self.low(at), self.ceil(at), "dark" if back else "rubble")
+                self.face(at, side, self.low(at), self.ceil(at), "dark" if back else None)
         if ch == "D":
             self.door_frame(at)
+        if at in lv.jetty:
+            self.jetty_posts(at)
+
+    # --- the cave (W8 E7) ---------------------------------------------------------------------
+    @staticmethod
+    def hash3(i: int, j: int, k: int) -> float:
+        """0..1 per integer lattice point (integer hash: same bytes on every platform)."""
+        h = ((i * 73856093) ^ (j * 19349663) ^ (k * 83492791)) & 0xFFFFFFFF
+        h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+        h ^= h >> 16
+        return h / 2**32
+
+    @classmethod
+    def noise(cls, x: float, y: float, z: float) -> float:
+        """0..1 per point, from the position to the millimetre."""
+        return cls.hash3(round(x * 1000), round(y * 1000), round(z * 1000))
+
+    @classmethod
+    def smooth_noise(cls, x: float, y: float, z: float, cell: float) -> float:
+        """Value noise (0..1) on a lattice of ``cell`` metres, smoothly interpolated."""
+        fx, fy, fz = x / cell, y / cell, z / cell
+        i, j, k = math.floor(fx), math.floor(fy), math.floor(fz)
+        u, v, w = fx - i, fy - j, fz - k
+        u, v, w = u * u * (3 - 2 * u), v * v * (3 - 2 * v), w * w * (3 - 2 * w)
+        out = 0.0
+        for a in (0, 1):
+            for b in (0, 1):
+                for c in (0, 1):
+                    wt = (u if a else 1 - u) * (v if b else 1 - v) * (w if c else 1 - w)
+                    out += wt * cls.hash3(i + a, j + b, k + c)
+        return out
+
+    def rock(self, x: float, y: float, z: float) -> float:
+        """0..1: broad bulges and hollows, smaller knobs, a little grit."""
+        return (0.45 * self.smooth_noise(x, y, z, 1.4) + 0.35 * self.smooth_noise(x, y, z, 0.55)
+                + 0.2 * self.noise(x, y, z))  # fmt: skip
+
+    def grid_mesh(self, at: Cell, material: str, grid: list[list[tuple[float, float, float]]],
+                  want: tuple[float, float, float]) -> None:  # fmt: skip
+        """A displaced grid (rows of points) as triangles with smooth normals; texture projected
+        like ``KitMesh.quad`` (world metres along the axis of ``want``)."""
+        b = self.mesh(at).b(material)
+        ni, nj = len(grid), len(grid[0])
+        axis = max(range(3), key=lambda k: abs(want[k]))
+        base = len(b.pos)
+        for i in range(ni):
+            for j in range(nj):
+                p = grid[i][j]
+                a0, a1 = grid[max(i - 1, 0)][j], grid[min(i + 1, ni - 1)][j]
+                b0, b1 = grid[i][max(j - 1, 0)], grid[i][min(j + 1, nj - 1)]
+                tu = (a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2])
+                tv = (b1[0] - b0[0], b1[1] - b0[1], b1[2] - b0[2])
+                n = (tu[1] * tv[2] - tu[2] * tv[1], tu[2] * tv[0] - tu[0] * tv[2],
+                     tu[0] * tv[1] - tu[1] * tv[0])  # fmt: skip
+                if n[0] * want[0] + n[1] * want[1] + n[2] * want[2] < 0:
+                    n = (-n[0], -n[1], -n[2])
+                length = math.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2) or 1.0
+                b.pos.append((p[0] - b.ox, p[1] - b.oy, p[2] - b.oz))
+                b.nrm.append((n[0] / length, n[1] / length, n[2] / length))
+                if axis == 1:
+                    b.uv.append((p[0], p[2]))
+                else:
+                    b.uv.append((p[2] if axis == 0 else p[0], p[1]))
+        p0, p1, p2 = grid[0][0], grid[1][0], grid[1][1]
+        e1 = (p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2])
+        e2 = (p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2])
+        cross = (e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2],
+                 e1[0] * e2[1] - e1[1] * e2[0])  # fmt: skip
+        flip = cross[0] * want[0] + cross[1] * want[1] + cross[2] * want[2] < 0
+        for i in range(ni - 1):
+            for j in range(nj - 1):
+                q00, q10 = base + i * nj + j, base + (i + 1) * nj + j
+                q11, q01 = q10 + 1, q00 + 1
+                for tri in ((q00, q10, q11), (q00, q11, q01)):
+                    b.idx += [tri[0], tri[2], tri[1]] if flip else list(tri)
+
+    def _plain_wall(self, at: Cell, side: str) -> bool:
+        """``side`` of the open cell ``at`` is a plain wall face (no niche, no stairs)."""
+        dx, dy = DIRS[side]
+        nb = (at[0] + dx, at[1] + dy)
+        if self.open_cell(nb) or at in self.wells or self.lv.char(*at) == "P":
+            return False
+        return not (self.lv.char(*nb) == "N" and self._faces(nb) == at)
+
+    def _rough(self, at: Cell, side: str) -> bool:
+        return self.cave and at in self.walk and self._plain_wall(at, side)
+
+    def _rough_column(self, at: Cell, side: str, end: int) -> bool:
+        """May the rock step back at this end of the face? Only where the wall runs on straight
+        into the next cell's rough face with the same floor (no gaps at corners)."""
+        along = {"N": (-1, 0), "S": (1, 0), "W": (0, 1), "E": (0, -1)}[side]
+        s = 1 if end else -1
+        q = (at[0] + s * along[0], at[1] + s * along[1])
+        return q in self.walk and self._rough(q, side) and self.base(q) == self.base(at)
+
+    def rough_face(self, at: Cell, side: str) -> None:
+        """A wall face of rock: a fine grid whose points step back up to ``ROUGH_WALL_M`` into
+        the solid cell (bulges, hollows, overhangs; the collision stays the cell's box), easing
+        to the edge at the floor, the ceiling and corners; smooth normals."""
+        (xa, za), (xb, zb) = self.edge(at, side)
+        fa, fb = self.edge_floor(at, side)
+        top = self.ceil(at)
+        want = SIDE_WANT[side]
+        ok = (self._rough_column(at, side, 0), self._rough_column(at, side, 1))
+        na, nu = ROUGH_ALONG, ROUGH_UP
+        grid: list[list[tuple[float, float, float]]] = []
+        for i in range(na + 1):
+            t = i / na
+            x = xa if i == 0 else xb if i == na else xa + (xb - xa) * t
+            z = za if i == 0 else zb if i == na else za + (zb - za) * t
+            bottom = fa if i == 0 else fb if i == na else fa + (fb - fa) * t
+            ease = 1.0
+            if not ok[0]:
+                ease = min(ease, t * self.c / ROUGH_FADE_M)
+            if not ok[1]:
+                ease = min(ease, (1 - t) * self.c / ROUGH_FADE_M)
+            col = []
+            for j in range(nu + 1):
+                y = bottom if j == 0 else top if j == nu else bottom + (top - bottom) * j / nu
+                up = min(1.0, (y - bottom) / ROUGH_FADE_M, (top - y) / ROUGH_FADE_M)
+                k = min(ease, up)
+                k = k * k * (3 - 2 * k)
+                d = ROUGH_WALL_M * k * self.rock(x, y, z) if k > 0 else 0.0
+                col.append((x - want[0] * d, self.y(y), z - want[2] * d))
+            grid.append(col)
+        self.grid_mesh(at, self.wall_mat, grid, want)
+
+    def _ceiling_ease(self, x: float, z: float) -> float:
+        """0 on the edge of anything that is not plain cave ceiling, 1 from ``ROUGH_FADE_M``
+        away (a function of the position: neighbouring cells agree)."""
+        c, o = self.c, self.lv.origin
+        reach = ROUGH_FADE_M
+        near = reach
+        for gx in range(math.floor((x - o[0] - reach) / c), math.floor((x - o[0] + reach) / c) + 1):
+            for gz in range(math.floor((z - o[2] - reach) / c),
+                            math.floor((z - o[2] + reach) / c) + 1):  # fmt: skip
+                if self._ceiled((gx, gz)):
+                    continue
+                x0, z0 = self.x0(gx), self.z0(gz)
+                dx = max(x0 - x, 0.0, x - (x0 + c))
+                dz = max(z0 - z, 0.0, z - (z0 + c))
+                near = min(near, math.hypot(dx, dz))
+        k = near / reach
+        return k * k * (3 - 2 * k)
+
+    def rough_ceiling(self, at: Cell) -> None:
+        """The rock overhead: a fine grid rising up to ``ROUGH_CEIL_M`` above the ceiling's
+        height, level where it meets a wall or anything that is not plain cave ceiling."""
+        n, c = ROUGH_CEIL, self.c
+        x0, z0 = self.x0(at[0]), self.z0(at[1])
+        grid = []
+        for i in range(n + 1):
+            row = []
+            x = x0 if i == 0 else x0 + c if i == n else x0 + c * i / n
+            for j in range(n + 1):
+                z = z0 if j == 0 else z0 + c if j == n else z0 + c * j / n
+                k = self._ceiling_ease(x, z)
+                d = ROUGH_CEIL_M * k * self.rock(x, self.h, z) if k > 0 else 0.0
+                row.append((x, self.y(self.h + d), z))
+            grid.append(row)
+        self.grid_mesh(at, self.ceil_mat, grid, (0.0, -1.0, 0.0))
+
+    def floor_tris(self, at: Cell, material: str) -> None:
+        """A floor lifted by ``heights``: two triangles over the cell's corners, split along the
+        upper diagonal like the collision hull."""
+        ha, hb, hc, hd = self.corners(at)
+        if ha == hb == hc == hd:
+            self.flat(at, ha, True, material)
+            return
+        x0, z0 = self.x0(at[0]), self.z0(at[1])
+        x1, z1 = x0 + self.c, z0 + self.c
+        a, b = (x0, self.y(ha), z0), (x1, self.y(hb), z0)
+        c, d = (x1, self.y(hc), z1), (x0, self.y(hd), z1)
+        tris = [(a, b, c), (a, c, d)] if ha + hc >= hb + hd else [(a, b, d), (b, c, d)]
+        for tri in tris:
+            self.mesh(at).quad(material, list(tri), (0.0, 1.0, 0.0))
+
+    def jetty_posts(self, at: Cell) -> None:
+        """Oak posts under a jetty's corners that stand in the water."""
+        x0, z0 = self.x0(at[0]), self.z0(at[1])
+        for i, j in ((0, 0), (1, 0), (0, 1), (1, 1)):
+            near = [(at[0] + i - a, at[1] + j - b) for a in (0, 1) for b in (0, 1)]
+            water = [n for n in near if self.lv.char(*n) == "~"]
+            if not water:
+                continue
+            bottom = -max(self.lv.depth(n) for n in water)
+            wx, wz = self.mid(water[0])  # just off the corner, in the water
+            cx, cz = x0 + i * self.c, z0 + j * self.c
+            px = cx + math.copysign(0.14, wx - cx)
+            pz = cz + math.copysign(0.14, wz - cz)
+            self.mesh(at).box("oak_beam", (px - 0.1, self.y(bottom), pz - 0.1),
+                              (px + 0.1, self.y(0.08), pz + 0.1), grain=1)  # fmt: skip
 
     def _faces(self, wall: Cell) -> Cell:
         dx, dy = DIRS[self.lv.facing(wall)]
@@ -465,7 +729,7 @@ class _Gen:
             (pa, qa), (pb, qb) = ring[k], ring[(k + 1) % 4]
             cx, cz = x0 + c / 2, z0 + c / 2
             want = (cx - (pa + pb) / 2, 0.0, cz - (qa + qb) / 2)
-            m.quad("rubble", [(pa, ya, qa), (pb, ya, qb), (pb, yb, qb), (pa, yb, qa)], want)
+            m.quad(self.wall_mat, [(pa, ya, qa), (pb, ya, qb), (pb, yb, qb), (pa, yb, qa)], want)
 
     def shaft_up(self, at: Cell) -> None:
         """An arrival shaft in the vault (the fall from the level above ends here)."""
@@ -479,8 +743,8 @@ class _Gen:
             (x0, z0 + a, x0 + a, z0 + b),
             (x0 + b, z0 + a, x0 + c, z0 + b),
         ):
-            self.flat(at, h, False, "rubble", r)
-        self.flat(at, h + SHAFT_M, False, "rubble", (x0 + a, z0 + a, x0 + b, z0 + b))
+            self.flat(at, h, False, self.wall_mat, r)
+        self.flat(at, h + SHAFT_M, False, self.wall_mat, (x0 + a, z0 + a, x0 + b, z0 + b))
         m = self.mesh(at)
         ya, yb = self.y(h), self.y(h + SHAFT_M)
         ring = [(x0 + a, z0 + a), (x0 + b, z0 + a), (x0 + b, z0 + b), (x0 + a, z0 + b)]
@@ -488,7 +752,7 @@ class _Gen:
             (pa, qa), (pb, qb) = ring[k], ring[(k + 1) % 4]
             cx, cz = x0 + c / 2, z0 + c / 2
             want = (cx - (pa + pb) / 2, 0.0, cz - (qa + qb) / 2)
-            m.quad("rubble", [(pa, ya, qa), (pb, ya, qb), (pb, yb, qb), (pa, yb, qa)], want)
+            m.quad(self.wall_mat, [(pa, ya, qa), (pb, ya, qb), (pb, yb, qb), (pa, yb, qa)], want)
 
     def door_frame(self, at: Cell) -> None:
         """The wall across a door cell with the doorway in its middle (ashlar)."""
@@ -545,17 +809,28 @@ class _Gen:
         for at in sorted(niches):
             self.niche_bodies(at, bottom, top)
         plain = {a for a in self.walk if lv.char(*a) not in "P~"}
-        for (x, y), n in self._runs(plain):
+        lifted = {a for a in plain if any(self.corners(a))} if self.corner_h else set()
+        for (x, y), n in self._runs(plain - lifted):
             m = self.mesh((x, y))
             x0, x1, z0, z1 = self.x0(x), self.x0(x + n), self.z0(y), self.z0(y) + self.c
             m.body(f"floor_{x}_{y}", (x0, self.y(-SLAB), z0), (x1, self.y(0.0), z1))
-        for (x, y), n in self._runs({a for a in self.walk if lv.char(*a) == "~"}):
-            x0, x1, z0, z1 = self.x0(x), self.x0(x + n), self.z0(y), self.z0(y) + self.c
-            self.mesh((x, y)).body(
-                f"water_{x}_{y}",
-                (x0, self.y(-self.lv.water_depth - SLAB), z0),
-                (x1, self.y(-self.lv.water_depth), z1),
-            )
+        for at in sorted(lifted, key=lambda a: (a[1], a[0])):  # ``heights``: a hull per cell
+            ha, hb, hc, hd = self.corners(at)
+            x0, z0 = self.x0(at[0]), self.z0(at[1])
+            x1, z1 = x0 + self.c, z0 + self.c
+            low = self.y(min(ha, hb, hc, hd) - SLAB)
+            self.mesh(at).hull(f"floor_{at[0]}_{at[1]}", [
+                (x0, low, z0), (x1, low, z0), (x1, low, z1), (x0, low, z1),
+                (x0, self.y(ha), z0), (x1, self.y(hb), z0), (x1, self.y(hc), z1),
+                (x0, self.y(hd), z1)])  # fmt: skip
+        for depth, cells in self._water_groups():
+            for (x, y), n in self._runs(cells):
+                x0, x1, z0, z1 = self.x0(x), self.x0(x + n), self.z0(y), self.z0(y) + self.c
+                self.mesh((x, y)).body(
+                    f"water_{x}_{y}",
+                    (x0, self.y(-depth - SLAB), z0),
+                    (x1, self.y(-depth), z1),
+                )
         for at in sorted(self.lv.cells("P")):
             x0, z0 = self.x0(at[0]), self.z0(at[1])
             c, w = self.c, kit.TRAP_W
@@ -587,6 +862,13 @@ class _Gen:
                 self.mesh(g[0]).body(
                     f"vault_{g[0][0]}_{y}", (x0, self.y(h), z0), (x1, self.y(h + SLAB), z0 + self.c)
                 )
+
+    def _water_groups(self) -> list[tuple[float, set[Cell]]]:
+        """Water cells by depth (the deep basin first, then ``water.shallow``)."""
+        groups: dict[float, set[Cell]] = {}
+        for at in self.lv.cells("~"):
+            groups.setdefault(self.lv.depth(at), set()).add(at)
+        return sorted(groups.items(), key=lambda kv: -kv[0])
 
     def niche_bodies(self, at: Cell, bottom: float, top: float) -> None:
         """A niche's wall cell: solid behind the hollow, the front round its opening."""
@@ -667,12 +949,13 @@ class _Gen:
                     "offset": [0.0, -tidy(self.h + SINK_M), 0.0],
                     "crush": spec.get("crush", "stop"),
                 }
+                look = "crystal_wall" if spec.get("look") == "crystal" else "secret_wall"
                 self.vob(
                     "mesh",
                     name,
                     (cx, y0, cz),
                     ident,
-                    mesh=self.kit_mesh("secret_wall"),
+                    mesh=self.kit_mesh(look),
                     category="gameplay",
                     components={"mover": mover},
                 )
@@ -712,6 +995,26 @@ class _Gen:
                         },
                     )
                 fall = spec["fall"]
+                arrival = lv.same_level_fall(at)
+                if arrival is not None:  # down into this level (W8 E7): a silent teleport
+                    tele = {"to": arrival["name"], "visible": False, "filter": "player",
+                            "active": True, "silent": True, "keep_velocity": True}  # fmt: skip
+                    self.vob(
+                        "trigger",
+                        f"FALL_{self.tag}_{at[0]}_{at[1]}",
+                        (cx, self.y(-SHAFT_M + 1.0), cz),
+                        ident,
+                        components={
+                            "trigger": {
+                                "shape": "box",
+                                "halfExtents": [0.95, 0.8, 0.95],
+                                "filter": "player",
+                                "once": False,
+                                "teleport": tele,
+                            }
+                        },
+                    )
+                    continue
                 self.vob(
                     "trigger",
                     f"FALL_{self.tag}_{at[0]}_{at[1]}",
@@ -781,24 +1084,28 @@ class _Gen:
                         }
                     },
                 )
-        hy = (lv.water_depth - lv.water_edge) / 2  # the surface ``edgeM`` below the edge
-        for (x, y), n in self._runs(set(lv.cells("~"))):  # one water box per row run
-            cx = (self.x0(x) + self.x0(x + n)) / 2
-            cz = self.mid((x, y))[1]
-            self.vob(
-                "water",
-                f"WATER_{self.tag}_{x}_{y}",
-                (cx, self.y(-lv.water_depth + hy), cz),
-                ident,
-                components={
-                    "water": {"halfExtents": [n * self.c / 2, hy, self.c / 2], "kind": "pond"}
-                },
-            )
+        for depth, cells in self._water_groups():  # one water box per row run and depth
+            some = next(iter(cells))
+            hy = (depth - lv.edge(some)) / 2  # the surface ``edgeM`` below the edge
+            for (x, y), n in self._runs(cells):
+                cx = (self.x0(x) + self.x0(x + n)) / 2
+                cz = self.mid((x, y))[1]
+                self.vob(
+                    "water",
+                    f"WATER_{self.tag}_{x}_{y}",
+                    (cx, self.y(-depth + hy), cz),
+                    ident,
+                    components={
+                        "water": {"halfExtents": [n * self.c / 2, hy, self.c / 2], "kind": "pond"}
+                    },
+                )
         for st in lv.starts:
             at = st["at"]
             cx, cz = self.mid(at)
             look = DIRS[st.get("facing", "S")]
             y = self.h + 1.0 if st.get("shaft") else self.floor(at)
+            if st["name"] in self.drops:  # under the vault's shaft, low enough to land unhurt
+                y = min(self.h - 0.2, self.floor(at) + DROP_M)
             self.vob("start", st["name"], (cx, self.y(y), cz), _quat_look(look[0], look[1]))
         for at, sp in sorted(lv.spawns.items(), key=lambda kv: (kv[0][1], kv[0][0])):
             cx, cz = self.mid(at)
@@ -823,14 +1130,32 @@ class _Gen:
 
     def props(self) -> None:
         """Still pieces (``props``): a sarcophagus in the middle of its cell, a bone niche
-        against the wall behind it; mesh vobs ``PROP_E04_<x>_<y>`` with their collision."""
+        against the wall behind it, a stalactite under the ceiling; mesh vobs
+        ``PROP_E04_<x>_<y>`` with their collision. A crystal cluster brings its light
+        ``LIGHT_E07_<x>_<y>`` (unless ``light`` is false)."""
         for at, pr in sorted(self.lv.props.items(), key=lambda kv: (kv[0][1], kv[0][0])):
-            dx, dy = DIRS[pr.get("facing", "S")]
+            side = pr.get("facing", "S")
+            dx, dy = DIRS[side]
             cx, cz = self.mid(at)
-            if not PROPS[pr["kind"]]:  # on the wall behind the cell
+            place = PROPS[pr["kind"]]
+            y = self.floor(at)
+            if place == "wall":  # on the wall behind the cell
                 cx, cz = cx - dx * self.c / 2, cz - dy * self.c / 2
-            self.vob("mesh", self.lv.prop_name(at), (cx, self.y(self.floor(at)), cz),
-                     _quat_front(dx, dy), mesh=self.kit_mesh(pr["kind"]))  # fmt: skip
+                if self.corner_h:
+                    y = sum(self.edge_floor(at, OPPOSITE[side])) / 2
+            elif place == "ceiling":
+                y = self.ceil(at)
+            elif place == "water":
+                y = self.floor(at)
+            rot = _quat_front(dx, dy)
+            self.vob("mesh", self.lv.prop_name(at), (cx, self.y(y), cz), rot,
+                     mesh=self.kit_mesh(pr["kind"]))  # fmt: skip
+            if pr["kind"] in CRYSTAL_LIGHT_AT and pr.get("light", True):
+                out, up = CRYSTAL_LIGHT_AT[pr["kind"]]
+                ly = y + up if up is not None else -self.lv.edge(at) + 0.4
+                self.vob("light", f"LIGHT_{self.tag}_{at[0]}_{at[1]}",
+                         (cx + dx * out, self.y(ly), cz + dy * out), rot,
+                         components={"light": dict(LIGHT_CRYSTAL)})  # fmt: skip
 
     def relays(self) -> None:
         """Invisible relays (``relays``): above their cell ``at`` (else the level's origin)."""
@@ -888,7 +1213,8 @@ class _Gen:
         """A lever, button or niche on the face of its wall cell towards the floor."""
         dx, dy = DIRS[self.lv.facing(at)]
         cx, cz = self.mid(at)
-        pos = (cx + dx * self.c / 2, self.y(0.0), cz + dy * self.c / 2)
+        stand = self.lv.dy((at[0] + dx, at[1] + dy))  # level with its neighbours (``heights``)
+        pos = (cx + dx * self.c / 2, self.y(stand), cz + dy * self.c / 2)
         mob: dict[str, Any] = {"definition": spec.get("definition", typ)}
         if spec.get("targets"):
             mob["targets"], mob["action"] = list(spec["targets"]), spec.get("action", "trigger")
@@ -896,8 +1222,9 @@ class _Gen:
             mob["once"] = True
         if spec.get("hidden"):
             mob["hidden"] = True
+        look = "crystal_switch" if spec.get("look") == "crystal" and typ == "wall_button" else typ
         self.vob(
-            "mob", name, pos, _quat_front(dx, dy), mesh=self.kit_mesh(typ), components={"mob": mob}
+            "mob", name, pos, _quat_front(dx, dy), mesh=self.kit_mesh(look), components={"mob": mob}
         )
 
     def teleport(self, at: Cell, name: str, spec: dict[str, Any]) -> None:
@@ -1001,7 +1328,7 @@ class _Gen:
         for at in lv.cells("SN"):
             busy.add((self._faces(at), OPPOSITE[lv.facing(at)]))
         for at, pr in lv.props.items():
-            if not PROPS[pr["kind"]]:
+            if PROPS[pr["kind"]] == "wall":
                 busy.add((at, OPPOSITE[pr.get("facing", "S")]))
         picked: list[tuple[Cell, str]] = []
         extra = [((int(t[0]), int(t[1])), str(t[2])) for t in lv.raw.get("torches", [])]
@@ -1047,6 +1374,18 @@ class _Gen:
                 rot,
                 components={"light": dict(LIGHT_TORCH)},
             )
+
+    def check_lights(self) -> None:
+        """At most ``LIGHTS_PER_BLOCK`` lights (torches and crystals) per block (plan 3.4)."""
+        per: dict[tuple[int, int], int] = {}
+        for v in self.plan.vobs:
+            if v["type"] == "light":  # LIGHT_E07_<x>_<y>[_<side>]: the block of its cell
+                x, y = (int(t) for t in v["name"].split("_")[2:4])
+                k = (x // BLOCK, y // BLOCK)
+                per[k] = per.get(k, 0) + 1
+        over = sorted(k for k, n in per.items() if n > LIGHTS_PER_BLOCK)
+        if over:
+            raise DungeonError(f"{self.tag}: more than {LIGHTS_PER_BLOCK} lights in blocks {over}")
 
     def wp(self, at: Cell) -> str:
         return f"WP_DNG_{self.tag}_{at[0]}_{at[1]}"

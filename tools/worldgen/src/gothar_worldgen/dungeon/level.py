@@ -18,6 +18,18 @@ and leaves the cell free.
 A teleporter with ``trap: true`` is invisible and shows no ring (a trap, W8 E4); one with
 ``spin: true`` keeps the hero on its cell and only turns him to ``facing`` (a spinner, W8 E6).
 
+The cave (W8 E7 "Kristallgrotte"): ``stalagmite`` fills its cell like a sarcophagus, a
+``crystal_cluster`` stands at the wall behind its cell (with a bluish light), a ``stalactite``
+hangs from the ceiling over the middle of its cell and leaves it free. ``heights`` lifts or lowers
+the floor of cell rectangles (``from``, ``to``, ``dy`` in metres, later entries win); the corners
+take the mean of the cells round them, so the floor slopes smoothly. Neighbours may differ by at
+most ``MAX_STEP_M``; a cell with a mechanism (door, gate, trapdoor, teleporter, plate, secret wall,
+stairs, chest, the stand of a switch or niche) must be level with all eight neighbours, and a cell
+by the water stays at 0. ``water.shallow`` (cell rectangles) makes a shallow pool (``shallowM``
+deep, its surface ``shallowEdgeM`` below the edge). ``jetty`` lists floor cells built of planks on
+posts. A trapdoor whose ``fall`` names only a ``start`` (one of ``starts`` with ``shaft``) drops
+into this level: the hero arrives in the lower part of the cave and walks back.
+
 Characters (contract of the plan): ``#`` wall, ``.`` floor, ``D`` door, ``G`` gate, ``P`` trapdoor,
 ``T`` teleporter, ``S`` wall switch (lever or button), ``O`` pressure plate, ``N`` niche, ``H``
 secret wall, ``<`` stairs up, ``>`` stairs down, ``~`` water, ``*`` treasure, ``m`` monster place.
@@ -51,8 +63,16 @@ DIRS = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0)}
 SWITCH_TYPES = {"lever", "wall_button"}
 RELAY_MODES = {"any", "all", "count"}
 ACTIONS = {"toggle", "open", "close", "on", "off", "wake", "trigger", "lock", "unlock"}
-# kind -> blocks its cell (stands in its middle); the others hang on the wall behind the cell
-PROPS = {"sarcophagus": True, "bone_niche": False, "workbench": True, "cogwheel": False}
+# kind -> where it stands: "fill" (the middle, blocks its cell), "wall" (on the wall behind the
+# cell, which stays free), "ceiling" (hangs over the middle, the cell stays free) or "water"
+# (on a pool's bottom in the middle of a water cell, no collision)
+PROPS = {"sarcophagus": "fill", "bone_niche": "wall", "workbench": "fill", "cogwheel": "wall",
+         "stalagmite": "fill", "stalactite": "ceiling", "crystal_cluster": "wall",
+         "crystal_ceiling": "ceiling", "crystal_spire": "water"}  # fmt: skip
+MAX_STEP_M = 0.6  # floor heights of two neighbours (``heights``)
+DY_RANGE = (-1.5, 0.6)
+LEVEL_CHARS = set("DGPTOH<>*")  # cells with a mechanism: level with their neighbours
+AT_ZERO = set("DGPH<>")  # built at the level's floor height 0
 
 
 class LevelError(ValueError):
@@ -77,11 +97,38 @@ class Level:
     @property
     def blocked(self) -> set[tuple[int, int]]:
         """Floor cells a prop fills (a sarcophagus): no waypoint, no way through."""
-        return {at for at, p in self.props.items() if PROPS[p["kind"]]}
+        return {at for at, p in self.props.items() if PROPS[p["kind"]] == "fill"}
 
     @property
     def water_depth(self) -> float:
         return float(self.raw.get("water", {}).get("depthM", 1.0))
+
+    heights: dict[tuple[int, int], float] = field(default_factory=dict)  # ``heights`` (dy != 0)
+    shallow: set[tuple[int, int]] = field(default_factory=set)  # ``water.shallow`` cells
+    jetty: set[tuple[int, int]] = field(default_factory=set)
+
+    def dy(self, at: tuple[int, int]) -> float:
+        """The floor's lift of a cell (``heights``; 0 without)."""
+        return self.heights.get(at, 0.0)
+
+    def depth(self, at: tuple[int, int]) -> float:
+        """How far a water cell's bottom lies below the edge."""
+        if at in self.shallow:
+            return float(self.raw["water"].get("shallowM", 0.35))
+        return self.water_depth
+
+    def edge(self, at: tuple[int, int]) -> float:
+        """How far a water cell's surface lies below the edge."""
+        if at in self.shallow:
+            return float(self.raw["water"].get("shallowEdgeM", 0.12))
+        return self.water_edge
+
+    def same_level_fall(self, at: tuple[int, int]) -> dict[str, Any] | None:
+        """The arrival (``starts`` entry) of a trapdoor that drops into this level, else None."""
+        fall = self.entries.get(at, {}).get("trapdoor", {}).get("fall", {})
+        if fall.get("world"):
+            return None
+        return next((st for st in self.starts if st["name"] == fall.get("start")), None)
 
     @property
     def water_edge(self) -> float:
@@ -233,6 +280,26 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
     w = doc.get("water", {})
     if w and not 0.0 < float(w.get("edgeM", 0.2)) < float(w.get("depthM", 1.0)):
         raise LevelError("water: needs 0 < edgeM < depthM")
+    if w.get("shallow"):
+        if not 0.0 < float(w.get("shallowEdgeM", 0.12)) < float(w.get("shallowM", 0.35)):
+            raise LevelError("water: needs 0 < shallowEdgeM < shallowM")
+        for i, r in enumerate(w["shallow"]):
+            for at in _rect(r, f"water.shallow[{i}]"):
+                if level.char(*at) == "~":
+                    level.shallow.add(at)
+    for i, r in enumerate(doc.get("heights", [])):
+        dy = float(r.get("dy", 0.0))
+        if not DY_RANGE[0] <= dy <= DY_RANGE[1]:
+            raise LevelError(f"heights[{i}]: dy {DY_RANGE[0]}..{DY_RANGE[1]}")
+        for at in _rect(r, f"heights[{i}]"):
+            if level.is_floor(*at) and level.char(*at) != "~":
+                level.heights[at] = dy
+    level.heights = {at: dy for at, dy in level.heights.items() if dy != 0.0}
+    for i, raw in enumerate(doc.get("jetty", [])):
+        at = _cell(raw, f"jetty[{i}]")
+        if level.char(*at) != FLOOR:
+            raise LevelError(f"jetty[{i}]: needs a plain floor cell '.'")
+        level.jetty.add(at)
     for i, e in enumerate(doc.get("cells", [])):
         at = _cell(e.get("at"), f"cells[{i}]")
         c = level.char(*at)
@@ -247,8 +314,9 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
         at = _cell(pr.get("at"), f"props[{i}]")
         if pr.get("kind") not in PROPS or pr.get("facing", "S") not in DIRS:
             raise LevelError(f"props[{i}]: kind {sorted(PROPS)}, facing N, E, S or W")
-        if level.char(*at) != FLOOR or at in level.props:
-            raise LevelError(f"props[{i}]: needs a plain floor cell '.', once")
+        want = "~" if PROPS[pr["kind"]] == "water" else FLOOR
+        if level.char(*at) != want or at in level.props:
+            raise LevelError(f"props[{i}]: needs a plain floor cell {want!r}, once")
         level.props[at] = {**pr, "at": at}
     missing = [list(at) for at in level.cells(REQUIRED) if at not in level.entries]
     if missing:
@@ -257,8 +325,42 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
         raise LevelError("every level needs stairs up ('<', plan F6)")
     _check_entries(level)
     _check_props(level)
+    _check_heights(level)
     check_wells(level)
     return level
+
+
+def _rect(raw: Any, what: str) -> list[tuple[int, int]]:  # noqa: ANN401
+    """The cells of a rectangle ``from`` .. ``to`` (both included)."""
+    (ax, ay), (bx, by) = _cell(raw.get("from"), what), _cell(raw.get("to"), what)
+    return [(x, y) for y in range(min(ay, by), max(ay, by) + 1)
+            for x in range(min(ax, bx), max(ax, bx) + 1)]  # fmt: skip
+
+
+def _check_heights(level: Level) -> None:
+    """Steps of at most ``MAX_STEP_M``; mechanisms level with their neighbours; 0 by the water
+    and where the generator builds at the floor height 0 (doors, gates, shafts, stairs)."""
+    if not level.heights:
+        return
+    land = [a for a in level.cells(FLOOR_CHARS) if level.char(*a) != "~"]
+    level_cells = {a for a in land if level.char(*a) in LEVEL_CHARS}
+    for at in level.cells(IN_WALL):
+        dx, dy = DIRS[level.facing(at)]
+        level_cells.add((at[0] + dx, at[1] + dy))
+    for at in land:
+        near = [(at[0] + i, at[1] + j) for i in (-1, 0, 1) for j in (-1, 0, 1) if i or j]
+        for nb in near:
+            if level.char(*nb) == "~" and level.dy(at) != 0.0:
+                raise LevelError(f"heights: {list(at)} lies by the water and must stay at 0")
+            if not level.is_floor(*nb) or level.char(*nb) == "~":
+                continue
+            step = abs(level.dy(at) - level.dy(nb))
+            if step > MAX_STEP_M + 1e-9 and abs(nb[0] - at[0]) + abs(nb[1] - at[1]) == 1:
+                raise LevelError(f"heights: {list(at)} -> {list(nb)} steps {step:.2f} m")
+            if at in level_cells and step > 0.0:
+                raise LevelError(f"heights: {list(at)} has a mechanism, level its neighbours")
+        if level.char(*at) in AT_ZERO and level.dy(at) != 0.0:
+            raise LevelError(f"heights: {list(at)} ({level.char(*at)}) must stay at 0")
 
 
 def _check_props(level: Level) -> None:
@@ -275,9 +377,9 @@ def _check_props(level: Level) -> None:
             need.add((at[0] + dx, at[1] + dy))
     for at, pr in level.props.items():
         dx, dy = DIRS[pr.get("facing", "S")]
-        if not PROPS[pr["kind"]] and level.is_floor(at[0] - dx, at[1] - dy):
+        if PROPS[pr["kind"]] == "wall" and level.is_floor(at[0] - dx, at[1] - dy):
             raise LevelError(f"{level.prop_name(at)}: a wall prop needs a wall behind it")
-        if PROPS[pr["kind"]] and at in need:
+        if PROPS[pr["kind"]] == "fill" and at in need:
             raise LevelError(f"{level.prop_name(at)}: the cell is needed (start, target, item …)")
 
 
@@ -330,9 +432,14 @@ def _check_entries(level: Level) -> None:
                 raise LevelError(f"{where}: the flight needs a wall cell behind (away from facing)")
         if kind in ("door", "gate"):
             level.passage(at)
-        if kind == "trapdoor" and not (spec.get("fall", {}).get("world")
-                                       and spec.get("fall", {}).get("start")):  # fmt: skip
-            raise LevelError(f"{where}: a trapdoor needs 'fall' with world and start")
+        if kind == "trapdoor":
+            fall = spec.get("fall", {})
+            if not fall.get("start"):
+                raise LevelError(f"{where}: a trapdoor needs 'fall' with world and start")
+            if not fall.get("world"):  # into this level: an arrival shaft of ``starts``
+                arrival = level.same_level_fall(at)
+                if arrival is None or not arrival.get("shaft"):
+                    raise LevelError(f"{where}: 'fall' without world needs a shaft start here")
         if kind == "monster" and not (spec.get("npc") and 1 <= int(spec.get("count", 1)) <= 32):
             raise LevelError(f"{where}: monster needs npc and count 1..32")
 

@@ -1,0 +1,13 @@
+{
+  "format": "gothar-dungeon-level",
+  "version": 1,
+  "note": "W8 D3: Ebene 8 'Hort' (Thema hort; Hort der Kellermutter, Raum mindestens 4 m hoch, Endgegner) als Stub (Ziel der Treppe aus Ebene 7); der Ausbau folgt als eigener PR.",
+  "level": 8,
+  "theme": "hort",
+  "origin": [0.0, 0.0, 0.0],
+  "cellM": 3.0,
+  "heightM": 5.0,
+  "cells": [
+    {"at": [1, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_07.g7world", "start": "START_E07_VON_UNTEN", "facing": "S"}, "arrive": "START_E08_VON_OBEN"}
+  ]
+}

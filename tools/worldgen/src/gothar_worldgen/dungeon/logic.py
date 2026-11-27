@@ -3,7 +3,9 @@
 The search runs over (open movers, cell): walking between floor cells (closed gates and secret
 walls block, doors open by hand), teleporters, and switches and plates that set their targets
 (a plate can be held with an item, so both of its states count). Reaching a trapdoor is a fall
-into the level below (allowed, plan F6); every other place must keep a way to the stairs up.
+into the level below (allowed, plan F6); every other place must keep a way to the stairs up. A
+trapdoor that drops into the same level (W8 E7) leads on to its arrival cell, from where the way
+back must be found like from anywhere else.
 
 Relays (``relays`` in the JSON) pass events on as the engine does (dungeon.md "Stand D1"): ``any``
 forwards the "on" side as its action and the "off" side as the counterpart; ``all`` fires when all
@@ -230,6 +232,9 @@ def _steps(level: Level, node: Node, acts: dict[tuple[int, int], list[Action]], 
            water: bool = True) -> Iterator[Node]:  # fmt: skip
     state, at = node
     if level.char(*at) == "P":
+        arrival = level.same_level_fall(at)
+        if arrival is not None:  # down into the lower part of this level (W8 E7)
+            yield net.tick(state), arrival["at"]
         return  # fell through the trapdoor
     if level.char(*at) == "T" and level.name(at) in state:
         spec = level.entries[at]["teleport"]
@@ -283,6 +288,7 @@ def check_reach(level: Level, water: bool = True) -> Reach:
     cells = {at for _, at in seen}
     floor = [a for a in level.cells(FLOOR_CHARS if water else FLOOR_CHARS - {"~"})
              if a not in level.blocked]  # fmt: skip
-    stuck = sorted({at for n in seen - ok for at in [n[1]] if level.char(*at) != "P"})
+    out = {at for at in level.cells("P") if level.same_level_fall(at) is None}  # left the level
+    stuck = sorted({n[1] for n in seen - ok if n[1] not in out})
     states = {frozenset(f for f in s if f in movers) for s, _ in seen}
     return Reach(cells, sorted(set(floor) - cells), stuck, len(states))
