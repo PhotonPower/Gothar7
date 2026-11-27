@@ -23,6 +23,11 @@ the gate's travel), then arrives. So a gate that a button opens and a delayed re
 open only for the next few cells: what lies further away than that stays shut. Pending events are
 part of the search state with the cells still left. A sarcophagus (``props``) fills its cell.
 A spinner (``spin``) only turns the hero on his cell: for the search it is floor.
+
+A monster place with ``targets`` (W8 E8: the Kellermutter opens the gates when she dies) sends its
+``action`` once, when the hero stands on its cell (he has killed what stood there). A plate with
+``once`` is a plain trigger: it fires the first time the hero steps on its cell, whether he wants
+to or not, and never sends its counterpart (the arena gate shuts behind him and stays shut).
 """
 
 from __future__ import annotations
@@ -81,6 +86,7 @@ def _counter(action: str) -> str:
 def _senders(level: Level) -> list[tuple[str, dict[str, Any]]]:
     out = [(level.name(at), level.entries[at]["switch" if level.char(*at) == "S" else "plate"])
            for at in level.cells(set("SO"))]  # fmt: skip
+    out += [(name, sp) for name, sp in level.monsters().values() if sp.get("targets")]
     return out + list(level.relays.items())
 
 
@@ -194,6 +200,8 @@ def _actions(level: Level) -> dict[tuple[int, int], list[Action]]:
     out: dict[tuple[int, int], list[Action]] = {}
     for at in level.cells(set("SO")):
         spec = level.entries[at]["switch" if level.char(*at) == "S" else "plate"]
+        if level.char(*at) == "O" and spec.get("once"):
+            continue  # fires by itself on entering (``_enter``)
         if level.char(*at) == "S":
             dx, dy = DIRS[level.facing(at)]
             stand = (at[0] + dx, at[1] + dy)
@@ -204,6 +212,11 @@ def _actions(level: Level) -> dict[tuple[int, int], list[Action]]:
             (list(spec["targets"]), spec.get("action", "trigger"), level.name(at),
              spec.get("release_action"), bool(spec.get("once")), back)
         )  # fmt: skip
+    for at, (name, sp) in level.monsters().items():  # killed where it stood: sent once
+        if sp.get("targets"):
+            out.setdefault(at, []).append(
+                (list(sp["targets"]), sp.get("action", "trigger"), name, None, True, False)
+            )
     return out
 
 
@@ -216,6 +229,18 @@ def _set(net: _Net, state: State, targets: list[str], action: str, sender: str,
         yield net.send(state, targets, release, sender)
     elif action in COUNTER:  # a plate or lever also goes back (the counterpart)
         yield net.send(state, targets, _counter(action), sender)
+
+
+def _enter(level: Level, net: _Net, state: State, at: tuple[int, int]) -> State:
+    """Stepping on a cell: a plate with ``once`` fires the first time."""
+    if level.char(*at) != "O":
+        return state
+    spec = level.entries[at]["plate"]
+    used = f"USED:{level.name(at)}"
+    if not spec.get("once") or used in state:
+        return state
+    return net.send(state, list(spec["targets"]), spec.get("action", "trigger"),
+                    level.name(at)) | {used}  # fmt: skip
 
 
 def _passable(level: Level, at: tuple[int, int], state: State, water: bool = True) -> bool:
@@ -244,7 +269,7 @@ def _steps(level: Level, node: Node, acts: dict[tuple[int, int], list[Action]], 
     for dx, dy in DIRS.values():
         nxt = (at[0] + dx, at[1] + dy)
         if _passable(level, nxt, state, water):
-            yield net.tick(state), nxt
+            yield _enter(level, net, net.tick(state), nxt), nxt
     for targets, action, sender, release, once, back in acts.get(at, []):
         used = f"USED:{sender}"
         if once and used in state:

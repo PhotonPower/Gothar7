@@ -862,7 +862,6 @@
   },
   "zones": [
     {"type":"music","value":"DUNGEON","box":{"center":[42.0,1.75,33.0],"halfExtents":[42.0,6.55,33.0],"yaw":0.0}},
-    {"type":"ambient","value":"beinhaus","box":{"center":[42.0,1.75,33.0],"halfExtents":[42.0,6.55,33.0],"yaw":0.0}},
-    {"type":"ambient","value":"gewoelbe","box":{"center":[18.0,1.75,12.0],"halfExtents":[18.0,6.55,12.0],"yaw":0.0}}
+    {"type":"ambient","value":"beinhaus","box":{"center":[42.0,1.75,33.0],"halfExtents":[42.0,6.55,33.0],"yaw":0.0}}
   ]
 }

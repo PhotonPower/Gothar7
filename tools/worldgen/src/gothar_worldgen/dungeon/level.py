@@ -30,6 +30,18 @@ deep, its surface ``shallowEdgeM`` below the edge). ``jetty`` lists floor cells 
 posts. A trapdoor whose ``fall`` names only a ``start`` (one of ``starts`` with ``shaft``) drops
 into this level: the hero arrives in the lower part of the cave and walks back.
 
+The lair (W8 E8 "Hort"): ``name`` on a cell's entry or a ``spawns`` entry replaces the cell in its
+vob name (``GATE_E08_ARENA``, ``SPAWN_E08_KELLERMUTTER``; letters, digits and _). A monster place
+or spawn may carry ``active`` (false: it sets in nothing until an ``on``/``trigger`` event, the
+waves of the boss fight) and ``targets``/``action`` (sent once when all its monsters are dead; for
+the reachability check: once the hero stands on its cell). ``cave`` lists cell rectangles built as
+rough rock like Ebene 7 inside a masonry level (the collapsed vault). Props of the brood:
+``egg_sacks`` and ``brood_glow`` (with an orange light) on the wall, ``brood_ceiling`` (the
+glow hanging from the rock overhead), ``bones`` and ``slime`` on the
+floor (the cell stays free), ``pillar``, ``pillar_broken``, ``rubble_heap`` and ``gold_hoard`` fill
+their cell. A plate with ``once`` fires only the first time and never sends its counterpart; with
+``hidden`` it shows no stone (a plain trigger the hero walks into).
+
 Characters (contract of the plan): ``#`` wall, ``.`` floor, ``D`` door, ``G`` gate, ``P`` trapdoor,
 ``T`` teleporter, ``S`` wall switch (lever or button), ``O`` pressure plate, ``N`` niche, ``H``
 secret wall, ``<`` stairs up, ``>`` stairs down, ``~`` water, ``*`` treasure, ``m`` monster place.
@@ -65,10 +77,14 @@ RELAY_MODES = {"any", "all", "count"}
 ACTIONS = {"toggle", "open", "close", "on", "off", "wake", "trigger", "lock", "unlock"}
 # kind -> where it stands: "fill" (the middle, blocks its cell), "wall" (on the wall behind the
 # cell, which stays free), "ceiling" (hangs over the middle, the cell stays free) or "water"
-# (on a pool's bottom in the middle of a water cell, no collision)
+# (on a pool's bottom in the middle of a water cell, no collision) or "floor" (lies on the floor
+# in the middle, the cell stays free)
 PROPS = {"sarcophagus": "fill", "bone_niche": "wall", "workbench": "fill", "cogwheel": "wall",
          "stalagmite": "fill", "stalactite": "ceiling", "crystal_cluster": "wall",
-         "crystal_ceiling": "ceiling", "crystal_spire": "water"}  # fmt: skip
+         "crystal_ceiling": "ceiling", "crystal_spire": "water", "egg_sacks": "wall",
+         "brood_glow": "wall", "brood_ceiling": "ceiling", "bones": "floor", "slime": "floor",
+         "pillar": "fill",
+         "pillar_broken": "fill", "rubble_heap": "fill", "gold_hoard": "fill"}  # fmt: skip
 MAX_STEP_M = 0.6  # floor heights of two neighbours (``heights``)
 DY_RANGE = (-1.5, 0.6)
 LEVEL_CHARS = set("DGPTOH<>*")  # cells with a mechanism: level with their neighbours
@@ -106,6 +122,7 @@ class Level:
     heights: dict[tuple[int, int], float] = field(default_factory=dict)  # ``heights`` (dy != 0)
     shallow: set[tuple[int, int]] = field(default_factory=set)  # ``water.shallow`` cells
     jetty: set[tuple[int, int]] = field(default_factory=set)
+    cave: set[tuple[int, int]] = field(default_factory=set)  # ``cave`` cells in a masonry level
 
     def dy(self, at: tuple[int, int]) -> float:
         """The floor's lift of a cell (``heights``; 0 without)."""
@@ -175,7 +192,8 @@ class Level:
         kind = self.kind(at)
         if kind is None:
             raise LevelError(f"cell {list(at)} ({self.char(*at)!r}) has no vob")
-        return f"{PREFIX[kind]}_{self.tag}_{at[0]}_{at[1]}"
+        own = self.entries.get(at, {}).get(ENTRY[self.char(*at)], {}).get("name")
+        return f"{PREFIX[kind]}_{self.tag}_{_suffix(own, at)}"
 
     def facing(self, at: tuple[int, int]) -> str:
         """The side a wall-set cell (``S``, ``N``) is used from."""
@@ -219,10 +237,28 @@ class Level:
         return set(self.names()) | set(self.relays) | {self.spawn_name(at) for at in self.spawns}
 
     def spawn_name(self, at: tuple[int, int]) -> str:
-        return f"{PREFIX['monster']}_{self.tag}_{at[0]}_{at[1]}"
+        own = self.spawns.get(at, {}).get("name")
+        return f"{PREFIX['monster']}_{self.tag}_{_suffix(own, at)}"
+
+    def monsters(self) -> dict[tuple[int, int], tuple[str, dict[str, Any]]]:
+        """Cell -> (vob name, spec) of every monster place (``m``) and spawn (``spawns``)."""
+        out = {at: (self.spawn_name(at), sp) for at, sp in self.spawns.items()}
+        for at in self.cells("m"):
+            if at in self.entries:
+                out[at] = (self.name(at), self.entries[at]["monster"])
+        return out
 
     def prop_name(self, at: tuple[int, int]) -> str:
         return f"PROP_{self.tag}_{at[0]}_{at[1]}"
+
+
+def _suffix(own: Any, at: tuple[int, int]) -> str:  # noqa: ANN401
+    """The end of a vob name: an entry's own ``name`` (upper case), else the cell."""
+    if not own:
+        return f"{at[0]}_{at[1]}"
+    if not str(own).replace("_", "").isalnum():
+        raise LevelError(f"name {own!r}: letters, digits and _ only")
+    return str(own).upper()
 
 
 def _cell(raw: Any, what: str) -> tuple[int, int]:  # noqa: ANN401
@@ -295,6 +331,8 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
             if level.is_floor(*at) and level.char(*at) != "~":
                 level.heights[at] = dy
     level.heights = {at: dy for at, dy in level.heights.items() if dy != 0.0}
+    for i, r in enumerate(doc.get("cave", [])):
+        level.cave |= {at for at in _rect(r, f"cave[{i}]") if level.is_floor(*at)}
     for i, raw in enumerate(doc.get("jetty", [])):
         at = _cell(raw, f"jetty[{i}]")
         if level.char(*at) != FLOOR:
@@ -385,6 +423,18 @@ def _check_props(level: Level) -> None:
 
 def _check_entries(level: Level) -> None:
     names = level.targets()
+    every = [level.name(at) for at in level.cells(set(ENTRY))] + list(level.relays)
+    every += [level.spawn_name(at) for at in level.spawns]
+    twice = sorted({n for n in every if every.count(n) > 1})
+    if twice:
+        raise LevelError(f"vob names twice: {twice}")
+    for name, sp in level.monsters().values():
+        if not isinstance(sp.get("active", True), bool):
+            raise LevelError(f"{name}: active must be true or false")
+        if sp.get("action", "trigger") not in ACTIONS:
+            raise LevelError(f"{name}: unknown action {sp.get('action')!r}")
+        if any(t not in names or t == name for t in sp.get("targets", [])):
+            raise LevelError(f"{name}: targets must name vobs on the map or relays")
     for name, r in level.relays.items():
         if r.get("mode", "any") not in RELAY_MODES:
             raise LevelError(f"{name}: mode must be any, all or count")

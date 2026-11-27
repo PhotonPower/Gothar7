@@ -1044,7 +1044,6 @@
   },
   "zones": [
     {"type":"music","value":"DUNGEON","box":{"center":[42.0,1.75,36.0],"halfExtents":[42.0,6.55,36.0],"yaw":0.0}},
-    {"type":"ambient","value":"gewoelbe","box":{"center":[42.0,1.75,36.0],"halfExtents":[42.0,6.55,36.0],"yaw":0.0}},
     {"type":"ambient","value":"werkstatt","box":{"center":[42.0,1.75,36.0],"halfExtents":[42.0,6.55,36.0],"yaw":0.0}}
   ]
 }

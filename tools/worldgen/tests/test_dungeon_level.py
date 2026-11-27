@@ -435,3 +435,68 @@ def test_heights_are_checked(text: str, heights: list, message: str) -> None:
     d["heights"] = heights
     with pytest.raises(LevelError, match=message):
         parse_level(text, d)
+
+
+def test_level_8_hort_is_complete_and_solvable() -> None:
+    """W8 D3: Ebene 8, the Kellermutter's lair: approach, antechamber, arena with a gate that
+    shuts behind the hero, side niches for the waves, the hoard and the way up to the castle."""
+    level = load_level(DATA, 8)
+    assert level.theme == "hort" and level.height_m >= 5.0  # she is 5.5 m long, 2.4 m high
+    reach = check_reach(level)
+    assert reach.unreached == [] and reach.stuck == []
+    names = level.targets()
+    assert {"GATE_E08_ARENA", "GATE_E08_HORT", "PLATE_E08_ARENA", "RELAY_E08_BOSS_TOT",
+            "SPAWN_E08_KELLERMUTTER"} <= names  # fmt: skip
+    monsters = {name: sp for name, sp in level.monsters().values()}
+    boss = monsters["SPAWN_E08_KELLERMUTTER"]
+    assert boss["npc"] == "mon_kellermutter" and boss["targets"] == ["RELAY_E08_BOSS_TOT"]
+    waves = {n: sp for n, sp in monsters.items() if n.startswith("SPAWN_E08_WELLE_")}
+    assert sorted(waves) == [f"SPAWN_E08_WELLE_{k}" for k in (1, 2, 3)]  # #522
+    assert all(sp["npc"] == "mon_mauerkriecher" and sp["active"] is False for sp in waves.values())
+    arena = [at for at in level.cave if level.char(*at) != "O"]
+    xs, ys = [a[0] for a in arena], [a[1] for a in arena]
+    assert (max(xs) - min(xs) + 1) * level.cell_m >= 18 and (max(ys) - min(ys) + 1) * 3 >= 18
+    (boss_at,) = level.cells("m")[-1:]
+    assert boss_at in level.cave  # in the middle of the arena
+    cover = [p for p in level.props.values() if p["kind"] in ("pillar", "pillar_broken")]
+    assert 3 <= len(cover) <= 4
+    kinds = {p["kind"] for p in level.props.values()}
+    assert {"egg_sacks", "bones", "slime", "brood_glow", "gold_hoard"} <= kinds
+    assert len(level.cells("*")) == 4 and len(level.cells("N")) == 1  # antechamber + hoard
+    (tele,) = [level.entries[at]["teleport"] for at in level.cells("T")]
+    assert (tele["world"], tele["start"]) == ("worlds/leonberg/leonberg.g7world",
+                                              "START_SCHLOSS_FASS")  # fmt: skip
+    up = [level.entries[at]["stairs"]["start"] for at in level.cells("<")]
+    assert up == ["START_E07_VON_UNTEN"]
+
+
+def test_level_8_gate_shuts_and_only_her_death_opens_it() -> None:
+    """Without her death the arena is a trap (no way back) and the hoard stays shut; the plate
+    shuts the gate even if the hero does not want it to."""
+    level = load_level(DATA, 8)
+    (boss,) = [at for at in level.cells("m") if level.name(at) == "SPAWN_E08_KELLERMUTTER"]
+    del level.entries[boss]["monster"]["targets"]
+    reach = check_reach(level)
+    assert (26, 12) in reach.unreached and (17, 12) in reach.stuck
+    level = load_level(DATA, 8)
+    level.relays["RELAY_E08_BOSS_TOT"]["targets"] = ["GATE_E08_ARENA"]
+    assert (26, 12) in check_reach(level).unreached
+
+
+def test_names_and_spawn_fields_are_checked() -> None:
+    text = "########\n#<.m.G.#\n########"
+    gate = {"at": [5, 1], "gate": {"name": "TOR"}}
+    boss = {"at": [3, 1], "monster": {"npc": "x", "name": "BOSS", "targets": ["GATE_E01_TOR"],
+                                       "action": "open"}}  # fmt: skip
+    level = parse_level(text, doc(gate, boss))
+    assert level.name((5, 1)) == "GATE_E01_TOR" and level.name((3, 1)) == "SPAWN_E01_BOSS"
+    assert check_reach(level).unreached == []  # killing the boss opens the gate
+    with pytest.raises(LevelError, match="letters"):
+        parse_level(text, doc({"at": [5, 1], "gate": {"name": "T-R"}}, boss))
+    with pytest.raises(LevelError, match="twice"):
+        parse_level(text, {**doc(gate, boss), "spawns": [{"at": [2, 1], "npc": "y",
+                                                          "name": "boss"}]})  # fmt: skip
+    with pytest.raises(LevelError, match="targets"):
+        parse_level(text, doc(gate, {**boss, "monster": {**boss["monster"], "targets": ["NO"]}}))
+    with pytest.raises(LevelError, match="active"):
+        parse_level(text, doc(gate, {**boss, "monster": {**boss["monster"], "active": "no"}}))
