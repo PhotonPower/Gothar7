@@ -20,6 +20,8 @@
 #include <cmath>
 #include <format>
 #include <random>
+#include <set>
+#include <string>
 
 namespace g7
 {
@@ -154,8 +156,46 @@ std::optional<Engine::Combatant> Engine::combatant(u32 id)
     return c;
 }
 
+void Engine::checkItemBanes() const
+{
+    // Item.bane (gameplay.md "Kampf"): broken ones are reported at load and count for nothing in a fight.
+    std::set<std::string, std::less<>> species;
+    for (const script::Instance& npc : m_scripts->instances())
+    {
+        if (npc.kind == "Npc" && !npc.fields["species"].asString().empty())
+        {
+            species.emplace(npc.fields["species"].asString());
+        }
+    }
+    for (const script::Instance& item : m_scripts->instances())
+    {
+        if (item.kind != "Item" || item.fields["bane"].isNil())
+        {
+            continue;
+        }
+        auto bane = gameplay::readBane(item.fields["bane"]);
+        if (!bane)
+        {
+            G7_LOG_ERROR("engine", "Item {}: {}", item.name, bane.error().message);
+            continue;
+        }
+        for (const std::string& s : bane.value()->species)
+        {
+            if (!species.contains(s))
+            {
+                G7_LOG_WARN("engine", "Item {}: bane against '{}', which no Npc is (Npc.species)", item.name,
+                            s);
+            }
+        }
+    }
+}
+
 void Engine::loadCombat()
 {
+    if (m_scripts)
+    {
+        checkItemBanes();
+    }
     const script::Value table = m_scripts ? m_scripts->global("Combat") : script::Value();
     if (table.asTable() == nullptr)
     {
@@ -1030,9 +1070,19 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
         weapon, attacker.character->attribute("str"),
         [&](std::string_view type) { return target.character->protection(type); }, talent, roll, m_combat);
 
+    // Item.bane: a fixed extra against its species (the Sensenklinge against the brood); a broken one counts
+    // 0.
+    i32 bane = 0;
+    if (!item.empty() && def != nullptr)
+    {
+        if (auto parsed = gameplay::readBane(def->fields["bane"]); parsed)
+        {
+            bane = gameplay::baneBonus(parsed.value(), target.species);
+        }
+    }
     bool weakHit = false;
-    const i32 damage = curledDamage(target, weakSpotDamage(target, hit.damage, attacker.position, weakHit),
-                                    attacker.position);
+    const i32 damage = curledDamage(
+        target, weakSpotDamage(target, hit.damage + bane, attacker.position, weakHit), attacker.position);
     const i32 hp = target.character->attribute("hp") - damage;
     (void)target.character->setAttribute("hp", std::max(hp, 0));
     splinterOnHit(target, weapon);

@@ -161,6 +161,63 @@ DamageResult meleeDamage(const DamageByType& weapon, i32 strength,
     return result;
 }
 
+Result<std::optional<Bane>> readBane(const script::Value& field)
+{
+    if (field.isNil())
+    {
+        return std::optional<Bane>{};
+    }
+    const script::Table* t = field.asTable();
+    if (t == nullptr)
+    {
+        return Error{"bane must be a table { species = ..., bonus = ... }"};
+    }
+    Bane bane;
+    const script::Value& species = field["species"];
+    if (species.isString() && !species.asString().empty())
+    {
+        bane.species.emplace_back(species.asString());
+    }
+    else if (const script::Table* list = species.asTable(); list != nullptr && list->fields.empty())
+    {
+        for (const script::Value& entry : list->array)
+        {
+            if (!entry.isString() || entry.asString().empty())
+            {
+                return Error{"bane.species must be a species or a list of species"};
+            }
+            bane.species.emplace_back(entry.asString());
+        }
+    }
+    if (bane.species.empty())
+    {
+        return Error{"bane.species must be a species or a list of species"};
+    }
+    const script::Value& bonus = field["bonus"];
+    if (!bonus.isInteger() || bonus.asInteger() < 1)
+    {
+        return Error{"bane.bonus must be a whole number of 1 or more"};
+    }
+    bane.bonus = static_cast<i32>(bonus.asInteger());
+    for (const auto& [key, value] : t->fields)
+    {
+        if (key != "species" && key != "bonus")
+        {
+            return Error{std::format("bane has no field '{}' (species, bonus)", key)};
+        }
+    }
+    return std::optional<Bane>{std::move(bane)};
+}
+
+i32 baneBonus(const std::optional<Bane>& bane, std::string_view targetSpecies) noexcept
+{
+    if (!bane || targetSpecies.empty())
+    {
+        return 0;
+    }
+    return std::ranges::find(bane->species, targetSpecies) != bane->species.end() ? bane->bonus : 0;
+}
+
 i32 rangedDamage(const DamageByType& weapon, const std::function<i32(std::string_view type)>& protection,
                  const CombatSettings& settings)
 {

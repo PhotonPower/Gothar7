@@ -534,6 +534,59 @@ TEST_CASE(
 
 namespace
 {
+/// What one blow of the hero (str 100, no critical hit) with `weapon` does to a resting `instance` facing him
+/// `distance` m ahead.
+i64 blowWith(std::string_view weapon, std::string_view instance, f32 distance)
+{
+    CAPTURE(weapon);
+    CAPTURE(instance);
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    engine.setRandomSource([] { return 0.99f; });
+    frames(engine, 3);
+    run(engine, "set_stat('hp_max', 5000) set_stat('hp', 5000) set_stat('str', 100)");
+    run(engine, std::format("give_item('{0}') equip('{0}') draw_weapon()", weapon));
+    frames(engine, 110);
+    run(engine, "on('npc_hit', function(a, t, d) if a == 'hero' then Story.dealt = d end end)");
+    const std::string target(
+        run(engine, std::format("insert_npc('{}', 'WP_MONSTER_OST')", instance)).asString());
+    run(engine, std::format("npc_set_dormant('{}', true)", target));
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", target));
+    run(engine, std::format("npc_set_stat('{0}', 'hp_max', 3000) npc_set_stat('{0}', 'hp', 3000)", target));
+    frames(engine, 5);
+    placeAhead(engine, target, distance, 180.0f);
+    frames(engine, 2);
+    bool started = false;
+    for (int i = 0; i < 180 && !started; ++i)
+    {
+        frames(engine, 1);
+        started = run(engine, "hero_attack()").asBool();
+    }
+    REQUIRE(started);
+    for (int i = 0; i < 60 && run(engine, "Story.dealt").isNil(); ++i)
+    {
+        frames(engine, 1);
+    }
+    REQUIRE_FALSE(run(engine, "Story.dealt").isNil());
+    return run(engine, "Story.dealt").asInteger();
+}
+} // namespace
+
+TEST_CASE(
+    "Engine dungeon monsters: the Sensenklinge's bane does 50 more to the brood, nothing more to others")
+{
+    // Same target, old sword (edge 18, no bane) against the Sensenklinge (edge 32, bane brood +50).
+    const i64 motherSword = blowWith("it_sword_old", "mon_kellermutter", 3.9f);
+    const i64 motherBlade = blowWith("it_scythe_blade", "mon_kellermutter", 3.9f);
+    CHECK(motherBlade - motherSword == (32 - 18) + 50);
+    // Not of the brood (the Beinhauswart): only the better edge.
+    const i64 wardenSword = blowWith("it_sword_old", "mon_beinhauswart", 1.6f);
+    const i64 wardenBlade = blowWith("it_scythe_blade", "mon_beinhauswart", 1.6f);
+    CHECK(wardenBlade - wardenSword == 32 - 18);
+}
+
+namespace
+{
 /// A Beinhauswart with its lantern, `distance` m in front of the hero (negative: behind him), facing him.
 std::string wardenFacingHero(Engine& engine, f32 distance)
 {
