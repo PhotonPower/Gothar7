@@ -14,6 +14,13 @@ one texture (``TILE_M``), with v pointing up in the image (glTF v grows downward
   the eave whatever the builder wrote); the shady side (``~moss``) gets the mossy tiles;
 - plaster under a window with a rain streak (``~streak``): part of the wall, opaque, 0..1 as the
   builder wrote it (one of the texture's variants across, down from the sill).
+
+Roofs from afar (owner 2026-11-27: "von Weitem eine glatte rotbraune Fläche"): ``texture_house``
+cuts every tiled roof into patches along the rows of tiles (bands of ``PATCH_ROWS`` courses up the
+slope, ``PATCH_MIN_M``..``PATCH_MAX_M`` long along the eave, staggered from band to band) and gives
+each patch one of ``PATCH_SHADES`` (older, darker tiles; newer, brighter ones) as its own material
+``<roof>~p1`` / ``~p2``: re-laid patches as on a real roof. The bands follow the courses of the
+texture, so a patch ends between two rows. The ridge tiles (``roof_ridge``) stay whole.
 """
 
 from __future__ import annotations
@@ -31,10 +38,19 @@ from gothar_worldgen.textures.procedural import KINDS, TILE_M, albedo_scale, mak
 LOW = "~low"  # material suffix of the dirty foot band
 MOSS = "~moss"  # material suffix of the shady roof side
 STREAK = "~streak"  # material suffix of plaster under a window with a rain streak
+RIDGE = "roof_ridge"  # the ridge tiles (buildings.medieval.RIDGE): tiles, but no patches
+ROOF_ROWS = 13  # courses per texture (textures.procedural.roof)
+PATCH_ROWS = 8  # courses per band of patches (1.23 m up the slope)
+PATCH_MIN_M, PATCH_MAX_M = 1.6, 5.0  # length of a patch along the eave
+PATCH_UP = 0.3  # only faces looking up at least this much (not the eaves' underside, the fascia)
+# patch shade -> (colour factor, share): older darker tiles, newer redder and brighter ones
+PATCH_SHADES = {"~p1": ((0.84, 0.81, 0.78), 0.26), "~p2": ((1.11, 1.05, 0.98), 0.2)}
 
 
 def kind_of(material: str) -> str | None:
     """Texture kind of a palette entry (``None``: stays untextured)."""
+    for patch in PATCH_SHADES:
+        material = material.removesuffix(patch)
     name = material.removesuffix(LOW).removesuffix(MOSS).removesuffix(STREAK)
     if name.startswith(("plaster", "lehm")):
         if material.endswith(STREAK):
@@ -113,10 +129,115 @@ SHIFTED = {
 
 
 def texture_house(prims: Sequence[Primitive], uri_root: str, key: str = "") -> list[Primitive]:
-    """Textures for one house; ``key`` (its id) picks a fixed offset of the repeating textures."""
+    """Textures for one house; ``key`` (its id) picks a fixed offset of the repeating textures;
+    tiled roofs come in patches of shades (``roof_patches``)."""
     h = hashlib.sha256(key.encode()).digest() if key else bytes(2)
     offset = (h[0] / 256.0, h[1] / 256.0)
-    return [textured(p, uri_root, offset) for p in prims]
+    out = []
+    for p in prims:
+        if (kind_of(p.material) or "").startswith("roof") and p.material != RIDGE:
+            out += [textured(q, uri_root, offset) for q in roof_patches(p, offset, key)]
+        else:
+            out.append(textured(p, uri_root, offset))
+    return out
+
+
+def _hash01(*parts: object) -> float:
+    return int.from_bytes(hashlib.sha256(repr(parts).encode()).digest()[:4], "little") / 2**32
+
+
+def _clip(poly: list[np.ndarray], axis: int, cut: float, keep_low: bool) -> list[np.ndarray]:
+    """Sutherland-Hodgman against ``x[axis] <= cut`` (or ``>=``); rows are vertices with all
+    attributes, ``x[0], x[1]`` the roof coordinates (along the eave, up the slope)."""
+    out: list[np.ndarray] = []
+    for i, a in enumerate(poly):
+        b = poly[(i + 1) % len(poly)]
+        ina = a[axis] <= cut if keep_low else a[axis] >= cut
+        inb = b[axis] <= cut if keep_low else b[axis] >= cut
+        if ina:
+            out.append(a)
+        if ina != inb:
+            t = (cut - a[axis]) / (b[axis] - a[axis])
+            out.append(a + (b - a) * t)
+    return out
+
+
+def roof_patches(prim: Primitive, offset: tuple[float, float], key: str) -> list[Primitive]:
+    """The roof cut into patches along its courses, as up to three primitives (the plain tiles
+    and the two ``PATCH_SHADES``); the cut follows the face (u along the eave, v up the slope,
+    in metres, as ``_roof_uvs``), so neighbouring faces of one plane share the patches."""
+    mesh = prim.mesh
+    if mesh.triangle_count == 0:
+        return [prim]
+    _, tv = TILE_M["roof"]
+    course = tv / ROOF_ROWS
+    band_m = course * PATCH_ROWS
+    v0 = offset[1] * tv  # a course boundary (the texture's v starts at the house's offset)
+    uv = _roof_uvs(mesh)
+    attrs = np.concatenate([uv, mesh.positions.astype(np.float64),
+                            mesh.normals.astype(np.float64), mesh.uvs.astype(np.float64)],
+                           axis=1)  # fmt: skip
+    groups: dict[str, list[list[np.ndarray]]] = {"": [], **{k: [] for k in PATCH_SHADES}}
+    for tri in mesh.indices.reshape(-1, 3):
+        pts = [attrs[i] for i in tri]
+        if float(np.mean([q[6] for q in pts])) < PATCH_UP:  # normal y: underside, fascia
+            groups[""].append(pts)
+            continue
+        vs = [q[1] for q in pts]
+        b_lo = int(np.floor((min(vs) - v0) / band_m))
+        b_hi = int(np.floor((max(vs) - v0) / band_m - 1e-9))
+        for band in range(b_lo, b_hi + 1):
+            lo, hi = v0 + band * band_m, v0 + (band + 1) * band_m
+            strip = _clip(_clip(pts, 1, lo, False), 1, hi, True) if pts else []
+            if len(strip) < 3:
+                continue
+            us = [q[0] for q in strip]
+            # the band's cuts along the eave: lengths from a hash, a start shifted per band
+            start = _hash01(key, band, "start") * PATCH_MAX_M
+            u = np.floor((min(us) - start) / PATCH_MAX_M) * PATCH_MAX_M + start - PATCH_MAX_M
+            cuts = []
+            k = 0
+            while u < max(us):
+                length = PATCH_MIN_M + _hash01(key, band, round(u, 3), k) * (
+                    PATCH_MAX_M - PATCH_MIN_M
+                )
+                cuts.append((u, u + length))
+                u += length
+                k += 1
+            for c0, c1 in cuts:
+                if c1 <= min(us) or c0 >= max(us):
+                    continue
+                piece = _clip(_clip(strip, 0, c0, False), 0, c1, True)
+                if len(piece) < 3:
+                    continue
+                r = _hash01(key, band, round(c0, 3), "shade")
+                shade = ""
+                for name, (_, share) in PATCH_SHADES.items():
+                    if r < share:
+                        shade = name
+                        break
+                    r -= share
+                groups[shade].append(piece)
+    out = []
+    for shade, polys in groups.items():
+        if not polys:
+            continue
+        rows = [q for poly in polys for q in poly]
+        idx = []
+        base = 0
+        for poly in polys:
+            idx += [x for k in range(1, len(poly) - 1) for x in (base, base + k, base + k + 1)]
+            base += len(poly)
+        arr = np.asarray(rows)
+        f32 = np.float32
+        sub = MeshData(arr[:, 2:5].astype(f32), arr[:, 5:8].astype(f32),
+                       arr[:, 8:10].astype(f32), np.asarray(idx, dtype=np.uint32))  # fmt: skip
+        color = prim.color
+        if shade:
+            f = PATCH_SHADES[shade][0]
+            color = (color[0] * f[0], color[1] * f[1], color[2] * f[2], color[3])
+        out.append(replace(prim, material=prim.material + shade, color=color, mesh=sub))
+    return out
 
 
 def write_textures(folder: Path, size: int = 1024, seed: int = 7) -> list[Path]:

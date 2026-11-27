@@ -187,3 +187,67 @@ def test_gutter_slabs_have_joints_across_and_none_along_the_edges():
     assert rows.min() < 0.8 * np.median(rows)
     assert cols.max() - cols.min() < 0.1 * np.median(cols)
     assert lum.min() > 0.4 * lum.mean()  # dirty sand, not black lines
+
+
+def _roof_prim() -> Primitive:
+    """One roof plane, 12 m along the eave, 5 m up the slope at 45 degrees, as two triangles."""
+    s = 5.0 / np.sqrt(2.0)
+    pos = np.array([[0, 0, 0], [12, 0, 0], [12, s, -s], [0, s, -s]], dtype=np.float32)
+    nrm = np.tile(np.array([0, 1, 1], dtype=np.float32) / np.sqrt(2.0), (4, 1)).astype(np.float32)
+    mesh = MeshData(pos, nrm, np.zeros((4, 2), np.float32), np.array([0, 1, 2, 0, 2, 3], np.uint32))
+    return Primitive("roof_red", (0.2, 0.08, 0.06, 1.0), mesh)
+
+
+def _area(mesh: MeshData) -> float:
+    p = mesh.positions.astype(np.float64)[mesh.indices.reshape(-1, 3)]
+    return float(np.linalg.norm(np.cross(p[:, 1] - p[:, 0], p[:, 2] - p[:, 0]), axis=1).sum() / 2)
+
+
+def test_roofs_come_in_patches_of_shades_along_the_courses():
+    """Owner 2026-11-27: from afar no plain red-brown surface: patches along the rows of tiles,
+    darker and brighter, as their own materials; the whole roof stays covered, the shades
+    follow the courses (bands of PATCH_ROWS rows)."""
+    from gothar_worldgen.textures.apply import PATCH_ROWS, PATCH_SHADES, ROOF_ROWS, roof_patches
+
+    prim = _roof_prim()
+    parts = roof_patches(prim, (0.25, 0.5), "H1")
+    names = {p.material for p in parts}
+    assert names == {"roof_red", *(f"roof_red{k}" for k in PATCH_SHADES)}
+    assert sum(_area(p.mesh) for p in parts) == pytest.approx(_area(prim.mesh), rel=1e-5)
+    dark = next(p for p in parts if p.material == "roof_red~p1")
+    assert dark.color[0] < prim.color[0] and kind_of(dark.material) == "roof"
+    band = TILE_M["roof"][1] / ROOF_ROWS * PATCH_ROWS
+    from gothar_worldgen.textures.apply import _roof_uvs
+
+    for p in parts:  # every patch lies inside one band (cuts between two courses)
+        v = _roof_uvs(p.mesh)[:, 1][p.mesh.indices].reshape(-1, 3) - 0.5 * TILE_M["roof"][1]
+        low = np.floor(v.min(axis=1) / band + 1e-6)
+        high = np.floor(v.max(axis=1) / band - 1e-6)
+        assert (low == high).all()
+    again = roof_patches(prim, (0.25, 0.5), "H1")
+    assert [p.mesh.positions.tobytes() for p in again] == [
+        p.mesh.positions.tobytes() for p in parts
+    ]
+    other = roof_patches(prim, (0.25, 0.5), "H2")  # another house, other patches
+    assert [p.mesh.positions.tobytes() for p in other] != [
+        p.mesh.positions.tobytes() for p in parts
+    ]
+    assert kind_of("roof_red~moss~p2") == "roof_moss" and kind_of("roof_ridge") == "roof"
+
+
+def test_saddle_roofs_get_dark_ridge_tiles_on_every_detail_level():
+    from gothar_worldgen.buildings.medieval import RIDGE, lod2_primitives
+
+    style = from_json({"id": "H1", "style": "handwerkerhaus"})
+    house = {"id": "H1", "groundY": 0.0, "footprint": [[0, 0], [10, 0], [10, 7], [0, 7]],
+             "roof": {"type": "saddle", "eaveY": 6.0, "ridgeY": 10.0, "ridgeDir": [1, 0]},
+             "storeys": 2}  # fmt: skip
+    for lod in (0, 1):
+        h = build_house(house, 0.0, (5.0, 3.5), RULES, None, style, lod=lod)
+        ridge = next(p for p in h.primitives if p.material == RIDGE)
+        roofs = [p for p in h.primitives if p.material.startswith("roof") and p.material != RIDGE]
+        top = max(p.mesh.positions[:, 1].max() for p in roofs)
+        assert ridge.mesh.positions[:, 1].max() > top  # proud of the tiles
+        assert RULES.color(RIDGE)[0] < RULES.color(h.style.roof)[0]
+    h0 = build_house(house, 0.0, (5.0, 3.5), RULES, None, style)
+    assert any(p.material == RIDGE for p in lod2_primitives(h0, 0.0, (5.0, 3.5), RULES))

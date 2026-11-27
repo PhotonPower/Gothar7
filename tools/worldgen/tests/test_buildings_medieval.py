@@ -53,7 +53,7 @@ def test_rules_file_is_decided():
     palette = {k for k in RULES.data["palette"] if k != "note"}
     # a budget, no engine limit: it batches per mesh and material value, each value costs a few
     # draw batches per visible cell (engine 2026-10-08)
-    assert len(palette) <= 20
+    assert len(palette) <= 21  # 21: the dark ridge tiles (roof_ridge, owner 2026-11-27)
     patterns = set(RULES.data["timber"]["patterns"]) - {"note"}
     assert {"mann", "halber_mann", "einfach", "andreaskreuz", "feuerbock", "raute"} <= patterns
     assert "roof_slate" not in palette  # slate is untypical in Württemberg
