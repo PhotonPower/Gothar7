@@ -296,6 +296,26 @@ volume = 0.45
 pitch_jitter = 0.15
 max_distance = 30
 
+[amb_grotto] # Kristallgrotte im Dungeon (Ebene 7, Platzhalter): weite Höhlenluft, leises Plätschern eines Sees, langer Hall
+files = ["sounds/amb_grotto.wav"]
+bus = "ambient"
+loop = true
+volume = 0.45
+
+[crystal_ring] # ein Kristall klingt leise wie Glas, mit dem Hall der Grotte (Platzhalter)
+files = ["sounds/crystal_ring.wav"]
+bus = "ambient"
+volume = 0.3
+pitch_jitter = 0.2
+max_distance = 30
+
+[rumble_far] # fernes Grollen im Fels (Grotte, Platzhalter)
+files = ["sounds/rumble_far.wav"]
+bus = "ambient"
+volume = 0.5
+pitch_jitter = 0.1
+max_distance = 45
+
 # --- Dungeon-Monster (Platzhalter aus tools/audio, Clip-Events sound:<art>_<was>)
 [gatterbock_attack]
 files = ["sounds/gatterbock_attack.wav"]

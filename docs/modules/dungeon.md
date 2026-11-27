@@ -99,6 +99,10 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   - `filter` `player` / `creature` / `items` / `any` (wie in Dungeon Master: auch Monster und Gegenstände);
   - `yaw` (Blickrichtung nach der Ankunft, sonst die des Ziels);
   - `active` (kann per Ereignis an- und ausgehen).
+  - `silent` (Vorgabe false): kein Effekt, kein Klang, kein weißer Blitz an beiden Enden;
+  - `keep_velocity` (Vorgabe false): der Held behält seine Geschwindigkeit – ein Teleporter unter einer Falltür wirkt
+    wie ein Fall (welt E7: Ankunft etwa 3,3 m über dem Boden der unteren Höhle); die Landung ist unverletzt wie bei
+    `changeWorld.fall`.
 - **Ablauf:** kurzer Blitz (Weißblende 0,2 s, Effekt `teleport`), dann versetzt. In derselben Welt ohne Ladezeit, in
   eine andere Ebene als Weltwechsel.
 - Kein Ping-Pong: Am Ziel gilt das Prinzip „schon drin“ wie bei den Weltwechsel-Triggern (`prime`).

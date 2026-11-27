@@ -122,6 +122,10 @@ void Engine::heroEnteredTeleport(const world::Vob& vob, const world::Teleport& t
         // Another level: a level change; the white flash covers it, the arrival fades from black.
         G7_LOG_INFO("engine", "teleporter {} -> {} ({})", vob.nameText, teleport.world, teleport.start);
         requestWorldChange(teleport.world, teleport.start);
+        if (teleport.keepVelocity && m_pendingWorldChange && m_player.valid())
+        {
+            m_pendingWorldChange->fall = m_player.velocity(); // like changeWorld.fall
+        }
         return;
     }
     const auto target = teleportTarget(teleport);
@@ -130,7 +134,9 @@ void Engine::heroEnteredTeleport(const world::Vob& vob, const world::Teleport& t
         G7_LOG_WARN("engine", "teleporter {}: no vob {} to go to", vob.nameText, teleport.to);
         return;
     }
-    m_pendingTeleport = PendingTeleport{vob.nameText, target->first, target->second};
+    m_pendingTeleport = PendingTeleport{
+        vob.nameText, target->first, target->second, teleport.silent,
+        teleport.keepVelocity && m_player.valid() ? std::optional<Vec3>(m_player.velocity()) : std::nullopt};
 }
 
 void Engine::performHeroTeleport()
@@ -143,12 +149,25 @@ void Engine::performHeroTeleport()
     const PendingTeleport t = std::move(*m_pendingTeleport);
     m_pendingTeleport.reset();
     const Vec3 from = m_player.feet();
-    (void)startEffect("teleport", from + Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f));
-    (void)playSound("teleport", from);
+    if (!t.silent)
+    {
+        (void)startEffect("teleport", from + Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f));
+        (void)playSound("teleport", from);
+    }
     teleportPlayer(t.feet + Vec3(0.0f, 0.05f, 0.0f), t.yaw);
-    (void)startEffect("teleport", t.feet + Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f));
-    (void)playSound("teleport", t.feet);
-    m_screenFade = ScreenFade{Vec3(1.0f), kFlashSeconds, kFlashSeconds};
+    if (!t.silent)
+    {
+        (void)startEffect("teleport", t.feet + Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f));
+        (void)playSound("teleport", t.feet);
+        m_screenFade = ScreenFade{Vec3(1.0f), kFlashSeconds, kFlashSeconds};
+    }
+    if (t.keepVelocity)
+    {
+        // keep_velocity (under a trapdoor): the fall goes on at the target and, like changeWorld.fall, costs
+        // nothing when it lands.
+        m_player.setVelocity(*t.keepVelocity);
+        m_fallUnhurt = true;
+    }
     // Arriving inside a teleporter (or any trigger) counts as already in it: no bouncing back.
     const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
     m_triggers.prime(m_scene, std::span(&probe, 1));

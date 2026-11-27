@@ -581,6 +581,61 @@ def stone_scrape(rng: random.Random) -> Samples:
     return normalise(fade(lowpass(out, 1100.0), 0.05, 0.4), 0.5)
 
 
+def amb_grotto(rng: random.Random) -> Samples:
+    # The crystal grotto (dungeon level 7): the deep, wide air of a big cave and a lake lapping quietly at its
+    # shore, both smeared by a long, slowly dying echo.
+    hum = lowpass(noise(LOOP, rng), 70.0)
+    lap = lowpass(highpass(noise(LOOP, rng), 120.0), 550.0)
+    lapping = [
+        x
+        * (0.35 + 0.65 * max(0.0, math.sin(2 * math.pi * 0.3 * i / RATE + 0.7 * math.sin(i / 17000.0))) ** 2)
+        for i, x in enumerate(lap)
+    ]
+    out = mix((hum, 1.0), (lapping, 0.35))
+    for delay, gain in ((0.29, 0.4), (0.61, 0.28), (0.97, 0.18), (1.43, 0.1)):
+        d = int(delay * RATE)
+        out = [x + gain * out[i - d] if i >= d else x for i, x in enumerate(out)]
+    return normalise(seamless(out), 0.45)
+
+
+def crystal_ring(rng: random.Random) -> Samples:
+    # A crystal somewhere in the grotto rings faintly, like a wet finger on a glass: a pure, high tone with a
+    # slow swell and a soft beat, then the long echo of the cave.
+    f = rng.uniform(1300.0, 1900.0)
+    seconds = rng.uniform(1.6, 2.2)
+
+    def glass(t: float) -> float:
+        return f * (1.0 + 0.002 * math.sin(2 * math.pi * 5.0 * t))
+
+    body = mix((tone(glass, seconds), 1.0), (tone(f * 2.01, seconds), 0.25), (tone(f * 1.003, seconds), 0.5))
+    n = len(body)
+    swell = [math.sin(math.pi * i / n) ** 2 for i in range(n)]
+    ring = [x * s for x, s in zip(body, swell, strict=True)]
+    out = ring + [0.0] * int(1.2 * RATE)
+    for delay, gain in ((0.31, 0.35), (0.67, 0.2), (1.05, 0.1)):
+        d = int(delay * RATE)
+        for i in range(n):
+            out[i + d] += gain * ring[i]
+    return normalise(fade(out, 0.05, 0.5), 0.35)
+
+
+def rumble_far(rng: random.Random) -> Samples:
+    # Deep in the rock something shifts: a low, distant rumble that rolls in and dies away through the cave.
+    seconds = rng.uniform(2.0, 2.8)
+    rock = lowpass(noise(seconds, rng), 90.0)
+    n = len(rock)
+    roll = [
+        x * math.sin(math.pi * i / n) ** 1.5 * (0.7 + 0.3 * math.sin(2 * math.pi * 3.0 * i / RATE))
+        for i, x in enumerate(rock)
+    ]
+    out = roll + [0.0] * int(0.8 * RATE)
+    for delay, gain in ((0.37, 0.3), (0.79, 0.15)):
+        d = int(delay * RATE)
+        for i in range(n):
+            out[i + d] += gain * roll[i]
+    return normalise(fade(out, 0.2, 0.6), 0.6)
+
+
 # --- Footsteps (M13 E): six materials, four variants each (footstep_<material>_<n>) --------------------------
 
 
@@ -771,6 +826,9 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "amb_labyrinth": amb_labyrinth,
     "steps_distant": steps_distant,
     "stone_scrape": stone_scrape,
+    "amb_grotto": amb_grotto,
+    "crystal_ring": crystal_ring,
+    "rumble_far": rumble_far,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,
     "amb_night": amb_night,

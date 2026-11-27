@@ -60,6 +60,15 @@ randoms = ["steps_distant", "steps_distant", "stone_scrape", "water_drip"]
 interval = [5, 14]
 distance = [6, 24]
 
+# Ebene 7 des Dungeons (welt, Thema „grotte“, Kristallgrotte): weite Höhle mit langem Hall und leise plätscherndem See,
+# hallende Tropfen ins Wasser, selten ein leises gläsernes Klingen der Kristalle oder fernes Grollen im Fels.
+# Tag und Nacht gleich; Platzhalter.
+[grotte]
+loop = "amb_grotto"
+randoms = ["water_drop_deep", "water_drop_deep", "water_drop_deep", "crystal_ring", "crystal_ring", "rumble_far"]
+interval = [3, 10]
+distance = [5, 25]
+
 # Leonberg (Zonen von welt: world.md „Zonen“) - feld ist die Vorgabe-Box über die Welt.
 [feld]
 loop = "amb_field"

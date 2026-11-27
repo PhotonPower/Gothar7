@@ -166,6 +166,33 @@ TEST_CASE("Engine teleport: switched teleporters are saved and come back")
     CHECK(engine.teleportActive("TELE_A") == std::optional<bool>(false));
 }
 
+TEST_CASE("Engine teleport: silent with keep_velocity - under a trapdoor the fall goes on, no flash, unhurt")
+{
+    Engine engine(teleportConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    run(engine, "Story.went = '' on('hero_teleported', function(t) Story.went = t end)");
+    const i64 hp = run(engine, "stat('hp')").asInteger();
+    // He drops from 7 m into KLAPPE_FALL (0-2 m up) and comes out at MARK_KLAPPE, 3.3 m above the floor.
+    run(engine, "teleport(-10, 7, 10)");
+    for (int i = 0; i < 120 && run(engine, "Story.went").asString().empty(); ++i)
+    {
+        frames(engine, 1);
+    }
+    REQUIRE(run(engine, "Story.went").asString() == "KLAPPE_FALL");
+    const physics::CharacterController* player = engine.player();
+    REQUIRE(player != nullptr);
+    CHECK(player->feet().x == doctest::Approx(-20.0f).epsilon(0.01));
+    CHECK(player->feet().y > 2.0f);      // still in the air below the "ceiling"
+    CHECK(player->velocity().y < -4.0f); // falling on with the speed he came with
+    CHECK(engine.screenFade() == 0.0f);  // silent: no white flash
+    frames(engine, 90);
+    REQUIRE(engine.lastLanding().has_value());
+    CHECK(engine.lastLanding()->damage == 0.0f);
+    CHECK(run(engine, "stat('hp')").asInteger() == hp);
+    CHECK(player->feet().y == doctest::Approx(0.0f).epsilon(0.1));
+}
+
 TEST_CASE("Engine teleport: a level change into the own world is a move to the start, nothing reset or saved")
 {
     EngineConfig config = teleportConfig();
