@@ -405,6 +405,27 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
     renderer.m_defaults = std::make_shared<const MaterialDefaults>(
         MaterialDefaults{std::move(white).value(), std::move(flatNormal).value()});
 
+    // Unit 3 without a shadow map (no sun above the ground, shadows off): a 1x1 depth texture with a compare
+    // sampler, which the shaders never read (no cascades) but the driver checks against sampler2DShadow.
+    auto fallbackShadow = device.createTexture({1, 1, rhi::Format::Depth32F, 1});
+    if (!fallbackShadow)
+    {
+        return fallbackShadow.error();
+    }
+    renderer.m_fallbackShadow = std::move(fallbackShadow).value();
+    device.clearDepthRegion(renderer.m_fallbackShadow, {0, 0, 1, 1}, 1.0f);
+    rhi::SamplerDesc shadowSamplerDesc;
+    shadowSamplerDesc.minFilter = shadowSamplerDesc.magFilter = shadowSamplerDesc.mipFilter =
+        rhi::Filter::Nearest;
+    shadowSamplerDesc.wrapU = shadowSamplerDesc.wrapV = rhi::Wrap::Clamp;
+    shadowSamplerDesc.compare = rhi::CompareOp::LessEqual;
+    auto shadowSampler = device.createSampler(shadowSamplerDesc);
+    if (!shadowSampler)
+    {
+        return shadowSampler.error();
+    }
+    renderer.m_shadowSampler = std::move(shadowSampler).value();
+
     auto lighting = device.createBuffer({sizeof(GpuLighting), rhi::BufferUsage::Dynamic, {}});
     if (!lighting)
     {
@@ -485,13 +506,22 @@ void MeshRenderer::bindAmbientOcclusion(Device& device) const
     device.bindTexture(12, m_historyDepth != nullptr ? *m_historyDepth : m_defaults->white, m_pointSampler);
 }
 
-void MeshRenderer::bindLighting(Device& device) const
+void MeshRenderer::bindShadowAtlas(Device& device) const
 {
-    device.bindUniformBuffer(0, m_lightingBuffer);
     if (m_shadowMap != nullptr)
     {
         device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
     }
+    else
+    {
+        device.bindTexture(3, m_fallbackShadow, m_shadowSampler);
+    }
+}
+
+void MeshRenderer::bindLighting(Device& device) const
+{
+    device.bindUniformBuffer(0, m_lightingBuffer);
+    bindShadowAtlas(device);
     bindAmbientOcclusion(device);
 }
 
@@ -500,10 +530,7 @@ void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& mat
 {
     const Mat4 viewProjection = camera.viewProjection();
     device.bindUniformBuffer(0, m_lightingBuffer);
-    if (m_shadowMap)
-    {
-        device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
-    }
+    bindShadowAtlas(device);
     bindAmbientOcclusion(device);
     m_selected.clear();
     if (m_lights)
@@ -551,10 +578,7 @@ void MeshRenderer::drawSkinned(Device& device, const SkinnedMesh& mesh, const Ma
 {
     uploadBones(device, bones);
     device.bindUniformBuffer(0, m_lightingBuffer);
-    if (m_shadowMap)
-    {
-        device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
-    }
+    bindShadowAtlas(device);
     bindAmbientOcclusion(device); // also the rain map (wet figures, M17 N)
     m_selected.clear();
     if (m_lights)
