@@ -2125,6 +2125,8 @@ private:
         std::optional<Vec3> fall; ///< dungeon D4: arrives falling with this velocity, unhurt
     };
     std::optional<PendingWorldChange> m_pendingWorldChange;
+    /// A level change into the hero's own world: he goes to the start point, nothing is reloaded or saved.
+    void moveToStartInWorld(const PendingWorldChange& change);
     std::vector<EngineTool*> m_tools;
     world::Heightfield m_heightfield;  // terrain heights (empty without terrain)
     render::TerrainRenderer m_terrain; // pipelines reference ShaderLibrary programs

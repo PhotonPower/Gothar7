@@ -3,11 +3,14 @@
 // in; an inactive one waits for an event; items go through one that takes them; another teleporter leads to
 // another level; a fall through a shaft arrives below unhurt; switched teleporters survive a save game.
 
+#include "RunTempDir.hpp"
+
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/GameState.hpp>
 
 #include <doctest/doctest.h>
 
+#include <filesystem>
 #include <format>
 #include <ostream> // doctest needs it to print std::string operands
 #include <string>
@@ -188,4 +191,43 @@ TEST_CASE("Engine teleport: silent with keep_velocity - under a trapdoor the fal
     CHECK(engine.lastLanding()->damage == 0.0f);
     CHECK(run(engine, "stat('hp')").asInteger() == hp);
     CHECK(player->feet().y == doctest::Approx(0.0f).epsilon(0.1));
+}
+
+TEST_CASE("Engine teleport: a level change into the own world is a move to the start, nothing reset or saved")
+{
+    EngineConfig config = teleportConfig();
+    const std::filesystem::path saves = test::runTempDir() / "teleport_same_world";
+    config.saveDirectory = saves;
+    Engine engine(config);
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    // State of this world: a switched teleporter and an item put down.
+    run(engine, "send('TELE_AUS', 'on')");
+    const auto apple = engine.spawnItem("it_apple", 1, Vec3(3.0f, 0.0f, 3.0f));
+    REQUIRE(apple.ok());
+    run(engine, "teleport(8, 0, 8)");
+    frames(engine, 3);
+
+    engine.requestWorldChange("TestWorld/Teleport.g7world", "START_TELEPORT"); // the path in other case
+    frames(engine, 3);
+    CHECK(engine.worldPath() == "testworld/teleport.g7world");
+    CHECK(heroFeet(engine).x == doctest::Approx(0.0f).epsilon(0.01)); // at the start point
+    CHECK(heroFeet(engine).z == doctest::Approx(0.0f).epsilon(0.01));
+    CHECK(engine.teleportActive("TELE_AUS") == std::optional<bool>(true)); // not read fresh from the file
+    bool appleThere = false;
+    for (const WorldItemInfo& item : engine.worldItems())
+    {
+        appleThere = appleThere || item.vob == apple.value();
+    }
+    CHECK(appleThere);
+    CHECK(engine.keptWorlds() == 0);
+    frames(engine, 240); // an autosave would come within a few seconds
+    CHECK_FALSE(std::filesystem::exists(saves / "auto.g7save"));
+
+    // An unknown start point in the own world: a warning, he stays.
+    run(engine, "teleport(8, 0, 8)");
+    frames(engine, 2);
+    engine.requestWorldChange("testworld/teleport.g7world", "NO_SUCH_START");
+    frames(engine, 2);
+    CHECK(heroFeet(engine).x == doctest::Approx(8.0f).epsilon(0.01));
 }
