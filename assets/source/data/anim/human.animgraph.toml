@@ -1470,6 +1470,20 @@ clip = "none/t_torch_drop"
 name = "none_a_torch_hold"
 clip = "none/a_torch_hold"
 
+# Lichtzauber (2026-11-26, figuren #511): die offene Hand mit der Lichtkugel - heben, halten (Schleife), senken; additive
+# Overlays wie die Fackel (clavicle_l, Bezug none/a_neutral), nur geladen (EngineSpellLight.cpp spielt sie).
+[[state]]
+name = "none_a_light_hold"
+clip = "none/a_light_hold"
+
+[[state]]
+name = "none_a_light_hold_in"
+clip = "none/a_light_hold_in"
+
+[[state]]
+name = "none_a_light_hold_out"
+clip = "none/a_light_hold_out"
+
 [[state]]
 name = "none_a_neutral"
 clip = "none/a_neutral"
