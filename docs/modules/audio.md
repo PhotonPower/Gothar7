@@ -75,6 +75,9 @@
   `grotte` (Ebene 7, Kristallgrotte) – weite Höhlenluft mit langem Hall und leise plätscherndem See (`amb_grotto`),
   hallende Tropfen ins Wasser (`water_drop_deep`), selten ein leises gläsernes Klingen (`crystal_ring`) oder fernes
   Grollen im Fels (`rumble_far`).
+  `hort` (Ebene 8, Hort der Kellermutter) – schweres Gewölbe mit tiefem Grollen und nass pulsierendem Doppelschlag
+  der Brut (`amb_hoard`), fern klickendes Chitin (`chitin_click`), tropfender Schleim (`slime_drip`), selten Grollen
+  im Fels (`rumble_far`).
   - Neue Platzhalter-Schleifen (4 s): `amb_field`, `amb_town`, `amb_market`, `amb_water`, `amb_fountain`, `amb_fire`, `amb_tavern`, `amb_room`.
   - Neue Einzelklänge: `crow`, `dog_bark`, `wood_creak`, `mug_clink`, `frog`.
 - **Spruch-Klänge:** `Spell`-Feld `sounds = { cast, impact }`; das Wirken klingt an der Hand, der Einschlag am Treffpunkt.

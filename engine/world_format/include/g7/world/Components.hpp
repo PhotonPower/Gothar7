@@ -164,13 +164,18 @@ struct Relay
 /// save or a visit kept in memory) `count` NPCs of the Npc instance `npc` are put in at the marker, looking
 /// along its yaw. `dormant` ones rest (Lua zs_dormant) until they notice the hero, are hurt or the event
 /// `wake` reaches the marker. Only a nest (`respawn`) fills up again: when the hero comes back into the
-/// level, its dead are replaced.
+/// level, its dead are replaced. With `targets` it sends `action` to them once, when all its NPCs are dead
+/// (the source is the marker's name; a boss opens the arena). An inactive marker (`active` false) puts its
+/// NPCs in only when the event `on` or `trigger` reaches it, one time (waves of a boss fight).
 struct Spawn
 {
-    std::string npc;      ///< Npc instance ("mon_gatterbock")
-    u32 count = 1;        ///< 1..32, put in a ring around the marker from the second one on
-    bool respawn = false; ///< a nest (dungeon.md question 8: no regrowth anywhere else)
-    bool dormant = true;  ///< begins resting
+    std::string npc;                  ///< Npc instance ("mon_gatterbock")
+    u32 count = 1;                    ///< 1..32, put in a ring around the marker from the second one on
+    bool respawn = false;             ///< a nest (dungeon.md question 8: no regrowth anywhere else)
+    bool dormant = true;              ///< begins resting
+    std::vector<std::string> targets; ///< told once all its NPCs are dead
+    std::string action = std::string(kEventTrigger);
+    bool active = true; ///< false: waits for on/trigger, then puts them in (once)
 };
 
 /// A moving part (dungeon D2, `components.mover` at a mesh or mob vob, like ZenGin's zCMover): a portcullis,

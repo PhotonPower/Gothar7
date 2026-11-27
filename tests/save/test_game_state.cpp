@@ -75,6 +75,7 @@ save::GameState sample()
     npc.life = save::Life::Dead;
     npc.character = hero;
     w.npcs.push_back(npc);
+    w.spawns = {{31, true, false}, {32, true, true}}; // E8: a wave activated, a boss marker fired
     s.worlds.push_back(std::move(w));
     s.weather =
         save::WeatherSave{"regen", "bewoelkt", 600.5, 15.0, 720.25, 1234567890123ull, true, 0.75f, 700.5};
@@ -110,6 +111,7 @@ TEST_CASE("Game state: everything survives JSON, the text is stable")
     CHECK(b.worlds[0].spentTriggers == s.worlds[0].spentTriggers);
     CHECK(b.worlds[0].mobs == s.worlds[0].mobs);
     CHECK(b.worlds[0].npcs == s.worlds[0].npcs);
+    CHECK(b.worlds[0].spawns == s.worlds[0].spawns);
     CHECK(save::toJson(b) == text); // stable
 }
 

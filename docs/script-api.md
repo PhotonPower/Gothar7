@@ -545,6 +545,9 @@ Zeigt einen Gegenstand am Socket der Figur (Vorgabe `socket_hand_r`; ein Mauersc
 ### `npc_item_count(npc: string, item: string) -> integer`
 Wie viele Stück eines Gegenstands der NPC hat.
 
+### `npc_kill(npc: string)`
+Der NPC stirbt sofort (Konsole und Tests, z. B. ein Boss für das Arena-Gatter): Leben 0, Sterbe-Clip, `npc_killed(npc, "")`. Schon tot: nichts.
+
 ### `npc_leave_mob(npc: string)`
 Reiht ein: vom benutzten Mob aufstehen (<typ>_leave); Gehen und andere Animationen tun das von selbst.
 

@@ -45,6 +45,16 @@ struct MoverState
     friend bool operator==(const MoverState&, const MoverState&) = default;
 };
 
+/// A spawn marker (dungeon D6) away from how the world file starts it: an inactive one that put its NPCs in,
+/// or one that told its targets that all its NPCs are dead.
+struct SpawnState
+{
+    u64 vob = 0;
+    bool spawned = false;
+    bool fired = false;
+    friend bool operator==(const SpawnState&, const SpawnState&) = default;
+};
+
 /// A teleporter (dungeon D4) switched away from how the world file starts it.
 struct TeleporterState
 {
@@ -95,6 +105,8 @@ struct WorldState
     std::vector<MoverState> movers;
     /// Teleporters switched on or off against the file (dungeon D4), by vob id. Additive.
     std::vector<TeleporterState> teleporters;
+    /// Spawn markers activated or fired (dungeon D6, E8), by vob id. Additive.
+    std::vector<SpawnState> spawns;
 };
 
 struct HeroState

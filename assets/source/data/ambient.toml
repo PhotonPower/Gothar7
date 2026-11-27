@@ -69,6 +69,15 @@ randoms = ["water_drop_deep", "water_drop_deep", "water_drop_deep", "crystal_rin
 interval = [3, 10]
 distance = [5, 25]
 
+# Ebene 8 des Dungeons (welt, Thema „hort“, Hort der Kellermutter): bedrückend, großes Gewölbe mit nass pulsierender
+# Brut und tiefem Grollen, fern klickendes Chitin, tropfender Schleim, selten Grollen im Fels. Tag und Nacht gleich;
+# Platzhalter.
+[hort]
+loop = "amb_hoard"
+randoms = ["chitin_click", "chitin_click", "slime_drip", "slime_drip", "rumble_far"]
+interval = [3, 9]
+distance = [4, 22]
+
 # Leonberg (Zonen von welt: world.md „Zonen“) - feld ist die Vorgabe-Box über die Welt.
 [feld]
 loop = "amb_field"

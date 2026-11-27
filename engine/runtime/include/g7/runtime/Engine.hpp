@@ -1444,6 +1444,12 @@ private:
     /// Lua npc_spawned for creature `c` of a spawn (also after restoring: its state begins anew).
     void emitSpawned(const Creature& c, bool restored);
     void bindSpawnFunctions();
+    /// The markers' state as the world file starts it (active ones have spawned, none has fired).
+    void resetSpawnStates();
+    /// on/trigger to an inactive marker: puts its NPCs in (once); true if the target is a spawn marker.
+    bool spawnEvent(const world::NetEvent& event);
+    /// Markers with targets whose NPCs are all dead tell their targets (once).
+    void fixedUpdateSpawns();
     /// A creature clip event the scripts act on (steal, emerge, grab ...): Lua npc_clip_event.
     void creatureScriptEvent(const Creature& c, std::string_view event);
     /// A trap's harm (a gate marked crush = "damage"): hit points off, no protection; as a blow otherwise.
@@ -2472,6 +2478,12 @@ private:
     std::map<u64, PlateRuntime> m_plates;         // dungeon D3, by trigger vob id
     bool m_platesPrimed = false;                  // false: the next plate step takes the weight quietly
     std::map<u64, TeleportRuntime> m_teleports;   // dungeon D4, by trigger vob id
+    struct SpawnRuntime
+    {
+        bool spawned = false; ///< its NPCs were put in (at once, or an inactive one after on/trigger)
+        bool fired = false;   ///< its targets were told that all are dead
+    };
+    std::map<u64, SpawnRuntime> m_spawnStates; // dungeon D6 / E8, by spawn vob id
     struct PendingTeleport
     {
         std::string source; ///< the teleporter's name

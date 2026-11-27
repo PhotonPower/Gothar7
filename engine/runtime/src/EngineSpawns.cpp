@@ -81,8 +81,14 @@ std::vector<std::string> Engine::spawnAt(entt::entity e, u32 first, u32 count)
 void Engine::spawnFromMarkers()
 {
     std::vector<entt::entity> markers;
-    m_scene.each<world::Vob, world::Spawn>([&](entt::entity e, const world::Vob&, const world::Spawn&)
-                                           { markers.push_back(e); });
+    m_scene.each<world::Vob, world::Spawn>(
+        [&](entt::entity e, const world::Vob&, const world::Spawn& spawn)
+        {
+            if (spawn.active) // an inactive one waits for on/trigger (spawnEvent)
+            {
+                markers.push_back(e);
+            }
+        });
     std::ranges::sort(markers, {},
                       [&](entt::entity e) { return m_scene.get<world::Vob>(e)->id.value; }); // stable names
     std::vector<std::string> names;
@@ -109,9 +115,10 @@ void Engine::refillNests()
     std::vector<std::string> names;
     std::vector<entt::entity> nests;
     m_scene.each<world::Vob, world::Spawn>(
-        [&](entt::entity e, const world::Vob&, const world::Spawn& spawn)
+        [&](entt::entity e, const world::Vob& vob, const world::Spawn& spawn)
         {
-            if (spawn.respawn)
+            const auto state = m_spawnStates.find(vob.id.value);
+            if (spawn.respawn && state != m_spawnStates.end() && state->second.spawned)
             {
                 nests.push_back(e);
             }
@@ -137,6 +144,81 @@ void Engine::refillNests()
         if (const auto id = npcByInstance(name))
         {
             emitSpawned(*creature(*id), false);
+        }
+    }
+}
+
+void Engine::resetSpawnStates()
+{
+    m_spawnStates.clear();
+    m_scene.each<world::Vob, world::Spawn>(
+        [&](entt::entity, const world::Vob& vob, const world::Spawn& spawn)
+        { m_spawnStates[vob.id.value] = SpawnRuntime{spawn.active, false}; });
+}
+
+bool Engine::spawnEvent(const world::NetEvent& event)
+{
+    const entt::entity e = m_scene.findByName(StringId(event.target));
+    const world::Spawn* spawn = e != entt::null ? m_scene.get<world::Spawn>(e) : nullptr;
+    if (spawn == nullptr)
+    {
+        return false;
+    }
+    const std::string_view action = event.action;
+    auto& state = m_spawnStates[m_scene.get<world::Vob>(e)->id.value];
+    if (state.spawned || (action != "on" && action != "trigger"))
+    {
+        return true; // an active or spent marker: other actions (wake) are Lua's
+    }
+    state.spawned = true;
+    const auto names = spawnAt(e, 0, spawn->count);
+    G7_LOG_INFO("engine", "spawn {} ({} from {}): {} put in", event.target, event.action, event.source,
+                names.size());
+    for (const std::string& name : names)
+    {
+        if (const auto id = npcByInstance(name))
+        {
+            emitSpawned(*creature(*id), false);
+        }
+    }
+    return true;
+}
+
+void Engine::fixedUpdateSpawns()
+{
+    for (auto& [vob, state] : m_spawnStates)
+    {
+        if (!state.spawned || state.fired)
+        {
+            continue;
+        }
+        const entt::entity e = m_scene.findById(world::VobId{vob});
+        const world::Spawn* spawn = e != entt::null ? m_scene.get<world::Spawn>(e) : nullptr;
+        if (spawn == nullptr || spawn->targets.empty())
+        {
+            continue;
+        }
+        const std::string& name = m_scene.get<world::Vob>(e)->nameText;
+        bool any = false;
+        bool living = false;
+        for (const auto& c : m_creatures)
+        {
+            if (c->spawn == name)
+            {
+                any = true;
+                living = living || (!c->dead && !c->vanished);
+            }
+        }
+        if (!any || living)
+        {
+            continue;
+        }
+        state.fired = true;
+        G7_LOG_INFO("engine", "spawn {}: all dead, {} -> {} targets", name, spawn->action,
+                    spawn->targets.size());
+        for (const std::string& target : spawn->targets)
+        {
+            m_events.send(target, spawn->action, name);
         }
     }
 }
@@ -222,6 +304,30 @@ void Engine::bindSpawnFunctions()
                      c.value()->rest = false; // awake: out of its resting pose at once (it may fight next)
                      c.value()->sleep = false;
                  }
+                 return Value();
+             }});
+    vm.bind({"npc_kill", "npc_kill(npc: string)",
+             "Der NPC stirbt sofort (Konsole und Tests, z. B. ein Boss für das Arena-Gatter): Leben 0, "
+             "Sterbe-Clip, `npc_killed(npc, \"\")`. Schon tot: nichts.",
+             "NPCs", [this, npc](std::span<const Value> a) -> Result<Value>
+             {
+                 auto c = npc(a);
+                 if (!c)
+                 {
+                     return c.error();
+                 }
+                 Creature& creature = *c.value();
+                 if (creature.dead)
+                 {
+                     return Value();
+                 }
+                 if (creature.character)
+                 {
+                     (void)creature.character->setAttribute("hp", 0);
+                 }
+                 killRestored(creature);
+                 const Value args[] = {creature.species, std::string()};
+                 m_scripts->emit("npc_killed", args);
                  return Value();
              }});
     vm.bind(

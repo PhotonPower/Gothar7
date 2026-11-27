@@ -636,6 +636,77 @@ def rumble_far(rng: random.Random) -> Samples:
     return normalise(fade(out, 0.2, 0.6), 0.6)
 
 
+def amb_hoard(rng: random.Random) -> Samples:
+    # The Kellermutter's hoard (dungeon level 8): the heavy air of a big vault, a low rumble under it and,
+    # through everything, a slow, wet double beat - the brood pulsing in its sacs.
+    air = lowpass(noise(LOOP, rng), 80.0)
+    rumble = lowpass(noise(LOOP, rng), 40.0)
+    n = len(air)
+    pulse = [0.0] * n
+    beat = 1.0  # one per second: the beat at 4 s fades into the one at 0 (seamless, 4 s loop)
+    for k in range(5):
+        for offset, gain in ((0.0, 1.0), (0.22, 0.7)):  # lub-dub
+            thump = envelope(
+                mix(
+                    (tone(lambda t: 55.0 - 15.0 * t / 0.18, 0.18), 1.0),
+                    (lowpass(noise(0.18, rng), 300.0), 0.5),
+                ),
+                0.01,
+                0.06,
+            )
+            start = int((k * beat + offset) * RATE)
+            for i, x in enumerate(thump):
+                if start + i < n:
+                    pulse[start + i] += gain * x
+    out = mix((air, 1.0), (rumble, 0.6), (pulse, 0.45))
+    for delay, gain in ((0.33, 0.3), (0.71, 0.15)):
+        d = int(delay * RATE)
+        out = [x + gain * out[i - d] if i >= d else x for i, x in enumerate(out)]
+    return normalise(seamless(out), 0.5)
+
+
+def chitin_click(rng: random.Random) -> Samples:
+    # Somewhere in the dark a crawler moves: a quick run of dry chitin clicks, distant, with the vault's echo.
+    clicks = rng.randint(5, 9)
+    length = int((clicks * 0.09 + 0.9) * RATE)
+    out = [0.0] * length
+    at = 0.0
+    for _ in range(clicks):
+        click = envelope(
+            highpass(lowpass(noise(0.02, rng), rng.uniform(3500.0, 5000.0)), 1500.0), 0.0003, 0.004
+        )
+        start = int(at * RATE)
+        for i, x in enumerate(click):
+            out[start + i] += x * rng.uniform(0.5, 1.0)
+        at += rng.uniform(0.04, 0.12)
+    for delay, gain in ((0.21, 0.35), (0.47, 0.18)):
+        d = int(delay * RATE)
+        for i in range(length - d):
+            out[i + d] += gain * out[i]
+    return normalise(fade(lowpass(out, 3000.0), 0.002, 0.3), 0.45)
+
+
+def slime_drip(rng: random.Random) -> Samples:
+    # Thick slime dropping from the vault: a slow, wet "plop" that sinks in pitch, a smack and a short echo.
+    start = rng.uniform(220.0, 300.0)
+    length = int(0.9 * RATE)
+    drop = int(0.2 * RATE)
+    out = [0.0] * length
+    phase = 0.0
+    for i in range(drop):
+        t = i / RATE
+        phase += 2.0 * math.pi * start * (1.0 - 1.5 * t) / RATE
+        out[i] = math.sin(phase) * math.exp(-t * 18.0)
+    smack = envelope(lowpass(noise(0.05, rng), 1200.0), 0.001, 0.015)
+    for i, x in enumerate(smack):
+        out[i] += 0.5 * x
+    for delay, gain in ((0.23, 0.3), (0.5, 0.15)):
+        d = int(delay * RATE)
+        for i in range(drop):
+            out[i + d] += gain * out[i]
+    return normalise(fade(lowpass(out, 1800.0), 0.001, 0.2), 0.55)
+
+
 # --- Footsteps (M13 E): six materials, four variants each (footstep_<material>_<n>) --------------------------
 
 
@@ -829,6 +900,9 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "amb_grotto": amb_grotto,
     "crystal_ring": crystal_ring,
     "rumble_far": rumble_far,
+    "amb_hoard": amb_hoard,
+    "chitin_click": chitin_click,
+    "slime_drip": slime_drip,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,
     "amb_night": amb_night,

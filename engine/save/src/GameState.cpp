@@ -396,6 +396,15 @@ Json worldToJson(const WorldState& w)
         }
         out["teleporters"] = std::move(teleporters);
     }
+    if (!w.spawns.empty())
+    {
+        Json spawns = Json::array();
+        for (const SpawnState& s : w.spawns)
+        {
+            spawns.push_back(Json{{"vob", s.vob}, {"spawned", s.spawned}, {"fired", s.fired}});
+        }
+        out["spawns"] = std::move(spawns);
+    }
     if (!w.movers.empty())
     {
         Json movers = Json::array();
@@ -570,6 +579,19 @@ bool readWorld(Reader& r, const Json& j, const std::string& at, WorldState& out)
             const std::string tk = std::format("{}.teleporters[{}]", at, k);
             ok = read(r, teleporters[k], "vob", tk, t.vob) && read(r, teleporters[k], "active", tk, t.active);
             w.teleporters.push_back(t);
+        }
+    }
+    if (ok && j.contains("spawns"))
+    {
+        const Json& spawns = j["spawns"];
+        ok = spawns.is_array() || r.failed(at, "'spawns' must be a list");
+        for (usize k = 0; ok && k < spawns.size(); ++k)
+        {
+            SpawnState s;
+            const std::string sk = std::format("{}.spawns[{}]", at, k);
+            ok = read(r, spawns[k], "vob", sk, s.vob) && read(r, spawns[k], "spawned", sk, s.spawned) &&
+                 read(r, spawns[k], "fired", sk, s.fired);
+            w.spawns.push_back(s);
         }
     }
     if (ok && j.contains("movers"))

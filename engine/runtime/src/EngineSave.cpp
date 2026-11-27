@@ -88,7 +88,16 @@ Result<save::WorldState> Engine::captureCurrentWorld()
     }
     std::sort(state.mobs.begin(), state.mobs.end(),
               [](const auto& a, const auto& b) { return a.vob < b.vob; });
-    state.events = m_events.snapshot();      // dungeon D1
+    state.events = m_events.snapshot();        // dungeon D1
+    for (const auto& [vob, s] : m_spawnStates) // dungeon D6 / E8: activated or fired
+    {
+        const entt::entity e = m_scene.findById(world::VobId{vob});
+        const world::Spawn* spawn = e != entt::null ? m_scene.get<world::Spawn>(e) : nullptr;
+        if (spawn != nullptr && (s.spawned != spawn->active || s.fired))
+        {
+            state.spawns.push_back({vob, s.spawned, s.fired});
+        }
+    }
     for (const auto& [vob, t] : m_teleports) // dungeon D4: switched against the file
     {
         const entt::entity e = m_scene.findById(world::VobId{vob});
@@ -251,7 +260,15 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
         placeMover(saved.vob, m);
     }
     updateMoverBlocks();
-    m_platesPrimed = false;            // dungeon D3: plates take what lies on them quietly
+    m_platesPrimed = false; // dungeon D3: plates take what lies on them quietly
+    resetSpawnStates();     // dungeon D6 / E8: as in the file unless saved otherwise
+    for (const save::SpawnState& saved : state.spawns)
+    {
+        if (const auto it = m_spawnStates.find(saved.vob); it != m_spawnStates.end())
+        {
+            it->second = SpawnRuntime{saved.spawned, saved.fired};
+        }
+    }
     for (auto& [vob, t] : m_teleports) // dungeon D4: as in the file unless saved otherwise
     {
         const entt::entity e = m_scene.findById(world::VobId{vob});
