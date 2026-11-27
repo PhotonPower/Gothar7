@@ -317,3 +317,7 @@ category = "rune"
 
 [model."items/it_scroll_light.glb"]
 category = "scroll"
+
+# Sensenklinge (reward of the Kellermutter's hoard, 2026-11-27): Lua item by engine2 with the same ID
+[model."items/it_scythe_blade.glb"]
+category = "melee_1h"

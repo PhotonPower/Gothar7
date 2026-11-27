@@ -665,6 +665,7 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_brood_gland` (Brutdrüse der Kellermutter, Beute/Alchemie: orange leuchtende Drüse (`gland_glow_orange`, emissiv) in fünf dunklen Chitinrippen; +Y oben) | 14 cm | prozedural |
   | `it_rune_light` (Lichtzauber, 2026-11-26: Runenstein wie die übrigen Runen, Zeichen kleine Sonne – Scheibe, Ring, acht Strahlen – in Blassblau; die Rille leuchtet schwach über eine eigene Emissive-Textur `rune_light_glow`, nur das Zeichen) | 6,2 cm | prozedural |
   | `it_scroll_light` (Spruchrolle Licht: Rolle wie `it_scroll`, das Sonnenzeichen in dunkelblauer Tinte beiderseits des Siegels, blasses Wachssiegel mit eingedrücktem Zeichen) | 20 cm | prozedural |
+  | `it_scythe_blade` (Sensenklinge, Lohn im Hort der Kellermutter, Einhandwaffe, 2026-11-27: aus ihrer Sensenklaue – dunkles poliertes Chitin, leicht sichelförmig nach −Z gebogen, dicker Rücken auf +Z, helle Schneide (`chitin_edge`) auf der hohlen Seite, je Flachseite zwei schwach orange leuchtende Rillen (`scythe_groove`, eigene Emissive-Textur `scythe_groove_glow`, nur die Rillen); Kragen und Parierstange aus schwarzem Eisen, Lederhieb, kleiner Chitinknauf; Griff, Achsen und Ursprung wie `it_sword_old`, Ansicht `melee_1h`) | 1,06 m | prozedural; 1466 Dreiecke |
 
   Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade
   legt engine an.
