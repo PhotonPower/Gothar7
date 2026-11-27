@@ -89,3 +89,36 @@ TEST_CASE("Teleport format: a teleporter needs one target")
           "'items', "
           "'any'");
 }
+
+TEST_CASE("Teleport format: silent and keep_velocity, written after active only when set, round trip")
+{
+    const WorldFile file = parse(R"({"version": 1, "name": "t", "vobs": [
+  {"id": 1, "type": "trigger", "name": "KLAPPE",
+   "components": {"trigger": {"teleport": {"to": "MARK", "visible": false, "active": true, "silent": true,
+                                           "keep_velocity": true}}}},
+  {"id": 2, "type": "trigger", "name": "PLAIN", "components": {"trigger": {"teleport": {"to": "MARK"}}}}
+]})");
+    const Teleport& trap = *file.vobs[0].trigger.teleport;
+    CHECK(trap.silent);
+    CHECK(trap.keepVelocity);
+    const Teleport& plain = *file.vobs[1].trigger.teleport;
+    CHECK_FALSE(plain.silent); // the defaults
+    CHECK_FALSE(plain.keepVelocity);
+
+    // Read -> write -> read: the editor's save keeps both fields, in welt's order after active.
+    Scene scene;
+    REQUIRE(spawnWorld(scene, file).ok());
+    const std::string written = writeWorldFile(captureWorld(scene, "t"));
+    CHECK(written.find(R"("teleport":{"to":"MARK","visible":false,"filter":"player","active":true,)"
+                       R"("silent":true,"keep_velocity":true})") != std::string::npos);
+    CHECK(written.find(R"("teleport":{"to":"MARK","visible":true,"filter":"player","active":true})") !=
+          std::string::npos);
+    const WorldFile again = parse(written);
+    CHECK(*again.vobs[0].trigger.teleport == trap);
+    CHECK(*again.vobs[1].trigger.teleport == plain);
+    CHECK(writeWorldFile(again) == written);
+
+    CHECK(errorOf(R"({"id": 1, "type": "trigger",
+                      "components": {"trigger": {"teleport": {"to": "A", "silent": 1}}}})") ==
+          "w.g7world: vobs[0].components.trigger.teleport.silent: must be true or false");
+}

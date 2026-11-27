@@ -259,7 +259,7 @@ schreibt.
 | **Versteckter Knopf** | Mob-Typ **`wall_button`**, `hidden: true`: im Fokus erst ab 1,2 m als „Loser Stein“ | öffnet Nischen und Geheimwände |
 | **Nische / Depot** | Mob-Typ **`niche`** (Behälter ohne Deckel, Inhalt aus der Mob-Instanz in Lua), meist hinter einer `secret_wall` | |
 | **Trittplatte** | `trigger` (flache Box) mit **`plate`**, `targets`, `action`; Gewicht nach engine (`any` = auch Gegenstände) | wie vorgeschlagen |
-| **Teleporter** | `trigger` mit **`teleport`**: Ziel in derselben Welt oder `world` + `start`; `filter`, `active`, `visible` | wie vorgeschlagen; Monster nur innerhalb der Welt |
+| **Teleporter** | `trigger` mit **`teleport`**: Ziel in derselben Welt oder `world` + `start`; `filter`, `active`, `visible`; optional `silent` (kein Effekt, Klang, Blitz) und `keep_velocity` (der Held behält seine Geschwindigkeit, z. B. unter einer Falltür; Landung unverletzt wie `changeWorld.fall`) | wie vorgeschlagen; Monster nur innerhalb der Welt |
 | **Tür** | vorhandener Tür-Mob; dazu engines Ereignisse (`open`/`close`/`lock`/`unlock`), `no_pick`, `one_way` | Wegnetz-Sperre wie beim Gatter |
 | **Treppe auf/ab** | vorhandener Weltwechsel-Trigger (`changeWorld`) + Startpunkte `START_E02_VON_OBEN` usw. | unverändert |
 | **Monster** | Vob-Typ **`spawn`** (Instanz, `count`), auf den Monsterplätzen der Karte | Ruhezustand und Wecken macht engine |
