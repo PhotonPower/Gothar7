@@ -276,6 +276,26 @@ volume = 0.5
 pitch_jitter = 0.15
 max_distance = 35
 
+[amb_labyrinth] # Labyrinth im Dungeon (Ebene 6, Platzhalter): dumpfe, enge Luft, leiser Luftzug, ferne Schritte im Hall
+files = ["sounds/amb_labyrinth.wav"]
+bus = "ambient"
+loop = true
+volume = 0.4
+
+[steps_distant] # Schritte in einem anderen Gang, verhallt, ohne klare Richtung (Labyrinth, Platzhalter)
+files = ["sounds/steps_distant.wav"]
+bus = "ambient"
+volume = 0.45
+pitch_jitter = 0.1
+max_distance = 30
+
+[stone_scrape] # fern schleift Stein über Stein (Labyrinth, Platzhalter)
+files = ["sounds/stone_scrape.wav"]
+bus = "ambient"
+volume = 0.45
+pitch_jitter = 0.15
+max_distance = 30
+
 # --- Dungeon-Monster (Platzhalter aus tools/audio, Clip-Events sound:<art>_<was>)
 [gatterbock_attack]
 files = ["sounds/gatterbock_attack.wav"]
