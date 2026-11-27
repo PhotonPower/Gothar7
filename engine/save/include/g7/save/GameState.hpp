@@ -103,6 +103,9 @@ struct HeroState
     Vec3 position{0.0f}; ///< feet
     f32 yaw = 0.0f;
     std::string torch; ///< the lit torch's item, empty: none
+    /// The light spell's orb: its Spell and the seconds it still shines; empty: none (older saves have none).
+    std::string light;
+    f32 lightSeconds = 0.0f;
 };
 
 /// The weather (M17 E1, world::WeatherSnapshot); older saves have none - the game keeps its weather then.

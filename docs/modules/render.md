@@ -232,6 +232,12 @@ struct GpuLighting; GpuLighting packLighting(const Environment&, const LightList
   Fensterlichter nur bis `window_light_radius`. Leonberg (220 Weltlichter, 151 Fensterlichter) blieb vorher jedes
   Bild über 256 (Warnung, Fensterlichter und Fackel fielen weg); jetzt ≤ 128, die Fackel immer dabei.
   `Engine::frameLights()`.
+  - **Gepinnte Lichter** (`LightList::addPinned`, `selectFrameLights(pinned, …)`): vor allen anderen, auch über
+    `max_lights` hinaus, und für jedes Objekt, das sie erreichen, als erste seiner 8 gewählt. Genutzt vom Lichtzauber
+    (`spl_light`), damit seine Kugel nie für ein anderes Licht wegfällt.
+  - **Offen:** Schatten von Punktlichtern gibt es nicht (nur die Sonne hat Schattenkarten); auch der Lichtzauber
+    wirft keine. Dafür bräuchte es Würfel-Schattenkarten und einen eigenen Durchgang (Projektinhaber 2026-11-26: vorerst
+    ohne).
 - **Lichtmodell (stilisiert):** Hemisphären-Ambient (Himmel/Boden nach Normalen-Y gemischt) + Lambert-Sonne +
   Punktlichter mit Abfall `saturate(1 − (d/r)⁴)² / (d² + 1)` (Meter; genau 0 am Radius). Keine Glanzlichter.
 - **Räume** (Zonen `indoor`, world.md „Zonen“): Das Ambient wird je Fläche mit dem Faktor ihres Raums multipliziert

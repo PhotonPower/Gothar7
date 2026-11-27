@@ -507,6 +507,7 @@ bool Engine::runFrame()
         fixedUpdateProjectiles(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateBurning(static_cast<f32>(m_fixedStep.step())); // M12, decision B
         fixedUpdateGlow(static_cast<f32>(m_fixedStep.step()));    // M17 part G
+        fixedUpdateLight(static_cast<f32>(m_fixedStep.step()));   // the light spell's orb
         fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {
@@ -2456,8 +2457,15 @@ void Engine::drawScene(u32 width, u32 height)
         m_particles.lights(effectLights);
         const std::vector<render::PointLight> carried = creatureLights(); // monsters' crystals, lanterns
         effectLights.insert(effectLights.end(), carried.begin(), carried.end());
-        render::selectFrameLights(effectLights, m_lights, daylightLights(), m_camera.transform.position,
-                                  m_camera.frustum(), m_lightBudget, m_frameLights);
+        // The light spell's orb is pinned: never pushed out by other lights, in the frame or on any object.
+        std::vector<render::PointLight> pinned;
+        if (const auto orb = lightOrbLight(); orb && orb->intensity > 0.0f)
+        {
+            pinned.push_back(*orb);
+        }
+        render::selectFrameLights(pinned, effectLights, m_lights, daylightLights(),
+                                  m_camera.transform.position, m_camera.frustum(), m_lightBudget,
+                                  m_frameLights);
     }
     m_meshRenderer.setLighting(*m_device, m_environment, m_frameLights,
                                shadowFrame.map ? &shadowFrame : nullptr);

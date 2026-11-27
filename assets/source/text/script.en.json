@@ -1394,6 +1394,12 @@
       "context": "items/goods.lua",
       "status": "entwurf"
     },
+    "it_scroll_light.name": {
+      "de": "Spruchrolle: Licht",
+      "text": "Scroll: Light",
+      "context": "items/magic.lua",
+      "status": "entwurf"
+    },
     "it_scythe_claw.name": {
       "de": "Sensenklaue",
       "text": "Scythe claw",
@@ -2075,6 +2081,12 @@
     "spl_heal.name": {
       "de": "Heilung",
       "text": "Heal",
+      "context": "magic/spells.lua",
+      "status": "entwurf"
+    },
+    "spl_light.name": {
+      "de": "Licht",
+      "text": "Light",
       "context": "magic/spells.lua",
       "status": "entwurf"
     },

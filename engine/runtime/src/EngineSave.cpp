@@ -171,6 +171,11 @@ Result<save::GameState> Engine::captureGame()
         hero.position = m_player.feet();
         hero.yaw = m_movement.yaw();
         hero.torch = m_torch ? m_torch->item : std::string();
+        if (m_lightOrb && m_lightOrb->fade <= 0.0f && m_lightOrb->seconds > 0.0f)
+        {
+            hero.light = m_lightOrb->spell;
+            hero.lightSeconds = m_lightOrb->seconds;
+        }
         state.hero = std::move(hero);
     }
     state.currentWorld = m_worldPath;
@@ -402,6 +407,7 @@ Result<void> Engine::applyGame(const save::GameState& state)
     {
         putTorchAway();
     }
+    stopLight(); // a light in the save comes back below, with its time
     unloadWorld();
     if (auto loaded = loadWorldState(*current, {}); !loaded)
     {
@@ -419,6 +425,12 @@ Result<void> Engine::applyGame(const save::GameState& state)
         if (!state.hero->torch.empty())
         {
             lightTorch(state.hero->torch);
+        }
+        const script::Instance* light =
+            state.hero->light.empty() ? nullptr : m_scripts->findInstance("Spell", state.hero->light);
+        if (light != nullptr && state.hero->lightSeconds > 0.0f)
+        {
+            startLight(gameplay::spellInfo(*light), state.hero->lightSeconds); // with the time it had left
         }
     }
     if (m_scripts)

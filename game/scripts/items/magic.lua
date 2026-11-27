@@ -28,12 +28,23 @@ rune("it_rune_sleep", "spl_sleep", "Schlaf", 300)
 rune("it_rune_transform_wolf", "spl_transform_wolf", "Wolfsgestalt", 300)
 rune("it_rune_summon_wolf", "spl_summon_wolf", "Wolf rufen", 450)
 rune("it_rune_telekinesis", "spl_telekinesis", "Telekinese", 300) -- M17 T; Modell von figuren (#405)
+rune("it_rune_light", "spl_light", "Licht", 200) -- Modell von figuren (#508)
 
 scroll("it_scroll_firebolt", "spl_firebolt", "Feuerpfeil", 25)
 scroll("it_scroll_heal", "spl_heal", "Heilung", 25)
 scroll("it_scroll_sleep", "spl_sleep", "Schlaf", 50)
 scroll("it_scroll_fear", "spl_fear", "Schrecken", 40)
 scroll("it_scroll_telekinesis", "spl_telekinesis", "Telekinese", 50) -- M17 T, Entscheidung 7
+
+-- Lichtzauber (2026-11-26): eine eigene Rolle von figuren (#508), daher ausgeschrieben statt mit scroll().
+Item "it_scroll_light" {
+    name = "Spruchrolle: Licht",
+    mesh = "items/it_scroll_light.glb",
+    category = "scroll",
+    value = 35,
+    weight = 0.1,
+    spell = "spl_light",
+}
 
 Item "it_potion_mana_small" {
     name = "Kleiner Manatrank",

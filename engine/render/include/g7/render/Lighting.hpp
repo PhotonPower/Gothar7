@@ -143,6 +143,10 @@ public:
     void clear() noexcept;
     /// Lights beyond kMaxPerFrame are dropped (one warning per frame).
     void add(const PointLight& light);
+    /// A light that no other light pushes out: added before every other one (call it first after clear()),
+    /// and chosen first for every object it reaches, before nearer ones (the hero's light spell).
+    void addPinned(const PointLight& light);
+    [[nodiscard]] u32 pinned() const noexcept { return m_pinned; }
     [[nodiscard]] const std::vector<PointLight>& lights() const noexcept { return m_lights; }
 
     /// Indices of the lights reaching `bounds`, nearest (to the box) first, at most kMaxPerObject.
@@ -151,6 +155,7 @@ public:
 
 private:
     std::vector<PointLight> m_lights;
+    u32 m_pinned = 0; ///< the first m_pinned lights are pinned
     bool m_warned = false;
 };
 
@@ -169,6 +174,11 @@ struct LightBudget
 void selectFrameLights(std::span<const PointLight> always, std::span<const PointLight> world,
                        std::span<const PointLight> windows, const Vec3& eye, const Frustum& view,
                        const LightBudget& budget, LightList& out);
+/// The same with `pinned` lights before all others (LightList::addPinned): always in the frame, whatever the
+/// budget, and first for every object they reach.
+void selectFrameLights(std::span<const PointLight> pinned, std::span<const PointLight> always,
+                       std::span<const PointLight> world, std::span<const PointLight> windows,
+                       const Vec3& eye, const Frustum& view, const LightBudget& budget, LightList& out);
 
 /// std140 layout of the lighting uniform block (binding 0 in common/lighting.glsl).
 struct GpuLighting

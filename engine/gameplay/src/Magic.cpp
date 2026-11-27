@@ -21,6 +21,7 @@ SpellInfo spellInfo(const script::Instance& spell)
              : kind == "summon"      ? SpellKind::Summon
              : kind == "transform"   ? SpellKind::Transform
              : kind == "telekinesis" ? SpellKind::Telekinesis
+             : kind == "light"       ? SpellKind::Light
                                      : SpellKind::Projectile;
     if (const script::Table* invest = spell.fields["invest"].asTable())
     {
@@ -59,6 +60,31 @@ SpellInfo spellInfo(const script::Instance& spell)
     s.heal = static_cast<i32>(spell.fields["heal"].asInteger(0));
     s.effect = std::string(spell.fields["effect"].asString());
     s.duration = static_cast<f32>(spell.fields["duration"].asNumber(0.0));
+    if (const script::Table* light = spell.fields["light"].asTable())
+    {
+        const auto number = [&](std::string_view key, f32& out)
+        {
+            const script::Value& v = light->field(key);
+            if (v.isNumber())
+            {
+                out = static_cast<f32>(v.asNumber());
+            }
+        };
+        number("range", s.light.range);
+        number("intensity", s.light.intensity);
+        number("flicker", s.light.flicker);
+        number("hover", s.light.hover);
+        number("shoulder", s.light.shoulder);
+        number("warn", s.light.warn);
+        number("warn_flicker", s.light.warnFlicker);
+        number("fade", s.light.fade);
+        if (const script::Table* color = light->field("color").asTable(); color && color->array.size() == 3)
+        {
+            s.light.color = Vec3(static_cast<f32>(color->array[0].asNumber()),
+                                 static_cast<f32>(color->array[1].asNumber()),
+                                 static_cast<f32>(color->array[2].asNumber()));
+        }
+    }
     s.summon = std::string(spell.fields["summon"].asString());
     s.species = std::string(spell.fields["species"].asString());
     if (const script::Table* fx = spell.fields["fx"].asTable())

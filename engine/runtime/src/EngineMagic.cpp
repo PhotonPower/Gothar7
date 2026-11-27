@@ -53,6 +53,7 @@ const char* castState(gameplay::SpellKind kind)
     case gameplay::SpellKind::Self:
     case gameplay::SpellKind::Transform:
     case gameplay::SpellKind::Telekinesis:
+    case gameplay::SpellKind::Light:
         break;
     }
     return "mag_t_cast_self";
@@ -347,6 +348,9 @@ void Engine::applyHeroSpell()
         break;
     case gameplay::SpellKind::Telekinesis:
         break; // held, not cast (EngineTelekinesis.cpp)
+    case gameplay::SpellKind::Light:
+        castLight(spell); // the orb over the hand (EngineSpellLight.cpp)
+        break;
     }
 }
 
@@ -558,9 +562,9 @@ std::optional<std::string> Engine::npcCast(Creature& c, std::string_view spell, 
     }
     const gameplay::SpellInfo info = gameplay::spellInfo(*def);
     if (info.kind == gameplay::SpellKind::Summon || info.kind == gameplay::SpellKind::Transform ||
-        info.kind == gameplay::SpellKind::Telekinesis)
+        info.kind == gameplay::SpellKind::Telekinesis || info.kind == gameplay::SpellKind::Light)
     {
-        return std::string("NPCs do not summon, transform or move items (decision 8)");
+        return std::string("NPCs do not summon, transform, move items or make light (decision 8)");
     }
     // With its circle (a rune it knows), else from a scroll it carries (no circle; used up; decision A).
     const std::string scroll = npcScrollFor(*c.character, info.instance);
@@ -732,6 +736,7 @@ void Engine::applyNpcSpell(Creature& c)
     case gameplay::SpellKind::Summon:
     case gameplay::SpellKind::Transform:
     case gameplay::SpellKind::Telekinesis:
+    case gameplay::SpellKind::Light:
         break;
     }
 }
