@@ -171,7 +171,8 @@ Mob "mob_dng_e4_chest_totengraeber" {
     contents = { it_hammer = 1, it_axe = 1, it_torch = 2, it_bread = 2, it_beer = 1, it_gulden = 15 },
 }
 
--- Treppenkammer hinter dem Zeitgatter: der Lohn der Ebene.
+-- Treppenkammer hinter dem Zeitgatter: der Lohn der Ebene. Ein besseres Einhandschwert statt des Zweihänders
+-- (Projektinhaber; der Zweihänder liegt jetzt in der Hebelkammer von Ebene 6).
 Mob "mob_dng_e4_chest_treppe" {
     name = "Verschlossene Truhe",
     type = "chest",
@@ -179,7 +180,7 @@ Mob "mob_dng_e4_chest_treppe" {
     contents = {
         it_gulden = 200,
         it_rune_firebolt = 1,
-        it_sword_2h = 1,
+        it_sword_old = 1,
         it_potion_heal_medium = 3,
         it_potion_speed = 1,
         it_lockpick = 2,
@@ -243,7 +244,7 @@ Mob "mob_dng_e5_chest_treppe" {
 }
 
 -- Ebene 6 „Labyrinth“ (welt #510). Maßvoll wie Ebene 5: das versteckte Depot hält schon Goldring, Heiltränke, Gulden
--- und Pfeile; keine Rune, keine Zweihandwaffe.
+-- und Pfeile; keine Rune (der Zweihänder in der Hebelkammer kam später dazu, Projektinhaber).
 -- Sackgasse hinter der Geheimwand (Norden): verschlossen, der Lohn fürs Suchen.
 Mob "mob_dng_e6_chest_geheim" {
     name = "Verschlossene Truhe",
@@ -273,12 +274,18 @@ Mob "mob_dng_e6_chest_teleporter" {
     contents = { it_scroll_light = 1, it_potion_speed = 1, it_lockpick = 2, it_gulden = 20 },
 }
 
--- Hebelkammer: verschlossen.
+-- Hebelkammer: verschlossen; dazu der Zweihänder aus Ebene 4 (Projektinhaber).
 Mob "mob_dng_e6_chest_hebel" {
     name = "Verschlossene Truhe",
     type = "chest",
     lock = "RLLRLR",
-    contents = { it_gulden = 80, it_potion_heal_medium = 2, it_potion_mana_medium = 1, it_scroll_sleep = 1 },
+    contents = {
+        it_sword_2h = 1,
+        it_gulden = 80,
+        it_potion_heal_medium = 2,
+        it_potion_mana_medium = 1,
+        it_scroll_sleep = 1,
+    },
 }
 
 -- Depot: nur eine Kleinigkeit neben den Funden auf dem Boden.

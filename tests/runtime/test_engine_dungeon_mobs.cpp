@@ -101,3 +101,33 @@ TEST_CASE("Dungeon mobs: the Sensenklinge lies in the hoard's niche, the best on
     REQUIRE(equipped.ok());
     CHECK(equipped.value().asString() == "it_scythe_blade");
 }
+
+TEST_CASE("Dungeon mobs: level 4's stair chest holds the fire rune and a one-hander, the two-hander lies on "
+          "level 6")
+{
+    EngineConfig config;
+    config.headless = true;
+    Engine engine(config);
+    REQUIRE(engine.init().ok());
+    const script::ScriptVm* scripts = engine.scripts();
+    REQUIRE(scripts != nullptr);
+    const auto contents = [&](std::string_view mob) -> const script::Table&
+    {
+        const script::Instance* m = scripts->findInstance("Mob", mob);
+        REQUIRE(m != nullptr);
+        const script::Table* t = m->fields["contents"].asTable();
+        REQUIRE(t != nullptr);
+        return *t;
+    };
+    const script::Table& stairs = contents("mob_dng_e4_chest_treppe");
+    CHECK(stairs.fields.contains("it_rune_firebolt"));
+    CHECK_FALSE(stairs.fields.contains("it_sword_2h"));
+    bool oneHander = false;
+    for (const auto& [item, count] : stairs.fields)
+    {
+        const script::Instance* def = scripts->findInstance("Item", item);
+        oneHander = oneHander || (def != nullptr && def->fields["category"].asString() == "melee_1h");
+    }
+    CHECK(oneHander);
+    CHECK(contents("mob_dng_e6_chest_hebel").fields.contains("it_sword_2h"));
+}
