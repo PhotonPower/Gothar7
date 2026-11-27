@@ -341,3 +341,92 @@ def test_a_spinner_only_turns() -> None:
     assert check_reach(level).unreached == []  # the cell behind it stays in reach
     with pytest.raises(LevelError, match="spinner"):
         parse_level("######\n#<.T.#\n######", doc({"at": [3, 1], "teleport": {"spin": True}}))
+
+
+def test_level_7_kristallgrotte_is_complete_and_solvable() -> None:
+    """W8 D3: Ebene 7, a natural cave with crystal light, a lake with a jetty, a crystal wall,
+    a crystal switch, a trap into the lower cave of the same level and the shortcut up."""
+    level = load_level(DATA, 7)
+    kinds = {name.split("_")[0] for name in level.targets()}
+    assert kinds >= {"GATE", "WALL", "LEVER", "BUTTON", "TELE", "NICHE", "SPAWN", "CHEST",
+                     "STAIRS", "TRAP"}  # fmt: skip
+    assert 24 <= level.width <= 32 and 24 <= level.height <= 32
+    for water in (True, False):  # the riddles open every dry cell without wading
+        reach = check_reach(level, water=water)
+        assert reach.unreached == [] and reach.stuck == []
+    assert len(check_reach(level).cells) + len(level.blocked) >= 0.4 * level.width * level.height
+    npcs = [e["monster"]["npc"] for e in level.entries.values() if "monster" in e]
+    npcs += [s["npc"] for s in level.spawns.values()]
+    assert set(npcs) == {"mon_kristallkrebs", "mon_brunnenmolch", "mon_mauerschlupfer"}
+    molche = [at for at, s in level.spawns.items() if s["npc"] == "mon_brunnenmolch"]
+    assert 1 <= len(molche) <= 2 and all(level.char(*at) == "~" for at in molche)
+    assert npcs.count("mon_kristallkrebs") > npcs.count("mon_mauerschlupfer")
+    assert {p["kind"] for p in level.props.values()} == {"crystal_cluster", "stalagmite",
+                                                         "stalactite"}  # fmt: skip
+    assert level.raw["noAutoTorches"] and level.jetty and level.shallow and level.heights
+    assert min(level.heights.values()) <= -1.0  # the lower cave
+    walls = [level.entries[at]["secret_wall"] for at in level.cells("H")]
+    assert [w.get("look") for w in walls] == ["crystal"]
+    switches = [level.entries[at]["switch"] for at in level.cells("S")]
+    assert any(s.get("look") == "crystal" and s["targets"][0].startswith("GATE") for s in switches)
+    (trap,) = level.cells("P")
+    arrival = level.same_level_fall(trap)
+    assert arrival is not None and arrival["shaft"] and level.dy(arrival["at"]) <= -1.0
+    up = [level.entries[at]["teleport"] for at in level.cells("T")]
+    assert [(t["world"], t["start"], t["active"]) for t in up] == [
+        ("worlds/leonberg/dungeon/ebene_01.g7world", "START_E01_VON_OBEN", False)
+    ]
+    down = [level.entries[at]["stairs"]["world"] for at in level.cells(">")]
+    assert down == ["worlds/leonberg/dungeon/ebene_08.g7world"]
+    hort = load_level(DATA, 8)
+    assert hort.theme == "hort" and hort.height_m >= 4.5  # the Kellermutter is 5.5 m long
+
+
+def test_level_7_riddles_hold() -> None:
+    """Without the loose stone the crystal wall stays shut (and with it the switch, the gate and
+    the stairs); without the crystal switch the Treppenkammer; without the lever below, the
+    lower cave has no way back; without the trapdoor nobody gets down there first."""
+    level = load_level(DATA, 7)
+    level.entries[(19, 2)]["switch"]["targets"] = ["SPAWN_E07_17_3"]
+    reach = check_reach(level)
+    assert (25, 3) in reach.unreached and (26, 23) in reach.unreached
+    level = load_level(DATA, 7)
+    level.entries[(28, 4)]["switch"]["targets"] = ["SPAWN_E07_17_3"]
+    assert (26, 21) in check_reach(level).unreached
+    level = load_level(DATA, 7)
+    level.entries[(11, 21)]["switch"]["targets"] = ["SPAWN_E07_17_3"]
+    assert (4, 19) in check_reach(level).stuck
+    level = load_level(DATA, 7)
+    level.entries[(6, 9)]["trapdoor"]["fall"] = {"world": "w.g7world", "start": "S"}
+    assert (4, 19) in check_reach(level).unreached
+
+
+def test_a_same_level_trapdoor_leads_to_its_arrival() -> None:
+    shaft = {"name": "START_E01_UNTEN", "at": [5, 1], "shaft": True}
+    trap = {"at": [3, 1], "trapdoor": {"fall": {"start": "START_E01_UNTEN"}}}
+    d = doc(trap)
+    d["starts"] = [shaft]
+    reach = check_reach(parse_level("########\n#<.P#..#\n########", d))
+    assert reach.unreached == [] and reach.stuck == [(3, 1), (5, 1), (6, 1)]  # no way back
+    reach = check_reach(parse_level("########\n#<.P#..#\n##....##\n########", d))
+    assert reach.unreached == [] and reach.stuck == []
+    d["starts"] = [{**shaft, "shaft": False}]
+    with pytest.raises(LevelError, match="shaft start"):
+        parse_level("########\n#<.P#..#\n########", d)
+
+
+@pytest.mark.parametrize(
+    ("text", "heights", "message"),
+    [
+        ("#######\n#<....#\n#######", [{"from": [4, 1], "to": [5, 1], "dy": -0.7}], "steps"),
+        ("#######\n#<....#\n#######", [{"from": [2, 1], "to": [5, 1], "dy": -0.4}],
+         "mechanism"),  # the stairs' neighbour
+        ("#######\n#<..~.#\n#######", [{"from": [5, 1], "to": [5, 1], "dy": 0.2}], "water"),
+        ("#######\n#<....#\n#######", [{"from": [4, 1], "to": [4, 1], "dy": 0.9}], "dy"),
+    ],
+)  # fmt: skip
+def test_heights_are_checked(text: str, heights: list, message: str) -> None:
+    d = doc()
+    d["heights"] = heights
+    with pytest.raises(LevelError, match=message):
+        parse_level(text, d)

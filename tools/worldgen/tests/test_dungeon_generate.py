@@ -345,3 +345,83 @@ def test_dungeon_textures_tile_and_differ() -> None:
         t = make(kind, 128)
         assert t.albedo.shape[:2] == (128, 128) and abs(float(t.albedo.mean()) - 1.0) < 1e-6
         assert np.all(np.isfinite(t.normal()))
+
+
+def test_cave_rock_walls_ceiling_and_floor() -> None:
+    """W8 E7: rock instead of masonry, no ribs; the rock steps back from the cell's edge but
+    never into the walkway; the ceiling rises; the lower cave lies 1.2 m down."""
+    lv = load_level(DATA, 7)
+    plan = plan_level(lv, "leonberg")
+    mats = set().union(*(m.builders for m in plan.blocks.values()))
+    assert {"cave_wall", "cave_floor", "vault_rock", "oak", "oak_beam"} <= mats
+    assert "rubble" not in mats and "flag" not in mats
+    walk = set(lv.cells(set(".DGPTOH<>~*m")))
+    behind = 0
+    top = []
+    for mesh in plan.blocks.values():
+        o = mesh.origin
+        for p in mesh.builders["cave_wall"].pos:
+            x, y, z = p[0] + o[0], p[1] + o[1], p[2] + o[2]
+            cell = (math.floor(x / 3), math.floor(z / 3))
+            inside = min(x - cell[0] * 3, (cell[0] + 1) * 3 - x, z - cell[1] * 3,
+                         (cell[1] + 1) * 3 - z)  # fmt: skip
+            if inside > 0.01 and y < lv.height_m - 0.01 and lv.char(*cell) != "P":
+                assert cell not in walk, (x, y, z)  # behind the edge, in the solid cell
+                behind += 1
+        top += [p[1] + o[1] for p in mesh.builders["vault_rock"].pos]
+    assert behind > 1000
+    assert min(top) == pytest.approx(lv.height_m) and max(top) > lv.height_m + 0.5
+    points = {p["name"]: p["pos"] for p in plan.points}
+    assert points["WP_DNG_E07_4_19"][1] == pytest.approx(-1.2)
+    assert -1.2 < points["WP_DNG_E07_8_20"][1] < 0.0  # on the slope
+    names = {c.name for m in plan.blocks.values() for c in m.collision}
+    assert "COL_HULL_floor_4_19" in names and "COL_HULL_floor_8_20" in names
+
+
+def test_cave_crystals_trap_and_mechanisms() -> None:
+    lv = load_level(DATA, 7)
+    plan = plan_level(lv, "leonberg")
+    by = {v["name"]: v for v in plan.vobs}
+    lights = {n: v for n, v in by.items() if v["type"] == "light"}
+    clusters = [at for at, p in lv.props.items() if p["kind"] == "crystal_cluster"]
+    assert len(lights) == len(clusters) and not any(n.startswith("TORCH_") for n in by)
+    for v in lights.values():  # bluish
+        color = v["components"]["light"]["color"]
+        assert color[2] > color[0]
+    fall = by["FALL_E07_6_9"]["components"]["trigger"]
+    assert "changeWorld" not in fall
+    assert fall["teleport"] == {"to": "START_E07_SCHACHT_UNTEN", "visible": False,
+                                "filter": "player", "active": True, "silent": True,
+                                "keep_velocity": True}  # fmt: skip
+    start = by["START_E07_SCHACHT_UNTEN"]["pos"]
+    assert start[1] == pytest.approx(-1.2 + 3.3)  # under the shaft, below 4 m: unhurt
+    assert by["WALL_E07_21_4"]["mesh"].endswith("crystal_wall.glb")
+    assert by["BUTTON_E07_28_4"]["mesh"].endswith("crystal_switch.glb")
+    assert by["PROP_E07_4_20"]["pos"][1] == pytest.approx(lv.height_m)  # a stalactite
+    depths = {v["components"]["water"]["halfExtents"][1] for v in by.values()
+              if v["type"] == "water"}  # fmt: skip
+    assert len(depths) == 2  # the lake and the shallow pool
+    ambient = [z["value"] for z in plan.zones if z["type"] == "ambient"]
+    assert ambient == ["gewoelbe"]  # until engine has its own ambient "grotte"
+
+
+def test_too_many_lights_in_a_block_are_refused() -> None:
+    from gothar_worldgen.dungeon.generate import DungeonError
+
+    text = "############\n#<.........#\n#..........#\n############"
+    d = {"format": "gothar-dungeon-level", "version": 1, "level": 1, "theme": "grotte",
+         "cells": [UP], "noAutoTorches": True,
+         "props": [{"at": [x, y], "kind": "crystal_cluster", "facing": "S" if y == 1 else "N"}
+                   for x in range(2, 8) for y in (1, 2)]}  # fmt: skip
+    with pytest.raises(DungeonError, match="lights"):
+        plan_level(parse_level(text, d), "leonberg")
+
+
+def test_cave_kit_parts() -> None:
+    hang = kit.stalactite()
+    ys = [p[1] for b in hang.builders.values() for p in b.pos]
+    assert min(ys) < -0.8 and max(ys) >= 1.0  # tip below, root up in the rock
+    rock = kit.stalagmite()
+    assert max(p[1] for b in rock.builders.values() for p in b.pos) > 2.0
+    assert "crystal" in kit.crystal_cluster().builders
+    assert "crystal" in kit.crystal_wall().builders and "crystal" in kit.crystal_switch().builders
