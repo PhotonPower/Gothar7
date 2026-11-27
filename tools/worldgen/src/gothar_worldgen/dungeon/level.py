@@ -64,9 +64,11 @@ SWITCH_TYPES = {"lever", "wall_button"}
 RELAY_MODES = {"any", "all", "count"}
 ACTIONS = {"toggle", "open", "close", "on", "off", "wake", "trigger", "lock", "unlock"}
 # kind -> where it stands: "fill" (the middle, blocks its cell), "wall" (on the wall behind the
-# cell, which stays free) or "ceiling" (hangs over the middle, the cell stays free)
+# cell, which stays free), "ceiling" (hangs over the middle, the cell stays free) or "water"
+# (on a pool's bottom in the middle of a water cell, no collision)
 PROPS = {"sarcophagus": "fill", "bone_niche": "wall", "workbench": "fill", "cogwheel": "wall",
-         "stalagmite": "fill", "stalactite": "ceiling", "crystal_cluster": "wall"}  # fmt: skip
+         "stalagmite": "fill", "stalactite": "ceiling", "crystal_cluster": "wall",
+         "crystal_ceiling": "ceiling", "crystal_spire": "water"}  # fmt: skip
 MAX_STEP_M = 0.6  # floor heights of two neighbours (``heights``)
 DY_RANGE = (-1.5, 0.6)
 LEVEL_CHARS = set("DGPTOH<>*")  # cells with a mechanism: level with their neighbours
@@ -312,8 +314,9 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
         at = _cell(pr.get("at"), f"props[{i}]")
         if pr.get("kind") not in PROPS or pr.get("facing", "S") not in DIRS:
             raise LevelError(f"props[{i}]: kind {sorted(PROPS)}, facing N, E, S or W")
-        if level.char(*at) != FLOOR or at in level.props:
-            raise LevelError(f"props[{i}]: needs a plain floor cell '.', once")
+        want = "~" if PROPS[pr["kind"]] == "water" else FLOOR
+        if level.char(*at) != want or at in level.props:
+            raise LevelError(f"props[{i}]: needs a plain floor cell {want!r}, once")
         level.props[at] = {**pr, "at": at}
     missing = [list(at) for at in level.cells(REQUIRED) if at not in level.entries]
     if missing:

@@ -31,7 +31,8 @@ Still pieces (``props`` of a level, W8 E4 "Beinhaus"; mesh vobs with their colli
   the wall face, the wheel towards +Z.
 - ``stalagmite``, ``stalactite``, ``crystal_cluster`` (W8 E7 "Kristallgrotte"): a rock cone on
   the floor (fills its cell), rock cones hanging from the ceiling (origin at the ceiling's height),
-  crystals at the wall (origin on the floor at the wall face, towards +Z).
+  crystals at the wall (origin on the floor at the wall face, towards +Z); ``crystal_ceiling``
+  hangs like a stalactite, ``crystal_spire`` rises from a pool's bottom.
 - ``crystal_wall`` and ``crystal_switch``: the cave's looks of ``secret_wall`` and ``wall_button``.
 """
 
@@ -87,9 +88,10 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "vault_brick": ("brick", (0.12, 0.074, 0.054)),  # small bricks: lighter and redder
     "vault_rock": ("rock", (0.05, 0.046, 0.042)),  # rough dark natural stone
     # the cave (W8 E7): natural rock instead of masonry, crystals as the light
-    "cave_wall": ("rock", (0.08, 0.073, 0.066)),  # about the rubble walls' brightness
-    "cave_floor": ("rock", (0.05, 0.047, 0.043)),  # darker, trodden
-    "crystal": ("clay", (0.3, 0.55, 0.85)),  # pale blue, smooth
+    "cave_wall": ("cave_rock", (0.15, 0.15, 0.16)),  # grey-blue, lighter than the masonry
+    "cave_floor": ("cave_rock", (0.1, 0.1, 0.105)),  # darker, trodden
+    "cave_ceiling": ("cave_rock", (0.12, 0.12, 0.13)),
+    "crystal": ("clay", (0.45, 0.78, 0.95)),  # pale blue-turquoise, smooth
 }
 CELL_M = 3.0
 WALL_H = 3.5
@@ -472,22 +474,62 @@ def _v(p: np.ndarray) -> Vec3:
 
 
 def crystal_cluster() -> KitMesh:
-    """Pale blue crystals growing out of a rock foot at the wall, the tallest 1.4 m (origin on
-    the floor at the wall face, the cluster towards +Z); the level adds its light."""
+    """Blue-turquoise crystals growing out of a rock foot at the wall, the tallest 1.8 m (origin
+    on the floor at the wall face, the cluster towards +Z); the level adds its light."""
     m = KitMesh()
-    _spike(m, "cave_wall", (0.0, -0.05, 0.12), (0.0, 1.0, 0.25), 0.55, 0.35, 0.35, 0.0, 7, 0.3)
+    _spike(m, "cave_wall", (0.0, -0.05, 0.12), (0.0, 1.0, 0.25), 0.75, 0.45, 0.4, 0.0, 8, 0.3)
     shards = (  # base (x, y, z), direction, radius, length
-        ((0.0, 0.2, 0.15), (0.05, 1.0, 0.35), 0.11, 1.0),
-        ((-0.22, 0.15, 0.2), (-0.45, 1.0, 0.4), 0.08, 0.75),
-        ((0.25, 0.12, 0.18), (0.5, 1.0, 0.3), 0.09, 0.85),
-        ((0.1, 0.1, 0.35), (0.2, 0.6, 1.0), 0.07, 0.55),
-        ((-0.12, 0.1, 0.38), (-0.3, 0.7, 1.0), 0.06, 0.5),
-        ((0.4, 0.05, 0.1), (0.9, 0.7, 0.4), 0.06, 0.45),
-        ((-0.42, 0.05, 0.1), (-0.9, 0.8, 0.3), 0.05, 0.4),
+        ((0.0, 0.25, 0.18), (0.05, 1.0, 0.3), 0.17, 1.3),
+        ((-0.3, 0.2, 0.22), (-0.45, 1.0, 0.35), 0.13, 1.0),
+        ((0.32, 0.15, 0.2), (0.5, 1.0, 0.3), 0.14, 1.1),
+        ((0.12, 0.12, 0.45), (0.2, 0.6, 1.0), 0.1, 0.7),
+        ((-0.16, 0.12, 0.48), (-0.3, 0.7, 1.0), 0.09, 0.6),
+        ((0.55, 0.08, 0.12), (0.9, 0.7, 0.4), 0.09, 0.6),
+        ((-0.58, 0.08, 0.12), (-0.9, 0.8, 0.3), 0.08, 0.55),
+        ((0.15, 0.9, 0.05), (0.3, 0.8, 0.6), 0.08, 0.5),
+        ((-0.2, 1.1, 0.04), (-0.2, 0.9, 0.5), 0.07, 0.45),
+        ((0.0, 0.05, 0.6), (0.05, 0.4, 1.0), 0.07, 0.4),
     )
     for k, (base, d, r, length) in enumerate(shards):
         _spike(m, "crystal", base, d, r, r, length, r * 2.2, 6, 0.4 * k)
-    m.body("crystal_cluster", (-0.6, 0.0, 0.0), (0.6, 1.0, 0.6))
+    m.body("crystal_cluster", (-0.75, 0.0, 0.0), (0.75, 1.2, 0.75))
+    return m
+
+
+def crystal_ceiling() -> KitMesh:
+    """Crystals hanging from the rock overhead (origin at the ceiling's height, rooted 1 m up in
+    the rock, the longest 1.2 m down); the cell stays free."""
+    m = KitMesh()
+    _spike(m, "cave_wall", (0.0, 1.0, 0.0), (0.0, -1.0, 0.0), 0.7, 0.5, 1.15, 0.0, 8, 0.2)
+    shards = (
+        ((0.0, -0.1, 0.0), (0.05, -1.0, 0.1), 0.16, 0.95),
+        ((0.35, -0.1, 0.15), (0.5, -1.0, 0.2), 0.12, 0.7),
+        ((-0.3, -0.1, 0.25), (-0.45, -1.0, 0.3), 0.11, 0.65),
+        ((0.1, -0.1, -0.35), (0.15, -1.0, -0.5), 0.1, 0.6),
+        ((-0.25, -0.1, -0.25), (-0.4, -1.0, -0.4), 0.09, 0.5),
+        ((0.45, -0.1, -0.3), (0.8, -1.0, -0.4), 0.08, 0.45),
+    )
+    for k, (base, d, r, length) in enumerate(shards):
+        _spike(m, "crystal", base, d, r, r, length, r * 2.0, 6, 0.5 * k)
+    m.body("none", (-0.02, 1.5, -0.02), (0.02, 1.54, 0.02))  # in the rock: nothing to bump
+    return m
+
+
+def crystal_spire() -> KitMesh:
+    """Crystals rising from a pool's bottom (origin on the bottom in the middle of the cell),
+    the tallest 1.6 m: their tips stand out of the water and its surface takes their light."""
+    m = KitMesh()
+    _spike(m, "cave_wall", (0.0, -0.05, 0.0), (0.0, 1.0, 0.0), 0.6, 0.4, 0.3, 0.0, 7, 0.1)
+    shards = (
+        ((0.0, 0.2, 0.0), (0.05, 1.0, 0.05), 0.16, 1.15),
+        ((0.3, 0.15, 0.1), (0.4, 1.0, 0.15), 0.12, 0.95),
+        ((-0.25, 0.15, 0.2), (-0.35, 1.0, 0.3), 0.11, 0.85),
+        ((0.05, 0.1, -0.3), (0.1, 1.0, -0.45), 0.1, 0.8),
+        ((-0.3, 0.1, -0.2), (-0.5, 0.9, -0.3), 0.09, 0.6),
+    )
+    for k, (base, d, r, length) in enumerate(shards):
+        _spike(m, "crystal", base, d, r, r, length, r * 2.2, 6, 0.6 * k)
+    m.body("none", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02))  # the swimmer passes
     return m
 
 
@@ -561,7 +603,8 @@ def crystal_switch() -> KitMesh:
 
 PROPS = {"sarcophagus": sarcophagus, "bone_niche": bone_niche, "workbench": workbench,
          "cogwheel": cogwheel, "stalagmite": stalagmite, "stalactite": stalactite,
-         "crystal_cluster": crystal_cluster}  # fmt: skip
+         "crystal_cluster": crystal_cluster, "crystal_ceiling": crystal_ceiling,
+         "crystal_spire": crystal_spire}  # fmt: skip
 
 KIT = {
     "gate": gate,

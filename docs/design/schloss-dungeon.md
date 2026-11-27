@@ -476,13 +476,17 @@ schreibt.
 
 ## 7h. Stand D3 (welt): Ebene 7 „Kristallgrotte“, Ebene 8 als Stub
 - **Höhle statt Mauerwerk** (Thema `grotte`, nur dort; Ebenen 1–6 bleiben bytegleich):
-  - Wände aus Fels (`cave_wall`, Textur `rock`): jede Wandfläche ist ein Raster (4 × 5), dessen innere Punkte bis
-    0,45 m in die feste Zelle zurückweichen (fester Ganzzahl-Hash der Position, gleiche Bytes auf jedem System).
-    An Ecken, an Wasserkanten und an Nischen bleibt die Kante gerade, damit keine Spalten entstehen. Die Kollision
+  - Wände aus Fels (`cave_wall`, eigene Textur `cave_rock`: Knollen in mehreren Größen, Risse, Bänder, Poren,
+    helle Mineralflecken, kräftige Normalen): jede Wandfläche ist ein feines Raster (10 × 12), dessen Punkte bis
+    0,7 m in die feste Zelle zurückweichen. Das Maß ist Rauschen aus zwei weichen Gittern (1,4 m und 0,55 m)
+    und etwas Körnung, also Wölbungen, Mulden und Überhänge statt großer Dreiecke; Normalen geglättet. Fester
+    Ganzzahl-Hash der Position, gleiche Bytes auf jedem System. Am Boden, an der Decke, an Ecken, Wasserkanten
+    und Nischen läuft der Fels über 0,6 m auf die Zellkante aus, damit keine Spalten entstehen. Die Kollision
     bleibt der Kasten der Zelle; der Fels ragt nie in den Weg.
-  - Felsdecke (`vault_rock`) ohne Gurtbögen, je Zelle 3 × 3 Felder, bis 0,85 m über der Deckenhöhe; an Wänden,
-    Schächten und Treppen eben.
-  - Felsboden (`cave_floor`).
+  - Felsdecke (`cave_ceiling`) ohne Gurtbögen, je Zelle 8 × 8 Felder, bis 0,9 m über der Deckenhöhe; zu Wänden,
+    Schächten und Treppen hin läuft sie auf die Deckenhöhe aus.
+  - Felsboden (`cave_floor`). Grundlicht kühl blau (`ambient` 0,1/0,14/0,2, `ambient_ground` 0,05/0,075/0,1),
+    Nebel ab 4 m bis 30 m: hell genug, um die Höhle ohne Fackel zu lesen, deutlich heller als Ebene 1–6.
 - **Neu in der Karten-JSON** (für alle Themen nutzbar):
   - `heights`: Rechtecke (`from`, `to`, `dy`, −1,5 bis +0,6 m) heben oder senken den Boden; die Ecken nehmen den
     Mittelwert der Zellen ringsum, der Boden ist also eine stetige Fläche aus zwei Dreiecken je Zelle (Kollision
@@ -493,9 +497,12 @@ schreibt.
     eigene Wasser-Vobs.
   - `jetty`: Bodenzellen als Steg (Dielen, Pfosten im Wasser).
   - Requisiten `stalagmite` (füllt die Zelle), `stalactite` (hängt über der Zellmitte, wurzelt 1 m im Fels, Spitze
-    0,95 m unter der Decke, die Zelle bleibt frei) und `crystal_cluster` (an der Wand); jede Kristallgruppe bringt
-    ein bläuliches Licht `LIGHT_E07_<x>_<y>` mit (Farbe 0,45/0,7/1,0, Reichweite 8 m, ohne Flackern). Höchstens
-    8 Lichter je Block aus 8 × 8 Zellen (Fackeln und Kristalle zusammen), sonst bricht der Generator ab.
+    0,95 m unter der Decke, die Zelle bleibt frei), `crystal_cluster` (bis 1,8 m hoch, an der Wand),
+    `crystal_ceiling` (Kristalle hängen von der Decke, die Zelle bleibt frei) und `crystal_spire` (auf dem Grund
+    einer Wasserzelle, die Spitzen ragen aus dem Wasser, ohne Kollision). Jede Kristall-Requisite bringt ein
+    blau-türkises Licht `LIGHT_E07_<x>_<y>` mit (Farbe 0,35/0,8/1,0, Reichweite 10 m, Stärke 9, ohne Flackern;
+    am See knapp über dem Wasser). Höchstens 8 Lichter je Block aus 8 × 8 Zellen (Fackeln und Kristalle
+    zusammen), sonst bricht der Generator ab.
   - `look: "crystal"` an einer Geheimwand (Modell `crystal_wall`: Fels mit Kristallen) und an einem Wandknopf
     (`crystal_switch`: Kristall in einer Felsfassung, sichtbar, nicht versteckt).
   - **Falltür in dieselbe Ebene:** `fall` nur mit `start` (einem `starts`-Eintrag mit `shaft`). Statt des
@@ -505,7 +512,8 @@ schreibt.
     (höchstens 0,2 m unter der Decke), der Sturz bleibt also unter 4 m und kostet nichts. Grund: ein `changeWorld`
     in die eigene Welt lädt die Ebene neu und verliert ihren Zustand (engine behebt das getrennt).
     `check_reach` macht aus der Falltür eine Kante zur Ankunftszelle; von dort braucht es einen Rückweg.
-- **Ebene 7** (30 × 25, 310 begehbare Zellen = 41 %, davon 36 Wasser; keine Fackeln, 16 Kristallgruppen):
+- **Ebene 7** (30 × 25, 310 begehbare Zellen = 41 %, davon 36 Wasser; keine Fackeln, 28 Kristall-Lichter: 16 an
+  Wänden, 8 an der Decke, 4 im See; über jeder Ankunft hängen Kristalle):
   - Ankunft (Treppe hinauf), Gang zur **Kristallhalle** (Stalagmiten, Stalaktiten, Bodenwellen, Kristallkrebse).
   - **Rätsel 1 (Kristallwand):** Ein loser Stein in der Halle senkt die Kristallwand; dahinter die
     **Kristallkammer** mit Depot (Nische; Schutzring, Manatrank, 250 Gulden) und dem **Kristallschalter**. Er
@@ -521,10 +529,11 @@ schreibt.
     `START_E01_VON_OBEN`, zu Beginn aus, Hebel daneben) und Treppe hinab nach Ebene 8 (`START_E08_VON_OBEN`).
   - Erreichbarkeit grün, auch ohne Waten; ohne den losen Stein bleiben Kammer, Gatter und Treppe zu, ohne den
     Kristallschalter die Treppenkammer, ohne den Hebel unten hat die Tiefe Grotte keinen Rückweg (Tests).
-  - Truhen [1,20] Tiefe Grotte, [20,13] Nordufer, [18,17] Insel, [25,21] Treppenkammer; Nische [24,1]
-    Kristallkammer: noch bloße Typen, die Definitionen `mob_dng_e7_…` liefert engine.
+  - Truhen und Nische mit ihren Definitionen (engine #521): [1,20] `mob_dng_e7_chest_absturz` (Tiefe Grotte),
+    [20,13] `mob_dng_e7_chest_seeufer`, [18,17] `mob_dng_e7_chest_insel`, [25,21] `mob_dng_e7_chest_treppe`,
+    Nische [24,1] `mob_dng_e7_niche_kristall` (Kristallkammer). Ambiente `grotte` (engine #517).
 - **Ebene 8** als Stub (Thema `hort`, Raumhöhe 5 m für die Kellermutter, vorerst Ambiente `gewoelbe`).
-- Offen für engine: Ambiente `grotte`, Felder `silent`/`keep_velocity` am Teleporter, Truhen-/Nischen-Inhalte E7.
+- Offen für engine: Felder `silent`/`keep_velocity` am Teleporter.
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |

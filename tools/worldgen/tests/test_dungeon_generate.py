@@ -353,7 +353,7 @@ def test_cave_rock_walls_ceiling_and_floor() -> None:
     lv = load_level(DATA, 7)
     plan = plan_level(lv, "leonberg")
     mats = set().union(*(m.builders for m in plan.blocks.values()))
-    assert {"cave_wall", "cave_floor", "vault_rock", "oak", "oak_beam"} <= mats
+    assert {"cave_wall", "cave_floor", "cave_ceiling", "oak", "oak_beam"} <= mats
     assert "rubble" not in mats and "flag" not in mats
     walk = set(lv.cells(set(".DGPTOH<>~*m")))
     behind = 0
@@ -368,7 +368,7 @@ def test_cave_rock_walls_ceiling_and_floor() -> None:
             if inside > 0.01 and y < lv.height_m - 0.01 and lv.char(*cell) != "P":
                 assert cell not in walk, (x, y, z)  # behind the edge, in the solid cell
                 behind += 1
-        top += [p[1] + o[1] for p in mesh.builders["vault_rock"].pos]
+        top += [p[1] + o[1] for p in mesh.builders["cave_ceiling"].pos]
     assert behind > 1000
     assert min(top) == pytest.approx(lv.height_m) and max(top) > lv.height_m + 0.5
     points = {p["name"]: p["pos"] for p in plan.points}
@@ -383,8 +383,15 @@ def test_cave_crystals_trap_and_mechanisms() -> None:
     plan = plan_level(lv, "leonberg")
     by = {v["name"]: v for v in plan.vobs}
     lights = {n: v for n, v in by.items() if v["type"] == "light"}
-    clusters = [at for at, p in lv.props.items() if p["kind"] == "crystal_cluster"]
-    assert len(lights) == len(clusters) and not any(n.startswith("TORCH_") for n in by)
+    crystals = [at for at, p in lv.props.items() if p["kind"].startswith("crystal_")]
+    assert len(lights) == len(crystals) and not any(n.startswith("TORCH_") for n in by)
+    kinds = {p["kind"] for p in lv.props.values()}
+    assert {"crystal_cluster", "crystal_ceiling", "crystal_spire"} <= kinds
+    for st in ("START_E07_VON_OBEN", "START_E07_SCHACHT_UNTEN", "START_E07_VON_UNTEN"):
+        here = by[st]["pos"]  # never dark on arrival: a crystal light within 7 m
+        assert min(math.dist(here, v["pos"]) for v in lights.values()) < 7.0, st
+    spire = by["LIGHT_E07_16_16"]["pos"]
+    assert spire[1] > -lv.edge((16, 16))  # above the water
     for v in lights.values():  # bluish
         color = v["components"]["light"]["color"]
         assert color[2] > color[0]
@@ -402,7 +409,7 @@ def test_cave_crystals_trap_and_mechanisms() -> None:
               if v["type"] == "water"}  # fmt: skip
     assert len(depths) == 2  # the lake and the shallow pool
     ambient = [z["value"] for z in plan.zones if z["type"] == "ambient"]
-    assert ambient == ["gewoelbe"]  # until engine has its own ambient "grotte"
+    assert ambient == ["grotte"]  # engine #517
 
 
 def test_too_many_lights_in_a_block_are_refused() -> None:

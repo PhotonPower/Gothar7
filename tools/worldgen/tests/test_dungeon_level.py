@@ -298,7 +298,7 @@ def test_level_5_riddles_hold() -> None:
     assert (23, 9) in check_reach(level).unreached
 
 
-@pytest.mark.parametrize("number", [1, 2, 3, 4, 5, 6])
+@pytest.mark.parametrize("number", [1, 2, 3, 4, 5, 6, 7])
 def test_chests_and_niches_name_their_lua_definition(number: int) -> None:
     """engine's contents (game/scripts/mobs/dungeon.lua): one definition per chest and niche."""
     level = load_level(DATA, number)
@@ -361,8 +361,13 @@ def test_level_7_kristallgrotte_is_complete_and_solvable() -> None:
     molche = [at for at, s in level.spawns.items() if s["npc"] == "mon_brunnenmolch"]
     assert 1 <= len(molche) <= 2 and all(level.char(*at) == "~" for at in molche)
     assert npcs.count("mon_kristallkrebs") > npcs.count("mon_mauerschlupfer")
-    assert {p["kind"] for p in level.props.values()} == {"crystal_cluster", "stalagmite",
-                                                         "stalactite"}  # fmt: skip
+    assert {p["kind"] for p in level.props.values()} == {
+        "crystal_cluster",
+        "crystal_ceiling",
+        "crystal_spire",
+        "stalagmite",
+        "stalactite",
+    }
     assert level.raw["noAutoTorches"] and level.jetty and level.shallow and level.heights
     assert min(level.heights.values()) <= -1.0  # the lower cave
     walls = [level.entries[at]["secret_wall"] for at in level.cells("H")]

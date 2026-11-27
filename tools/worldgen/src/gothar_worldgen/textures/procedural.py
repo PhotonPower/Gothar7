@@ -50,6 +50,7 @@ TILE_M = {  # metres covered by one texture (u, v)
     "flagstone_dust": (3.0, 3.0),
     "brick": (1.0, 1.0),
     "rock": (2.0, 2.0),
+    "cave_rock": (1.5, 1.5),
 }
 
 
@@ -704,6 +705,29 @@ def rock(size: int, rng: np.random.Generator) -> Texture:
     return Texture("rock", _mean_one(np.clip(rgb, 0.05, None)), height - height.min(), 5.0)
 
 
+def cave_rock(size: int, rng: np.random.Generator) -> Texture:
+    """The crystal cave's natural rock (W8 E7): lumpy at several scales with sharp crossing
+    cracks, layered bands, pits and a cool grey-blue tint with pale mineral flecks; a strong
+    relief for the normal map (more detail than ``rock``)."""
+    lumps = periodic_noise((size, size), rng, beta=2.4)
+    mid = periodic_noise((size, size), rng, beta=1.8, low_cut=6.0)
+    fine = periodic_noise((size, size), rng, beta=1.1, low_cut=24.0)
+    grit = periodic_noise((size, size), rng, beta=0.6, low_cut=48.0)
+    cracks = np.zeros((size, size))
+    for low in (2.0, 3.0, 5.0):
+        c = periodic_noise((size, size), rng, beta=1.9, low_cut=low)
+        cracks = np.maximum(cracks, np.clip(1.0 - np.abs(c - 0.5) / 0.012, 0.0, 1.0))
+    bands = periodic_noise((size, size), rng, beta=2.0, aniso=(1.0, 5.0))
+    pits = np.clip((periodic_noise((size, size), rng, beta=0.9, low_cut=20.0) - 0.78) / 0.1, 0, 1)
+    flecks = np.clip((periodic_noise((size, size), rng, beta=0.4, low_cut=60.0) - 0.82) / 0.06,
+                     0.0, 1.0)  # fmt: skip
+    height = 0.4 * lumps + 0.3 * mid + 0.18 * fine + 0.07 * grit - 0.35 * cracks - 0.15 * pits
+    val = 0.7 + 0.9 * (height - 0.45) + 0.15 * (bands - 0.5)
+    val = val * (1.0 - 0.75 * cracks) * (1.0 - 0.4 * pits) + 0.35 * flecks
+    rgb = np.stack([val * 0.95, val * 1.0, val * 1.08], axis=-1)
+    return Texture("cave_rock", _mean_one(np.clip(rgb, 0.05, None)), height - height.min(), 9.0)
+
+
 # the dungeon's floors and ceilings (W8): blocks of the levels, textures in furniture/textures
 DUNGEON_KINDS = {
     "flagstone": flagstone,
@@ -711,6 +735,7 @@ DUNGEON_KINDS = {
     "flagstone_dust": flagstone_dust,
     "brick": brick,
     "rock": rock,
+    "cave_rock": cave_rock,
 }
 
 TERRAIN_KINDS = {"cobbles": cobbles}

@@ -81,13 +81,14 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 18.0,
         },
     ),
-    "grotte": (  # Ebene 7: crystal light; the vault's sound until engine has "grotte"
-        "gewoelbe",
+    "grotte": (  # Ebene 7: crystal light, a faint blue fill; engine's ambient "grotte" (#517)
+        "grotte",
         {
-            "ambient": [0.038, 0.046, 0.062],
-            "fog_color": [0.012, 0.018, 0.03],
-            "fog_start": 3.0,
-            "fog_distance": 22.0,
+            "ambient": [0.1, 0.14, 0.2],
+            "ambient_ground": [0.05, 0.075, 0.1],
+            "fog_color": [0.025, 0.045, 0.07],
+            "fog_start": 4.0,
+            "fog_distance": 30.0,
         },
     ),
     "hort": (  # Ebene 8 (stub): the Kellermutter's lair; the vault's sound for now
@@ -127,14 +128,20 @@ SURFACES = {
     "beinhaus": ("flag_dust", "vault_rock", "ashlar", False),
     "werkstatt": ("flag", "vault_brick", "oak_beam", True),
     "labyrinth": ("flag", "vault_brick", "ashlar", False),
-    "grotte": ("cave_floor", "vault_rock", None, False),  # a natural cave: no ribs
+    "grotte": ("cave_floor", "cave_ceiling", None, False),  # a natural cave: no ribs
 }
 WALLS = {"grotte": "cave_wall"}  # wall material per theme (else rubble)
 CAVE_THEMES = {"grotte"}  # rough rock walls and ceilings instead of masonry (W8 E7)
-ROUGH_WALL_M = 0.45  # the rock steps back from the cell's edge by up to this much
-ROUGH_CEIL_M = 0.85  # and rises above the ceiling's height by up to this much
-ROUGH_ALONG, ROUGH_UP, ROUGH_CEIL = 4, 5, 3  # subdivisions of a wall face and a ceiling cell
-LIGHT_CRYSTAL = {"color": [0.45, 0.7, 1.0], "range": 9.0, "intensity": 2.8, "flicker": 0.0}
+ROUGH_WALL_M = 0.7  # the rock steps back from the cell's edge by up to this much
+ROUGH_CEIL_M = 0.9  # and rises above the ceiling's height by up to this much
+ROUGH_ALONG, ROUGH_UP, ROUGH_CEIL = 10, 12, 8  # subdivisions of a wall face and a ceiling cell
+ROUGH_FADE_M = 0.6  # the rock eases to the cell's edge over this far (floor, corners, walls)
+LIGHT_CRYSTAL = {"color": [0.35, 0.8, 1.0], "range": 10.0, "intensity": 9.0, "flicker": 0.0}
+CRYSTAL_LIGHT_AT = {  # kind -> (out from the wall, up from the prop's origin) of its light
+    "crystal_cluster": (0.9, 1.3),
+    "crystal_ceiling": (0.0, -1.2),
+    "crystal_spire": (0.0, None),  # just above the water's surface
+}
 LIGHTS_PER_BLOCK = 8  # plan 3.4, torches and crystals together
 DROP_M = 3.3  # a fall into the same level arrives this high above the floor (below 4 m: unhurt)
 RIB_CELLS = 2  # a rib every 6 m
@@ -459,14 +466,76 @@ class _Gen:
 
     # --- the cave (W8 E7) ---------------------------------------------------------------------
     @staticmethod
-    def noise(x: float, y: float, z: float) -> float:
-        """0..1 per point, from the position to the millimetre (integer hash: same bytes on
-        every platform)."""
-        h = (round(x * 1000) * 73856093) ^ (round(y * 1000) * 19349663)
-        h = (h ^ (round(z * 1000) * 83492791)) & 0xFFFFFFFF
+    def hash3(i: int, j: int, k: int) -> float:
+        """0..1 per integer lattice point (integer hash: same bytes on every platform)."""
+        h = ((i * 73856093) ^ (j * 19349663) ^ (k * 83492791)) & 0xFFFFFFFF
         h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
         h ^= h >> 16
         return h / 2**32
+
+    @classmethod
+    def noise(cls, x: float, y: float, z: float) -> float:
+        """0..1 per point, from the position to the millimetre."""
+        return cls.hash3(round(x * 1000), round(y * 1000), round(z * 1000))
+
+    @classmethod
+    def smooth_noise(cls, x: float, y: float, z: float, cell: float) -> float:
+        """Value noise (0..1) on a lattice of ``cell`` metres, smoothly interpolated."""
+        fx, fy, fz = x / cell, y / cell, z / cell
+        i, j, k = math.floor(fx), math.floor(fy), math.floor(fz)
+        u, v, w = fx - i, fy - j, fz - k
+        u, v, w = u * u * (3 - 2 * u), v * v * (3 - 2 * v), w * w * (3 - 2 * w)
+        out = 0.0
+        for a in (0, 1):
+            for b in (0, 1):
+                for c in (0, 1):
+                    wt = (u if a else 1 - u) * (v if b else 1 - v) * (w if c else 1 - w)
+                    out += wt * cls.hash3(i + a, j + b, k + c)
+        return out
+
+    def rock(self, x: float, y: float, z: float) -> float:
+        """0..1: broad bulges and hollows, smaller knobs, a little grit."""
+        return (0.45 * self.smooth_noise(x, y, z, 1.4) + 0.35 * self.smooth_noise(x, y, z, 0.55)
+                + 0.2 * self.noise(x, y, z))  # fmt: skip
+
+    def grid_mesh(self, at: Cell, material: str, grid: list[list[tuple[float, float, float]]],
+                  want: tuple[float, float, float]) -> None:  # fmt: skip
+        """A displaced grid (rows of points) as triangles with smooth normals; texture projected
+        like ``KitMesh.quad`` (world metres along the axis of ``want``)."""
+        b = self.mesh(at).b(material)
+        ni, nj = len(grid), len(grid[0])
+        axis = max(range(3), key=lambda k: abs(want[k]))
+        base = len(b.pos)
+        for i in range(ni):
+            for j in range(nj):
+                p = grid[i][j]
+                a0, a1 = grid[max(i - 1, 0)][j], grid[min(i + 1, ni - 1)][j]
+                b0, b1 = grid[i][max(j - 1, 0)], grid[i][min(j + 1, nj - 1)]
+                tu = (a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2])
+                tv = (b1[0] - b0[0], b1[1] - b0[1], b1[2] - b0[2])
+                n = (tu[1] * tv[2] - tu[2] * tv[1], tu[2] * tv[0] - tu[0] * tv[2],
+                     tu[0] * tv[1] - tu[1] * tv[0])  # fmt: skip
+                if n[0] * want[0] + n[1] * want[1] + n[2] * want[2] < 0:
+                    n = (-n[0], -n[1], -n[2])
+                length = math.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2) or 1.0
+                b.pos.append((p[0] - b.ox, p[1] - b.oy, p[2] - b.oz))
+                b.nrm.append((n[0] / length, n[1] / length, n[2] / length))
+                if axis == 1:
+                    b.uv.append((p[0], p[2]))
+                else:
+                    b.uv.append((p[2] if axis == 0 else p[0], p[1]))
+        p0, p1, p2 = grid[0][0], grid[1][0], grid[1][1]
+        e1 = (p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2])
+        e2 = (p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2])
+        cross = (e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2],
+                 e1[0] * e2[1] - e1[1] * e2[0])  # fmt: skip
+        flip = cross[0] * want[0] + cross[1] * want[1] + cross[2] * want[2] < 0
+        for i in range(ni - 1):
+            for j in range(nj - 1):
+                q00, q10 = base + i * nj + j, base + (i + 1) * nj + j
+                q11, q01 = q10 + 1, q00 + 1
+                for tri in ((q00, q10, q11), (q00, q11, q01)):
+                    b.idx += [tri[0], tri[2], tri[1]] if flip else list(tri)
 
     def _plain_wall(self, at: Cell, side: str) -> bool:
         """``side`` of the open cell ``at`` is a plain wall face (no niche, no stairs)."""
@@ -488,8 +557,9 @@ class _Gen:
         return q in self.walk and self._rough(q, side) and self.base(q) == self.base(at)
 
     def rough_face(self, at: Cell, side: str) -> None:
-        """A wall face of rock: a grid whose inner points step back up to ``ROUGH_WALL_M`` into
-        the solid cell (the collision stays the cell's box), triangles with flat normals."""
+        """A wall face of rock: a fine grid whose points step back up to ``ROUGH_WALL_M`` into
+        the solid cell (bulges, hollows, overhangs; the collision stays the cell's box), easing
+        to the edge at the floor, the ceiling and corners; smooth normals."""
         (xa, za), (xb, zb) = self.edge(at, side)
         fa, fb = self.edge_floor(at, side)
         top = self.ceil(at)
@@ -502,44 +572,56 @@ class _Gen:
             x = xa if i == 0 else xb if i == na else xa + (xb - xa) * t
             z = za if i == 0 else zb if i == na else za + (zb - za) * t
             bottom = fa if i == 0 else fb if i == na else fa + (fb - fa) * t
+            ease = 1.0
+            if not ok[0]:
+                ease = min(ease, t * self.c / ROUGH_FADE_M)
+            if not ok[1]:
+                ease = min(ease, (1 - t) * self.c / ROUGH_FADE_M)
             col = []
             for j in range(nu + 1):
                 y = bottom if j == 0 else top if j == nu else bottom + (top - bottom) * j / nu
-                d = 0.0
-                if 0 < j < nu and (0 < i < na or ok[i // na]):
-                    d = ROUGH_WALL_M * self.noise(x, y, z)
+                up = min(1.0, (y - bottom) / ROUGH_FADE_M, (top - y) / ROUGH_FADE_M)
+                k = min(ease, up)
+                k = k * k * (3 - 2 * k)
+                d = ROUGH_WALL_M * k * self.rock(x, y, z) if k > 0 else 0.0
                 col.append((x - want[0] * d, self.y(y), z - want[2] * d))
             grid.append(col)
-        mesh = self.mesh(at)
-        for i in range(na):
-            for j in range(nu):
-                p, q, r, s = grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]
-                mesh.quad(self.wall_mat, [p, q, r], want)
-                mesh.quad(self.wall_mat, [p, r, s], want)
+        self.grid_mesh(at, self.wall_mat, grid, want)
+
+    def _ceiling_ease(self, x: float, z: float) -> float:
+        """0 on the edge of anything that is not plain cave ceiling, 1 from ``ROUGH_FADE_M``
+        away (a function of the position: neighbouring cells agree)."""
+        c, o = self.c, self.lv.origin
+        reach = ROUGH_FADE_M
+        near = reach
+        for gx in range(math.floor((x - o[0] - reach) / c), math.floor((x - o[0] + reach) / c) + 1):
+            for gz in range(math.floor((z - o[2] - reach) / c),
+                            math.floor((z - o[2] + reach) / c) + 1):  # fmt: skip
+                if self._ceiled((gx, gz)):
+                    continue
+                x0, z0 = self.x0(gx), self.z0(gz)
+                dx = max(x0 - x, 0.0, x - (x0 + c))
+                dz = max(z0 - z, 0.0, z - (z0 + c))
+                near = min(near, math.hypot(dx, dz))
+        k = near / reach
+        return k * k * (3 - 2 * k)
 
     def rough_ceiling(self, at: Cell) -> None:
-        """The rock overhead: a grid rising up to ``ROUGH_CEIL_M`` above the ceiling's height,
-        level where it meets a wall or anything that is not plain cave ceiling."""
+        """The rock overhead: a fine grid rising up to ``ROUGH_CEIL_M`` above the ceiling's
+        height, level where it meets a wall or anything that is not plain cave ceiling."""
         n, c = ROUGH_CEIL, self.c
         x0, z0 = self.x0(at[0]), self.z0(at[1])
         grid = []
         for i in range(n + 1):
             row = []
-            xs = [at[0] - 1, at[0]] if i == 0 else [at[0], at[0] + 1] if i == n else [at[0]]
             x = x0 if i == 0 else x0 + c if i == n else x0 + c * i / n
             for j in range(n + 1):
-                ys = [at[1] - 1, at[1]] if j == 0 else [at[1], at[1] + 1] if j == n else [at[1]]
                 z = z0 if j == 0 else z0 + c if j == n else z0 + c * j / n
-                free = all(self._ceiled((a, b)) for a in xs for b in ys)
-                d = ROUGH_CEIL_M * self.noise(x, self.h, z) if free else 0.0
+                k = self._ceiling_ease(x, z)
+                d = ROUGH_CEIL_M * k * self.rock(x, self.h, z) if k > 0 else 0.0
                 row.append((x, self.y(self.h + d), z))
             grid.append(row)
-        mesh = self.mesh(at)
-        for i in range(n):
-            for j in range(n):
-                p, q, r, s = grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]
-                mesh.quad(self.ceil_mat, [p, q, r], (0.0, -1.0, 0.0))
-                mesh.quad(self.ceil_mat, [p, r, s], (0.0, -1.0, 0.0))
+        self.grid_mesh(at, self.ceil_mat, grid, (0.0, -1.0, 0.0))
 
     def floor_tris(self, at: Cell, material: str) -> None:
         """A floor lifted by ``heights``: two triangles over the cell's corners, split along the
@@ -1063,12 +1145,16 @@ class _Gen:
                     y = sum(self.edge_floor(at, OPPOSITE[side])) / 2
             elif place == "ceiling":
                 y = self.ceil(at)
+            elif place == "water":
+                y = self.floor(at)
             rot = _quat_front(dx, dy)
             self.vob("mesh", self.lv.prop_name(at), (cx, self.y(y), cz), rot,
                      mesh=self.kit_mesh(pr["kind"]))  # fmt: skip
-            if pr["kind"] == "crystal_cluster" and pr.get("light", True):
+            if pr["kind"] in CRYSTAL_LIGHT_AT and pr.get("light", True):
+                out, up = CRYSTAL_LIGHT_AT[pr["kind"]]
+                ly = y + up if up is not None else -self.lv.edge(at) + 0.4
                 self.vob("light", f"LIGHT_{self.tag}_{at[0]}_{at[1]}",
-                         (cx + dx * 0.6, self.y(y + 1.0), cz + dy * 0.6), rot,
+                         (cx + dx * out, self.y(ly), cz + dy * out), rot,
                          components={"light": dict(LIGHT_CRYSTAL)})  # fmt: skip
 
     def relays(self) -> None:
