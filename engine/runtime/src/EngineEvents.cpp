@@ -98,6 +98,7 @@ void Engine::deliverEvent(const world::NetEvent& event)
     G7_LOG_DEBUG("engine", "event {} -> {} ({})", event.action, event.target, event.source);
     (void)moverEvent(event);    // dungeon D2: gates, secret walls, trapdoors
     (void)teleportEvent(event); // dungeon D4: teleporters on and off
+    (void)spawnEvent(event);    // E8: inactive spawn markers (waves) put their NPCs in
     if (const auto vob = findMob(event.target); vob)
     {
         if (const auto it = m_mobs.find(vob->value); it != m_mobs.end())

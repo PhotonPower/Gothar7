@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "name": "spawn_waves",
+  "nextVobId": 10,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_WELLEN","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"mesh","name":"BODEN","pos":[0.0,-1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[80.0,1.0,80.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":3,"type":"spawn","name":"SPAWN_PAAR","pos":[0.0,0.0,-20.0],"rot":[0.0,0.0,0.0,1.0],"components":{"spawn":{"npc":"mon_mauerschlupfer","count":2,"respawn":false,"dormant":true,"targets":["RELAY_PAAR_TOT"],"action":"trigger"}}},
+    {"id":4,"type":"relay","name":"RELAY_PAAR_TOT","pos":[0.0,0.0,-22.0],"rot":[0.0,0.0,0.0,1.0],"components":{"relay":{"mode":"any","delay":0.0,"once":true,"invert":false,"targets":["GATE_ARENA"],"action":"open"}}},
+    {"id":5,"type":"mesh","name":"GATE_ARENA","pos":[0.0,0.0,-25.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,0.2],"mesh":"testworld/block.gltf","category":"gameplay","components":{"mover":{"kind":"gate","open":false,"seconds":0.5}}},
+    {"id":6,"type":"spawn","name":"SPAWN_SPAETER","pos":[20.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"spawn":{"npc":"mon_mauerschlupfer","count":1,"respawn":false,"dormant":true,"active":false}}},
+    {"id":7,"type":"spawn","name":"SPAWN_E08_WELLE_1","pos":[-20.0,0.0,10.0],"rot":[0.0,0.0,0.0,1.0],"components":{"spawn":{"npc":"mon_mauerkriecher","count":2,"respawn":false,"dormant":false,"active":false}}},
+    {"id":8,"type":"spawn","name":"SPAWN_E08_WELLE_2","pos":[-20.0,0.0,20.0],"rot":[0.0,0.0,0.0,1.0],"components":{"spawn":{"npc":"mon_mauerkriecher","count":2,"respawn":false,"dormant":false,"active":false}}},
+    {"id":9,"type":"spawn","name":"SPAWN_E08_WELLE_3","pos":[-20.0,0.0,30.0],"rot":[0.0,0.0,0.0,1.0],"components":{"spawn":{"npc":"mon_mauerkriecher","count":2,"respawn":false,"dormant":false,"active":false}}}
+  ],
+  "waynet": {
+    "points": [
+      {"name": "WP_WELLEN_MITTE", "pos": [0.0, 0.0, 0.0]},
+      {"name": "WP_WELLEN_OST", "pos": [10.0, 0.0, 0.0]}
+    ],
+    "edges": [["WP_WELLEN_MITTE", "WP_WELLEN_OST"]],
+    "freepoints": []
+  }
+}

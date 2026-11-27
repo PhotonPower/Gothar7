@@ -316,6 +316,26 @@ volume = 0.5
 pitch_jitter = 0.1
 max_distance = 45
 
+[amb_hoard] # Hort der Kellermutter (Ebene 8, Platzhalter): schweres Gewölbe, tiefes Grollen, nass pulsierende Brut
+files = ["sounds/amb_hoard.wav"]
+bus = "ambient"
+loop = true
+volume = 0.5
+
+[chitin_click] # fernes Klicken von Chitin, ein Kriecher bewegt sich (Hort, Platzhalter)
+files = ["sounds/chitin_click.wav"]
+bus = "ambient"
+volume = 0.4
+pitch_jitter = 0.2
+max_distance = 30
+
+[slime_drip] # zäher Schleim tropft vom Gewölbe (Hort, Platzhalter)
+files = ["sounds/slime_drip.wav"]
+bus = "ambient"
+volume = 0.45
+pitch_jitter = 0.15
+max_distance = 20
+
 # --- Dungeon-Monster (Platzhalter aus tools/audio, Clip-Events sound:<art>_<was>)
 [gatterbock_attack]
 files = ["sounds/gatterbock_attack.wav"]

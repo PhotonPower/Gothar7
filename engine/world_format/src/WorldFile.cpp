@@ -353,7 +353,8 @@ Result<Spawn> readSpawn(const Reader& r, const Json& v, std::string_view where)
         spawn.count = static_cast<u32>(c["count"].get<u64>());
     }
     for (const auto& [key, flag] : {std::pair<const char*, bool*>{"respawn", &spawn.respawn},
-                                    std::pair<const char*, bool*>{"dormant", &spawn.dormant}})
+                                    std::pair<const char*, bool*>{"dormant", &spawn.dormant},
+                                    std::pair<const char*, bool*>{"active", &spawn.active}})
     {
         if (c.contains(key))
         {
@@ -363,6 +364,10 @@ Result<Spawn> readSpawn(const Reader& r, const Json& v, std::string_view where)
             }
             *flag = c[key].get<bool>();
         }
+    }
+    if (auto events = readEventTargets(r, c, at, spawn.targets, spawn.action); !events)
+    {
+        return events.error();
     }
     return spawn;
 }
@@ -1983,8 +1988,17 @@ Json vobJson(const WorldFileVob& vob)
     if (vob.type == VobType::Spawn)
     {
         const Spawn& s = vob.spawn;
-        v["components"]["spawn"] =
-            Json{{"npc", s.npc}, {"count", s.count}, {"respawn", s.respawn}, {"dormant", s.dormant}};
+        Json spawn = Json{{"npc", s.npc}, {"count", s.count}, {"respawn", s.respawn}, {"dormant", s.dormant}};
+        if (!s.targets.empty()) // only when set: targets with their action, then active
+        {
+            spawn["targets"] = s.targets;
+            spawn["action"] = s.action;
+        }
+        if (!s.active)
+        {
+            spawn["active"] = false;
+        }
+        v["components"]["spawn"] = std::move(spawn);
     }
     if (vob.type == VobType::Water)
     {

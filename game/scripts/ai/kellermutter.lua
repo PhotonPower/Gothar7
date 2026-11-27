@@ -2,6 +2,7 @@
 -- ihrem Leben: 1 Sensen und Zangen (ai/combat.lua); 2 (unter phases.rage) tobt sie einmal (t_rage) und ruft danach
 -- alle brood.call_seconds ihre Brut aus den Wänden (t_call, Clip-Event spawn_brood); 3 (unter phases.guard)
 -- schleppt sie sich zum Hort, schützt ihn (s_guard) und ihre Schwachstelle am Brutsack ist offen (npc_set_weak).
+-- Jede Phase setzt dazu eine Kriecher-Welle ein (Creatures.kellermutter.waves: inaktive Spawn-Marker, Ereignis on).
 -- Die Mechanik (Schwachstelle, Taumeln, Aktionen) ist C++; hier steht nur der Ablauf.
 
 local phase = {}    -- Kellermutter -> 1, 2, 3
@@ -73,19 +74,35 @@ State "zs_km_guard" {
     end,
 }
 
---- Wechselt die Phase nach dem Leben (nach jedem Treffer).
+--- Setzt die Kriecher-Welle der Phase `p` ein (ein verbrauchter Marker bleibt still).
+local function wave(c, p)
+    local name = c.waves and c.waves[p]
+    if name then
+        send(name, "on")
+    end
+end
+
+--- Wechselt die Phase nach dem Leben (nach jedem Treffer); der erste Schlagabtausch beginnt Phase 1.
 local function check_phase(npc)
     local c = boss(npc)
     if not c or fight_state(npc) == "dead" then
         return
     end
+    if not phase[npc] then
+        phase[npc] = 1
+        wave(c, 1)
+    end
     local share = npc_stat(npc, "hp") / math.max(1, npc_stat(npc, "hp_max"))
-    local now = phase[npc] or 1
+    local now = phase[npc]
     if share <= c.phases.guard and now < 3 then
+        for p = now + 1, 3 do
+            wave(c, p)
+        end
         phase[npc] = 3
         npc_set_weak(npc, true)
         npc_start_state(npc, "zs_km_guard")
     elseif share <= c.phases.rage and now < 2 then
+        wave(c, 2)
         phase[npc] = 2
         npc_start_state(npc, "zs_km_rage")
     end
@@ -94,6 +111,8 @@ end
 on("npc_hit", function(attacker, target)
     if target ~= "hero" and boss(target) then
         check_phase(target)
+    elseif target == "hero" and boss(attacker) then
+        check_phase(attacker) -- she strikes first: the fight (phase 1) begins
     end
 end)
 

@@ -504,6 +504,7 @@ bool Engine::runFrame()
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         m_particles.update(static_cast<f32>(m_fixedStep.step())); // effects (M12)
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateSpawns(); // E8: a boss dead opens the arena
         fixedUpdateProjectiles(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateBurning(static_cast<f32>(m_fixedStep.step())); // M12, decision B
         fixedUpdateGlow(static_cast<f32>(m_fixedStep.step()));    // M17 part G
@@ -1451,6 +1452,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
                 m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.size(),
                 timer.elapsedSeconds() * 1000.0);
+    resetSpawnStates(); // a restored world's saved state comes after this
     if (m_scripts && !m_restoringWorld)
     {
         spawnFromMarkers(); // dungeon D6: a new world's monsters (a restored one brings its own)
@@ -1517,6 +1519,7 @@ void Engine::unloadWorld()
     m_movers.clear();
     m_plates.clear();
     m_teleports.clear();
+    m_spawnStates.clear();
     m_pendingTeleport.reset();
     m_mobUse.reset();
     m_mobBodies.clear();

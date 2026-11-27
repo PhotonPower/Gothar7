@@ -355,6 +355,12 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 
 ## Stand D6 – Monster (umgesetzt)
 - **Format:** Vob-Typ **`spawn`** mit `components.spawn` = `npc`, `count` (1–32), `respawn`, `dormant` (world.md).
+- **Erweiterung E8** (Hort der Kellermutter): optional `targets` + `action` – sind **alle** NPCs eines Markers tot
+  (auch bei `count` > 1), schickt er `action` einmal an seine Ziele (Quelle = Markername; z. B.
+  `SPAWN_E08_KELLERMUTTER` → `RELAY_E08_BOSS_TOT` → Arena-Gatter auf). `active: false`: der Marker setzt beim Laden
+  nichts ein, erst wenn das Ereignis `on` oder `trigger` ihn erreicht (Relais, Trigger, Lua `send`), danach ist er
+  verbraucht. Beides wird gespeichert (`WorldState.spawns`: aktiviert/gefeuert je Vob, additiv), feuert also nach
+  Speichern/Laden weder doppelt noch geht es verloren (`fixedUpdateSpawns`, `spawnEvent` in `EngineSpawns.cpp`).
 - **Einsetzen** (`EngineSpawns.cpp`): Beim **ersten** Laden einer Welt (nicht aus einem Spielstand und nicht beim
   Wiederkommen in eine besuchte Ebene) setzt jeder Marker seine NPCs ein (nach Vob-ID; der erste auf dem Marker, die
   weiteren im Ring von 1,5 m, auf dem Boden darunter, Blick nach dem Yaw des Markers), vor `world_loaded`. Danach
@@ -410,7 +416,10 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   bis 60° neben der Gegenrichtung) doppelt, ab 5 % ihres Lebens taumelt sie (`t_stagger`). Lua: `npc_set_weak`,
   `npc_weak`, `boss_phase`, `brood_alive`. Sensenhiebe von der Seite: `Creatures.<art>.side_swing = { chance,
   hit_degrees }` – dieser Anteil ihrer Hiebe ist `t_scythe_l/r` (Aktionen 15/16) und trifft bis `hit_degrees` (100°)
-  neben ihrer Blickrichtung statt nur vorn (Kellermutter 0,4).
+  neben ihrer Blickrichtung statt nur vorn (Kellermutter 0,4). **Wellen (E8):** `Creatures.kellermutter.waves` nennt
+  je Phase einen inaktiven Spawn-Marker (`SPAWN_E08_WELLE_1..3`); Phase 1 beginnt mit dem ersten Schlagabtausch
+  (sie trifft oder wird getroffen), 2 und 3 beim Wechsel – jeweils `send(welle, "on")`, ein übersprungener Wechsel
+  setzt die Welle dazwischen mit ein.
 - **Beinhauswart** (figuren #461): Graph wie der Gatterbock (Erwachen `t_wake`, Drohen = Laterne entgegenstoßen
   `t_threaten`, Aktion 4), Kapsel stehend r 0,35 / h 2,0, Instanz `mon_beinhauswart` (Beute `it_lantern_beinhaus`,
   `it_shroud_rag`). Mechanik `Creatures.<art>.flash = { distance, degrees, seconds, colour }`: Beim

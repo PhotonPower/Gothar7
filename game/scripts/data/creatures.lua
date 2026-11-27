@@ -84,6 +84,9 @@ Creatures = {
         -- zum Hort und schützt ihn (s_guard), die Schwachstelle am Brutsack ist offen.
         phases = { rage = 2 / 3, guard = 1 / 3 },
         brood = { npc = "mon_mauerkriecher", count = 3, max = 6, call_seconds = 15 },
+        -- Jede Phase weckt eine Kriecher-Welle: inaktive Spawn-Marker von welt (Ebene 8), die das Ereignis on
+        -- einsetzt - Phase 1 beim ersten Schlagabtausch, 2 und 3 beim Wechsel (verbraucht, also nur einmal).
+        waves = { "SPAWN_E08_WELLE_1", "SPAWN_E08_WELLE_2", "SPAWN_E08_WELLE_3" },
         -- Offene Schwachstelle (Brutsack hinten): Treffer von hinten (bis 60° neben der Gegenrichtung) zählen
         -- doppelt; ab stagger_share des Lebens taumelt sie (t_stagger).
         weak = { degrees = 60, factor = 2.0, stagger_share = 0.05 },
