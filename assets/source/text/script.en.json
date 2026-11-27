@@ -1742,6 +1742,36 @@
       "context": "mobs/dungeon.lua",
       "status": "entwurf"
     },
+    "mob_dng_e7_chest_absturz.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e7_chest_insel.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e7_chest_seeufer.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e7_chest_treppe.name": {
+      "de": "Verschlossene Truhe",
+      "text": "Locked Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e7_niche_kristall.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
     "mob_testdungeon_niche.name": {
       "de": "Nische",
       "text": "Niche",

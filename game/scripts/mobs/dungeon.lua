@@ -301,3 +301,46 @@ Mob "mob_dng_e6_niche_gang" {
     type = "niche",
     contents = { it_scroll_firebolt = 1, it_gulden = 10 },
 }
+
+-- Ebene 7 „Kristallgrotte“ (welt #520). Maßvoll wie Ebene 5/6, keine Rune, keine Zweihandwaffe; dazu Leuchtkristalle.
+-- Untere Höhle hinter der Falle: ein Lohn für den Sturz.
+Mob "mob_dng_e7_chest_absturz" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_potion_heal_small = 2, it_torch = 1, it_gulden = 20 },
+}
+
+-- Seegrotte, Nordufer.
+Mob "mob_dng_e7_chest_seeufer" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_kristall = 2, it_potion_mana_small = 1, it_bolt = 15, it_gulden = 25 },
+}
+
+-- Insel im See (über den Steg, Brunnenmolche wachen): die beste Truhe der Ebene.
+Mob "mob_dng_e7_chest_insel" {
+    name = "Truhe",
+    type = "chest",
+    contents = {
+        it_ring_protection = 1,
+        it_kristall = 3,
+        it_potion_heal_medium = 1,
+        it_scroll_fear = 1,
+        it_gulden = 70,
+    },
+}
+
+-- Treppenkammer vor Ebene 8: verschlossen, Heiltränke als Vorbereitung auf die Kellermutter.
+Mob "mob_dng_e7_chest_treppe" {
+    name = "Verschlossene Truhe",
+    type = "chest",
+    lock = "RRLRLL",
+    contents = { it_potion_heal_medium = 3, it_potion_heal_small = 2, it_potion_strength = 1, it_gulden = 40 },
+}
+
+-- Kristallkammer: das Depot hinter der Kristallwand.
+Mob "mob_dng_e7_niche_kristall" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_kristall = 2, it_potion_mana_medium = 1, it_gulden = 15 },
+}
