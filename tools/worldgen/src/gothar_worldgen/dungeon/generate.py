@@ -90,8 +90,8 @@ THEMES = {  # theme -> (ambient zone, environment)
             "fog_distance": 18.0,
         },
     ),
-    "labyrinth": (  # Ebene 6: the vault's sound until engine has "labyrinth"
-        "gewoelbe",
+    "labyrinth": (  # Ebene 6: engine's ambient "labyrinth" (#514)
+        "labyrinth",
         {
             "ambient": [0.042, 0.045, 0.05],
             "fog_color": [0.017, 0.018, 0.021],
