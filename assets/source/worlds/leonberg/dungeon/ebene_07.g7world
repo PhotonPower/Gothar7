@@ -1016,7 +1016,6 @@
   },
   "zones": [
     {"type":"music","value":"DUNGEON","box":{"center":[45.0,1.75,37.5],"halfExtents":[45.0,6.55,37.5],"yaw":0.0}},
-    {"type":"ambient","value":"gewoelbe","box":{"center":[45.0,1.75,37.5],"halfExtents":[45.0,6.55,37.5],"yaw":0.0}},
     {"type":"ambient","value":"grotte","box":{"center":[45.0,1.75,37.5],"halfExtents":[45.0,6.55,37.5],"yaw":0.0}}
   ]
 }

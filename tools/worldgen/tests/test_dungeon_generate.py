@@ -310,7 +310,7 @@ def test_labyrinth_spinner_and_doors() -> None:
     assert door["visible"] is True and "TELE_E06_9_1_RING" in by
 
 
-@pytest.mark.parametrize("number", [1, 2, 3, 4, 5, 6])
+@pytest.mark.parametrize("number", [1, 2, 3, 4, 5, 6, 8])
 def test_floor_and_ceiling_unlike_the_walls(number: int) -> None:
     """Owner 2026-11-26: flagstones on the floor, bricks or rough rock above, ribs or beams
     every few metres; the walls stay rubble."""
@@ -432,3 +432,81 @@ def test_cave_kit_parts() -> None:
     assert max(p[1] for b in rock.builders.values() for p in b.pos) > 2.0
     assert "crystal" in kit.crystal_cluster().builders
     assert "crystal" in kit.crystal_wall().builders and "crystal" in kit.crystal_switch().builders
+
+
+def test_hort_arena_gate_waves_and_light() -> None:
+    """W8 E8: the gate and its plate, the boss and the waves for engine2, the collapsed vault as
+    rock in a masonry level, the brood's orange glow, torches and the hoard's light."""
+    from gothar_worldgen.dungeon.generate import LIGHT_BROOD
+
+    lv = load_level(DATA, 8)
+    plan = plan_level(lv, "leonberg")
+    by = {v["name"]: v for v in plan.vobs}
+    assert by["GATE_E08_ARENA"]["components"]["mover"]["open"] is True
+    assert by["GATE_E08_HORT"]["components"]["mover"]["open"] is False
+    plate = by["PLATE_E08_ARENA"]["components"]["trigger"]
+    assert plate["once"] is True and plate["filter"] == "player" and "plate" not in plate
+    assert plate["targets"] == ["GATE_E08_ARENA"] and plate["action"] == "close"
+    assert "PLATE_E08_ARENA_STEIN" not in by  # hidden
+    gate_x = by["GATE_E08_ARENA"]["pos"][0]
+    half = plate["halfExtents"]
+    assert half[2] == 1.5  # across the whole passage: nobody slips past
+    assert by["PLATE_E08_ARENA"]["pos"][0] - half[0] - gate_x >= 2.0  # a good 2 m behind
+    boss = by["SPAWN_E08_KELLERMUTTER"]["components"]["spawn"]
+    assert boss["npc"] == "mon_kellermutter" and boss["targets"] == ["RELAY_E08_BOSS_TOT"]
+    assert "active" not in boss
+    relay = by["RELAY_E08_BOSS_TOT"]["components"]["relay"]
+    assert relay["once"] and relay["action"] == "open"
+    assert relay["targets"] == ["GATE_E08_ARENA", "GATE_E08_HORT"]
+    for k in range(1, 4):  # exactly these: the Kellermutter's Lua sends "on" to them (#522)
+        wave = by[f"SPAWN_E08_WELLE_{k}"]["components"]["spawn"]
+        assert wave["active"] is False and wave["dormant"] is False and "targets" not in wave
+    assert "SPAWN_E08_WELLE_4" not in by
+    assert list(boss)[-2:] == ["targets", "action"]  # after dormant (engine's writer order)
+    others = [v for v in plan.vobs if v["type"] == "spawn" and "WELLE" not in v["name"]]
+    assert all("active" not in v["components"]["spawn"] for v in others)
+    mats = set().union(*(m.builders for m in plan.blocks.values()))
+    assert {"rubble", "flag_damp", "vault_rock", "ashlar", "cave_wall", "cave_floor",
+            "cave_ceiling"} <= mats  # fmt: skip
+    arena = [m for m in plan.blocks.values() if "cave_wall" in m.builders]
+    assert any("rubble" in m.builders for m in arena)  # the vault meets the rock in one block
+    lights = [v for v in plan.vobs if v["type"] == "light"]
+    brood = [v for v in lights if v["components"]["light"]["color"] == LIGHT_BROOD["color"]]
+    assert len(brood) >= 8 and any(n.startswith("TORCH_E08") for n in by)
+    torch = by["LIGHT_E08_24_10_W"]["components"]["light"]
+    assert torch["range"] == 9.0 and torch["intensity"] == 4.0  # ``torchLight``
+    centre = by["SPAWN_E08_KELLERMUTTER"]["pos"]
+    near = [v for v in brood if math.dist(v["pos"], centre) < 12.0]
+    assert len(near) >= 2  # the middle of the arena can be seen
+    ambient = [z["value"] for z in plan.zones if z["type"] == "ambient"]
+    assert ambient == ["hort"]  # engine #522
+    names = {c.name for m in plan.blocks.values() for c in m.collision}
+    assert "COL_HULL_vault_13_12" in names or any(n.startswith("COL_HULL_vault_") for n in names)
+
+
+def test_hort_kit_parts() -> None:
+    for name in ("egg_sacks", "brood_glow", "brood_ceiling", "bones", "slime", "pillar",
+                 "pillar_broken", "rubble_heap", "gold_hoard"):  # fmt: skip
+        m = kit.KIT[name]()
+        assert m.triangles() > 100 and m.collision, name
+    top = max(p[1] for b in kit.pillar().builders.values() for p in b.pos)
+    assert top > 5.9  # up into the rock over the 5 m arena
+    stump = max(p[1] for b in kit.pillar_broken().builders.values() for p in b.pos)
+    assert 2.0 < stump < 2.6
+    assert "glow" in kit.brood_glow().builders and "gold" in kit.gold_hoard().builders
+    low = min(p[1] for b in kit.slime().builders.values() for p in b.pos)
+    assert low > -0.1  # lies on the floor (its lumps sink in a little)
+
+
+def test_a_changed_ambient_replaces_the_old_zone() -> None:
+    """A level's ambient that changed (stub "gewoelbe" -> its own) leaves no second zone over
+    the same box; a zone placed by hand elsewhere stays."""
+    lv = level1()
+    plan = plan_level(lv, "leonberg")
+    first = build_world(lv, plan, "leonberg", VobIds({}, 1), None)
+    (amb,) = [z for z in first["zones"] if z["type"] == "ambient"]
+    hand = {**amb, "value": "hand", "box": {**amb["box"], "center": [1.0, 1.0, 1.0]}}
+    old = {**first, "zones": [*first["zones"], {**amb, "value": "alt"}, hand]}
+    again = build_world(lv, plan_level(lv, "leonberg"), "leonberg", VobIds({}, 1), old)
+    values = [z["value"] for z in again["zones"] if z["type"] == "ambient"]
+    assert values == ["hand", amb["value"]]

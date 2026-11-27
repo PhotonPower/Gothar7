@@ -1273,7 +1273,6 @@
   },
   "zones": [
     {"type":"music","value":"DUNGEON","box":{"center":[46.5,1.75,43.5],"halfExtents":[46.5,6.55,43.5],"yaw":0.0}},
-    {"type":"ambient","value":"gewoelbe","box":{"center":[46.5,1.75,43.5],"halfExtents":[46.5,6.55,43.5],"yaw":0.0}},
     {"type":"ambient","value":"labyrinth","box":{"center":[46.5,1.75,43.5],"halfExtents":[46.5,6.55,43.5],"yaw":0.0}}
   ]
 }

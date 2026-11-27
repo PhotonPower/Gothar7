@@ -532,8 +532,51 @@ schreibt.
   - Truhen und Nische mit ihren Definitionen (engine #521): [1,20] `mob_dng_e7_chest_absturz` (Tiefe Grotte),
     [20,13] `mob_dng_e7_chest_seeufer`, [18,17] `mob_dng_e7_chest_insel`, [25,21] `mob_dng_e7_chest_treppe`,
     Nische [24,1] `mob_dng_e7_niche_kristall` (Kristallkammer). Ambiente `grotte` (engine #517).
-- **Ebene 8** als Stub (Thema `hort`, Raumhöhe 5 m für die Kellermutter, vorerst Ambiente `gewoelbe`).
+- **Ebene 8** siehe 7i.
 - Offen für engine: Felder `silent`/`keep_velocity` am Teleporter.
+
+## 7i. Stand D3 (welt): Ebene 8 „Hort der Kellermutter“ (Endgegner)
+- **Neu in der Karten-JSON** (für alle Ebenen nutzbar):
+  - `name` an einem Zelleneintrag oder einem `spawns`-Eintrag ersetzt die Zelle im Vob-Namen
+    (`GATE_E08_ARENA`, `SPAWN_E08_KELLERMUTTER`; Buchstaben, Ziffern, `_`). Doppelte Namen sind ein Fehler.
+  - Monsterplatz bzw. Spawn mit `active: false` (setzt erst auf ein Ereignis `on`/`trigger` ein) und mit
+    `targets`/`action` (gehen einmal, wenn alle seine Monster tot sind). Beides Entscheidung Koordinator
+    2026-11-27, engine #522 (Schreibfolge nach `dormant`: `targets`, `action`, `active`).
+    `check_reach` behandelt den Tod als einmalige Aktion auf der Zelle des Spawns.
+  - Trittplatte mit `once`: ein gewöhnlicher Trigger (`once`, ohne `plate`), der beim ersten Betreten
+    feuert und nie das Gegenstück schickt; `hidden` ohne Stein. Er reicht über die ganze Zellbreite und
+    beginnt gut 2 m hinter dem Nachbargatter. `check_reach` löst ihn beim Betreten zwangsweise aus.
+  - `cave`: Zell-Rechtecke, die in einer gemauerten Ebene als Fels gebaut werden wie Ebene 7 (Wände,
+    Decke, Boden); Gurtbögen enden davor, der Fels läuft an der Grenze auf die Zellkante aus.
+  - Musik- und Ambiente-Zone über der ganzen Ebene ersetzen beim Neuerzeugen die alte Zone mit derselben
+    Box, auch wenn sich der Wert geändert hat (vorher blieb `gewoelbe` neben `zisterne`, `werkstatt`,
+    `labyrinth`, `grotte` stehen; die verwaiste Stub-Zone in Ebene 4 ist von Hand entfernt).
+  - `torchLight` überschreibt Reichweite/Stärke der Fackel-Lichter dieser Ebene (Ebene 8: 9 m, 4).
+  - Requisiten der Brut: `egg_sacks` (Eiersäcke im Schleimnetz, Wand), `brood_glow` (glühender Brutbewuchs,
+    Wand) und `brood_ceiling` (hängt von der Decke) mit orangem Licht (1,0/0,5/0,18, 13 m, Stärke 12, leichtes
+    Flackern: die Farbe ihrer Schwachstelle), `bones` und `slime` (Knochen und Chitin bzw. Schleim auf dem
+    Boden, Zelle bleibt frei), `pillar` (Quadersäule 1,8 m, bis in den Fels), `pillar_broken` (Stumpf mit
+    umgestürzten Trommeln), `rubble_heap` (Schutt des eingestürzten Gewölbes), `gold_hoard` (Münzen, Pokale,
+    Kästchen; mit warmem Licht). Die letzten vier füllen ihre Zelle.
+- **Ebene 8** (30 × 20, 147 begehbare Zellen; Thema `hort`: feuchte Platten, rauer Stein mit Quaderbögen,
+  Grundlicht warm 0,1/0,075/0,058; Ambiente `hort`, engine #522):
+  - Ankunft (Treppe hinauf nach Ebene 7, `START_E08_VON_OBEN`), kurzer Gang mit immer mehr Brutspuren
+    (Knochen, Chitin, Eiersäcke, Schleim, Brutbewuchs), **Brutkammer** mit drei Mauerkriechern
+    (`SPAWN_E08_4_6`), Gang hinab zur **Vorkammer** (Fackeln, Truhe, Heiltrank: Ruhe vor dem Kampf).
+  - **Arena** (9 × 9 Zellen, 27 m, Höhe 5 m bis 5,9 m im Fels): ein halb eingestürztes Gewölbe in
+    Höhlen-Optik; drei Quadersäulen und ein Stumpf als Deckung, zwei Schutthaufen, Stalaktiten, sechs
+    glühende Brutstellen an den Wänden und zwei an der Decke. Die **Kellermutter** steht in der Mitte
+    (`SPAWN_E08_KELLERMUTTER`, Hort-Punkt für ihre Wachphase). Vier **Seitennischen** (N, S, W, O) mit
+    Eiersäcken; in dreien je drei Mauerkriecher, zu Beginn aus: `SPAWN_E08_WELLE_1` (N, [17,7]), `_2` (S,
+    [17,17]), `_3` (O, [22,14]); ihr Lua (`ai/kellermutter.lua`, #522) schickt ihnen je Phase `on`.
+  - **Gatter:** `GATE_E08_ARENA` ([11,12]) steht offen; der Trigger `PLATE_E08_ARENA` ([12,12], nur der Held,
+    einmal) schließt es hinter ihm. Stirbt die Kellermutter, schickt ihr Spawn `open` an
+    `RELAY_E08_BOSS_TOT` (`any`, `once`), und das öffnet `GATE_E08_ARENA` und `GATE_E08_HORT` ([23,12]).
+  - **Hort:** Gold auf zwei Haufen, 500 Gulden, drei Truhen, eine Nische, **Teleporter hinauf** in den
+    Schlosskeller (`leonberg.g7world`, `START_SCHLOSS_FASS`; ein Weltwechsel, also kein Neuladen derselben Welt).
+  - Erreichbarkeit grün; ohne ihren Tod bleibt die Arena eine Falle ohne Rückweg und der Hort zu (Tests).
+  - Truhen [6,14] Vorkammer, [25,9], [28,9], [27,15] Hort; Nische [26,8] Hort – vorerst ohne Definition
+    (`chest`/`niche`), die `mob_dng_e8_*`-Namen kommen mit engine2.
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |

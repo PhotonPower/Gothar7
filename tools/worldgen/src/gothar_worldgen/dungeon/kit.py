@@ -34,6 +34,12 @@ Still pieces (``props`` of a level, W8 E4 "Beinhaus"; mesh vobs with their colli
   crystals at the wall (origin on the floor at the wall face, towards +Z); ``crystal_ceiling``
   hangs like a stalactite, ``crystal_spire`` rises from a pool's bottom.
 - ``crystal_wall`` and ``crystal_switch``: the cave's looks of ``secret_wall`` and ``wall_button``.
+- The lair (W8 E8 "Hort"): ``egg_sacks`` (pale egg sacks in a slime web at the wall, origin on
+  the floor at the wall face, towards +Z), ``brood_glow`` (glowing brood growth on the wall, the
+  level adds an orange light), ``bones`` and ``slime`` (bone and chitin remains, slime pools: lie
+  on the floor, no collision), ``pillar`` (a thick ashlar column, 1.8 m across, up into the rock),
+  ``pillar_broken`` (its stump with fallen drums), ``rubble_heap`` (stones of the fallen vault)
+  and ``gold_hoard`` (coins, goblets and caskets); the last four fill their cell.
 """
 
 from __future__ import annotations
@@ -92,6 +98,12 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "cave_floor": ("cave_rock", (0.1, 0.1, 0.105)),  # darker, trodden
     "cave_ceiling": ("cave_rock", (0.12, 0.12, 0.13)),
     "crystal": ("clay", (0.45, 0.78, 0.95)),  # pale blue-turquoise, smooth
+    # the lair (W8 E8): the brood's remains and the hoard
+    "egg": ("clay", (0.4, 0.37, 0.29)),  # pale, yellowed egg sacks
+    "chitin": ("clay", (0.06, 0.042, 0.03)),  # dark brown shell fragments
+    "slime": ("clay", (0.07, 0.075, 0.05)),  # dull olive slime on the floor
+    "glow": ("clay", (0.95, 0.42, 0.1)),  # the brood's glowing growth: orange
+    "gold": ("iron", (0.62, 0.42, 0.1)),  # coins and goblets
 }
 CELL_M = 3.0
 WALL_H = 3.5
@@ -601,10 +613,301 @@ def crystal_switch() -> KitMesh:
     return m
 
 
+def _hash(i: int, j: int = 0) -> float:
+    """0..1 per integer pair (integer hash: same bytes everywhere)."""
+    h = ((i * 73856093) ^ (j * 19349663)) & 0xFFFFFFFF
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+    return (h ^ (h >> 16)) / 2**32
+
+
+def _blob(m: KitMesh, material: str, c: Vec3, r: Vec3, seg: int = 10, rings: int = 6) -> None:
+    """An ellipsoid with smooth normals (eggs, knobs, shell fragments)."""
+    b = m.b(material)
+    base = len(b.pos)
+    for i in range(rings + 1):
+        th = math.pi * i / rings
+        for j in range(seg + 1):
+            ph = 2 * math.pi * j / seg
+            n = (math.sin(th) * math.cos(ph), math.cos(th), math.sin(th) * math.sin(ph))
+            p = (c[0] + r[0] * n[0], c[1] + r[1] * n[1], c[2] + r[2] * n[2])
+            g = (n[0] / r[0], n[1] / r[1], n[2] / r[2])
+            length = math.sqrt(g[0] ** 2 + g[1] ** 2 + g[2] ** 2) or 1.0
+            b.pos.append((p[0] - b.ox, p[1] - b.oy, p[2] - b.oz))
+            b.nrm.append((g[0] / length, g[1] / length, g[2] / length))
+            b.uv.append((j / seg * 2 * max(r), i / rings * 2 * max(r)))
+    for i in range(rings):
+        for j in range(seg):
+            a, d = base + i * (seg + 1) + j, base + (i + 1) * (seg + 1) + j
+            b.idx += [a, a + 1, d + 1, a, d + 1, d]
+
+
+def _cap(m: KitMesh, material: str, centre: Vec3, d: Vec3, radius: float, sides: int,
+         turn: float = 0.0) -> None:  # fmt: skip
+    """The flat end of a ``_spike`` prism (facing ``d``)."""
+    w, u, v = _basis(d)
+    c = np.array(centre, dtype=float)
+    ring = [c + (u * math.cos(turn + 2 * math.pi * k / sides)
+                 + v * math.sin(turn + 2 * math.pi * k / sides)) * radius
+            for k in range(sides)]  # fmt: skip
+    b = m.b(material)
+    for k in range(sides):
+        tri = [_v(c), _v(ring[k]), _v(ring[(k + 1) % sides])]
+        uv = [(0.5, 0.5), (0.5 + 0.5 * math.cos(k), 0.5), (0.5, 0.5 + 0.5 * math.sin(k))]
+        b.polygon(tri, uv, _v(w))  # type: ignore[arg-type]
+
+
+def _drum(m: KitMesh, material: str, base: Vec3, d: Vec3, r: float, length: float,
+          sides: int = 10, turn: float = 0.0) -> None:  # fmt: skip
+    """A closed cylinder (column drum, goblet foot) along ``d``; the texture runs round it in
+    metres (the joints of the ashlar continue from face to face)."""
+    w, u, v = _basis(d)
+    b = m.b(material)
+    p0 = np.array(base, dtype=float)
+    p1 = p0 + w * length
+    edge = 2 * r * math.sin(math.pi / sides)
+    for k in range(sides):
+        a0 = turn + 2 * math.pi * k / sides
+        a1 = turn + 2 * math.pi * (k + 1) / sides
+        o0 = (u * math.cos(a0) + v * math.sin(a0)) * r
+        o1 = (u * math.cos(a1) + v * math.sin(a1)) * r
+        quad = [p0 + o0, p0 + o1, p1 + o1, p1 + o0]
+        out = _v((o0 + o1) / 2)
+        u0 = k * edge
+        uv = [(u0, 0.0), (u0 + edge, 0.0), (u0 + edge, length), (u0, length)]
+        b.polygon([_v(q) for q in quad], uv, out)  # type: ignore[arg-type]
+    _cap(m, material, base, _v(-w), r, sides, turn)
+    _cap(m, material, _v(np.array(base) + w * length), d, r, sides, turn)
+
+
+def _no_body(m: KitMesh) -> None:
+    m.body("none", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02))  # below the floor: nothing to bump
+
+
+EGGS = (  # (x, y, z) centre, radius across, radius up
+    (-0.45, 0.28, 0.32, 0.26, 0.34),
+    (0.05, 0.3, 0.36, 0.3, 0.4),
+    (0.5, 0.26, 0.3, 0.24, 0.32),
+    (-0.2, 0.22, 0.62, 0.2, 0.26),
+    (0.3, 0.2, 0.62, 0.19, 0.24),
+    (-0.7, 0.2, 0.22, 0.18, 0.24),
+    (0.78, 0.18, 0.2, 0.17, 0.22),
+    (-0.25, 0.78, 0.22, 0.22, 0.3),
+    (0.28, 0.85, 0.2, 0.2, 0.28),
+    (0.02, 1.32, 0.16, 0.17, 0.24),
+    (-0.5, 1.15, 0.14, 0.15, 0.2),
+    (0.55, 1.45, 0.13, 0.13, 0.18),
+)
+
+
+def egg_sacks() -> KitMesh:
+    """Pale egg sacks of the brood, a dozen in a web of dried slime at the wall (up to 1.7 m)."""
+    m = KitMesh()
+    _blob(m, "slime", (0.0, 0.75, 0.04), (1.05, 0.95, 0.12), 12, 6)  # the web on the wall
+    _blob(m, "slime", (0.0, 0.03, 0.4), (1.0, 0.05, 0.5), 12, 4)  # its foot on the floor
+    for k, (x, y, z, rx, ry) in enumerate(EGGS):
+        _blob(m, "egg", (x, y, z), (rx, ry, rx * (0.9 + 0.2 * _hash(k))))
+    for k in range(3):  # a burst one: a dark hole and shell rags
+        x = (-0.45, 0.5, -0.25)[k]
+        _blob(m, "chitin", (x + 0.1, 0.05, 0.75 + 0.1 * k), (0.12, 0.03, 0.08), 8, 3)
+    m.body("egg_sacks", (-0.95, 0.0, 0.0), (0.95, 1.1, 0.85))
+    return m
+
+
+def brood_glow() -> KitMesh:
+    """A growth of the brood on the wall: a dark crusted mass with glowing orange caps and
+    knobs at 0.8-2.3 m (the level adds an orange light); nothing to bump into."""
+    m = KitMesh()
+    for x, y, rx, ry in ((-0.3, 1.3, 0.6, 0.5), (0.35, 1.65, 0.55, 0.6), (-0.1, 2.05, 0.45, 0.35),
+                         (0.6, 1.05, 0.3, 0.3), (-0.65, 1.85, 0.3, 0.4)):  # fmt: skip
+        _blob(m, "chitin", (x, y, 0.03), (rx, ry, 0.14), 10, 5)  # the crusted mass, lumpy
+    caps = ((-0.45, 1.05, 0.2, 0.32), (0.3, 1.25, 0.22, 0.38), (-0.1, 1.75, 0.2, 0.3),
+            (0.55, 1.95, 0.16, 0.24), (-0.6, 1.95, 0.14, 0.22),
+            (0.05, 2.25, 0.12, 0.2))  # fmt: skip
+    for x, y, z, r in caps:  # shelf caps sticking out of the wall
+        _blob(m, "glow", (x, y, z), (r, r * 0.28, r * 0.9), 10, 4)
+    for k in range(9):  # glowing knobs
+        x = -0.75 + 1.5 * _hash(k, 1)
+        y = 0.85 + 1.5 * _hash(k, 2)
+        r = 0.05 + 0.06 * _hash(k, 3)
+        _blob(m, "glow", (x, y, 0.12 + r * 0.5), (r, r, r), 8, 4)
+    _no_body(m)
+    return m
+
+
+def brood_ceiling() -> KitMesh:
+    """The brood's growth hanging from the rock overhead (origin at the ceiling's height, rooted
+    1 m up): a crusted mass with glowing knobs and strands down to 1.4 m (the level adds an orange
+    light below it); the cell stays free."""
+    m = KitMesh()
+    for x, z, r, d in ((0.0, 0.0, 0.7, 1.3), (0.45, 0.3, 0.4, 1.0), (-0.4, -0.25, 0.45, 1.05)):
+        _blob(m, "chitin", (x, 1.0 - d / 2, z), (r, d / 2 + 0.1, r * 0.85), 10, 5)
+    for k in range(10):
+        a = 2 * math.pi * _hash(k, 71)
+        rr = 0.15 + 0.55 * _hash(k, 72)
+        x, z = rr * math.cos(a), rr * math.sin(a)
+        y = -0.1 - 0.35 * _hash(k, 73)
+        r = 0.08 + 0.1 * _hash(k, 74)
+        _blob(m, "glow", (x, y, z), (r, r * 1.3, r), 8, 4)
+        if k % 3 == 0:  # a strand with a glowing drop
+            length = 0.5 + 0.5 * _hash(k, 75)
+            _spike(m, "slime", (x, y, z), (0.0, -1.0, 0.0), 0.025, 0.015, length, 0.0, 5)
+            _blob(m, "glow", (x, y - length, z), (0.06, 0.08, 0.06), 6, 3)
+    m.body("none", (-0.02, 1.5, -0.02), (0.02, 1.54, 0.02))  # in the rock: nothing to bump
+    return m
+
+
+def bones() -> KitMesh:
+    """Bone and chitin remains strewn over the floor (within 1.2 m of the middle): long bones,
+    two skulls, ribs and broken shell plates of the brood; walked over, no collision."""
+    m = KitMesh()
+    for k in range(11):  # long bones
+        a = 2 * math.pi * _hash(k, 11)
+        r = 0.25 + 0.9 * _hash(k, 12)
+        x, z = r * math.cos(a), r * math.sin(a)
+        t = 2 * math.pi * _hash(k, 13)
+        d = (math.cos(t), 0.04, math.sin(t))
+        length = 0.32 + 0.22 * _hash(k, 14)
+        base = (x - d[0] * length / 2, 0.035, z - d[2] * length / 2)
+        _spike(m, "bone", base, d, 0.028, 0.026, length, 0.0, 5, t)
+        for end in (0.0, length):  # the knobbly ends
+            p = (base[0] + d[0] * end, 0.04, base[2] + d[2] * end)
+            _blob(m, "bone", p, (0.05, 0.04, 0.05), 6, 3)
+    _skull(m, 0.55, 0.0, -0.35, 1)
+    _skull(m, -0.7, 0.0, 0.5, -1)
+    for k in range(6):  # ribs: thin arcs as short bent bones
+        x0, z0 = -0.3 + 0.12 * k, 0.65 - 0.05 * k
+        _spike(m, "bone", (x0, 0.02, z0), (0.15, 0.6, 0.45), 0.015, 0.012, 0.22, 0.0, 4)
+    for k in range(8):  # chitin plates of dead brood
+        a = 2 * math.pi * _hash(k, 21)
+        r = 0.2 + 1.0 * _hash(k, 22)
+        size = 0.12 + 0.12 * _hash(k, 23)
+        _blob(m, "chitin", (r * math.cos(a), 0.02, r * math.sin(a)),
+              (size, 0.035, size * 0.7), 8, 3)  # fmt: skip
+    _no_body(m)
+    return m
+
+
+def slime() -> KitMesh:
+    """Pools and trails of slime on the floor (1-2 cm thick, a few lumps); no collision."""
+    m = KitMesh()
+    b = m.b("slime")
+    pools = ((0.0, 0.0, 0.95), (-0.85, 0.6, 0.45), (0.8, -0.7, 0.5), (0.6, 0.85, 0.32),
+             (-0.75, -0.8, 0.3))  # fmt: skip
+    for k, (cx, cz, r) in enumerate(pools):
+        n = 14
+        ring = []
+        for i in range(n):
+            a = 2 * math.pi * i / n
+            rr = r * (0.7 + 0.45 * _hash(k, i))
+            ring.append((cx + rr * math.cos(a), 0.012 + 0.002 * k, cz + rr * math.sin(a)))
+        c = (cx, 0.016 + 0.002 * k, cz)
+        for i in range(n):
+            tri = [c, ring[i], ring[(i + 1) % n]]
+            b.polygon(tri, [(p[0], p[2]) for p in tri], (0.0, 1.0, 0.0))
+    for k in range(7):  # lumps
+        a = 2 * math.pi * _hash(k, 31)
+        r = 0.7 * _hash(k, 32)
+        size = 0.06 + 0.08 * _hash(k, 33)
+        _blob(m, "slime", (r * math.cos(a), 0.01, r * math.sin(a)), (size, size * 0.45, size), 8, 3)
+    _no_body(m)
+    return m
+
+
+PILLAR_R = 0.9  # a pillar of the old vault: 1.8 m across, up into the rock overhead
+PILLAR_H = 6.2
+
+
+def pillar() -> KitMesh:
+    """A thick ashlar column of the old vault: plinth, shaft of drums, up into the rock; egg
+    sacks of the brood at its foot."""
+    m = KitMesh()
+    _drum(m, "ashlar", (0.0, 0.0, 0.0), (0.0, 1.0, 0.0), PILLAR_R + 0.15, 0.4, 8, math.pi / 8)
+    y = 0.4
+    for k in range(8):  # drums of 0.75 m, each turned a little: the joints show
+        _drum(m, "ashlar", (0.0, y, 0.0), (0.0, 1.0, 0.0), PILLAR_R, 0.75, 8,
+              math.pi / 8 + 0.06 * (k % 3 - 1))  # fmt: skip
+        y += 0.75
+    for a, r in ((0.6, 0.2), (1.1, 0.16), (2.9, 0.18), (4.4, 0.15)):
+        x, z = (PILLAR_R + 0.25) * math.cos(a), (PILLAR_R + 0.25) * math.sin(a)
+        _blob(m, "egg", (x, r * 1.2, z), (r, r * 1.3, r))
+        _blob(m, "slime", (x, 0.02, z), (r * 1.8, 0.03, r * 1.8), 8, 3)
+    m.body("pillar", (-PILLAR_R - 0.15, 0.0, -PILLAR_R - 0.15), (PILLAR_R + 0.15, PILLAR_H,
+                                                                  PILLAR_R + 0.15))  # fmt: skip
+    return m
+
+
+def pillar_broken() -> KitMesh:
+    """A broken column: plinth and a stump of 2.3 m with a jagged top, two drums fallen beside
+    it (cover for the hero, too low to hide the Kellermutter)."""
+    m = KitMesh()
+    _drum(m, "ashlar", (0.0, 0.0, 0.0), (0.0, 1.0, 0.0), PILLAR_R + 0.15, 0.4, 8, math.pi / 8)
+    _drum(m, "ashlar", (0.0, 0.4, 0.0), (0.0, 1.0, 0.0), PILLAR_R, 0.75, 8, math.pi / 8)
+    _drum(m, "ashlar", (0.0, 1.15, 0.0), (0.0, 1.0, 0.0), PILLAR_R, 0.7, 8, 0.5)
+    _drum(m, "ashlar", (0.15, 1.85, 0.1), (0.08, 1.0, 0.05), PILLAR_R * 0.75, 0.45, 8, 0.2)
+    _drum(m, "ashlar", (0.55, 0.0, 0.9), (1.0, 0.0, 0.35), PILLAR_R * 0.85, 0.75, 8)  # fallen
+    _drum(m, "ashlar", (-0.95, 0.0, 0.25), (-0.3, 0.0, 1.0), PILLAR_R * 0.8, 0.7, 8, 0.3)
+    for k in range(6):  # chips
+        a = 2 * math.pi * _hash(k, 41)
+        r = 1.1 + 0.3 * _hash(k, 42)
+        s = 0.12 + 0.12 * _hash(k, 43)
+        x, z = r * math.cos(a), r * math.sin(a)
+        m.box("ashlar", (x - s, 0.0, z - s * 0.8), (x + s, s * 1.1, z + s * 0.8))
+    m.body("pillar_broken", (-1.05, 0.0, -1.05), (1.05, 2.3, 1.05))
+    m.body("pillar_broken_drum", (-1.25, 0.0, 0.1), (1.45, 1.4, 1.35))
+    return m
+
+
+def rubble_heap() -> KitMesh:
+    """Stones of the fallen vault in a heap up to 1.9 m, a broken rib across it."""
+    m = KitMesh()
+    _spike(m, "rubble", (0.0, -0.05, 0.0), (0.05, 1.0, 0.02), 1.3, 0.35, 1.5, 0.35, 9, 0.3)
+    for k in range(16):  # blocks on the heap
+        a = 2 * math.pi * _hash(k, 51)
+        r = 1.25 * _hash(k, 52)
+        h = 1.6 * (1 - r / 1.35) ** 0.8
+        sx, sy, sz = (
+            0.22 + 0.2 * _hash(k, 53),
+            0.16 + 0.12 * _hash(k, 54),
+            0.2 + 0.18 * _hash(k, 55),
+        )
+        x, z = r * math.cos(a), r * math.sin(a)
+        mat = "ashlar" if k % 3 else "rubble"
+        m.box(mat, (x - sx, max(h - sy, 0.0), z - sz), (x + sx, h + sy, z + sz))
+    m.box("ashlar", (-1.4, 0.55, -0.18), (1.2, 0.9, 0.18), grain=0)  # the broken rib
+    m.box("ashlar", (0.9, 0.2, -0.2), (1.3, 0.55, 0.2))
+    m.body("rubble_heap", (-1.3, 0.0, -1.3), (1.3, 1.5, 1.3))
+    return m
+
+
+def gold_hoard() -> KitMesh:
+    """The hoard: a heap of coins with goblets, a crowned casket and spilled coins."""
+    m = KitMesh()
+    _spike(m, "gold", (0.0, -0.02, 0.0), (0.0, 1.0, 0.0), 1.05, 0.3, 0.6, 0.18, 12)
+    for k in range(40):  # coins on and round the heap
+        a = 2 * math.pi * _hash(k, 61)
+        r = 1.35 * _hash(k, 62) ** 0.7
+        h = max(0.0, 0.75 * (1 - r / 1.05)) if r < 1.05 else 0.0
+        x, z = r * math.cos(a), r * math.sin(a)
+        m.box("gold", (x - 0.04, h, z - 0.04), (x + 0.04, h + 0.012, z + 0.04))
+    for k, (x, z) in enumerate(((0.75, -0.55), (-0.8, 0.4), (0.25, 0.85))):  # goblets
+        _drum(m, "gold", (x, 0.0, z), (0.0, 1.0, 0.0), 0.08, 0.02, 8)
+        _drum(m, "gold", (x, 0.02, z), (0.0, 1.0, 0.0), 0.025, 0.14, 6)
+        _spike(m, "gold", (x, 0.16, z), (0.0, 1.0, 0.0), 0.04, 0.09, 0.12, 0.0, 8, 0.1 * k)
+    m.box("oak", (-1.05, 0.0, -0.85), (-0.45, 0.38, -0.45))  # a casket, iron bands
+    m.box("iron", (-1.06, 0.0, -0.75), (-0.44, 0.39, -0.71))
+    m.box("iron", (-1.06, 0.0, -0.59), (-0.44, 0.39, -0.55))
+    m.box("gold", (-0.95, 0.38, -0.8), (-0.55, 0.45, -0.5))  # coins over its brim
+    m.body("gold_hoard", (-1.1, 0.0, -1.0), (1.1, 0.8, 1.0))
+    return m
+
+
 PROPS = {"sarcophagus": sarcophagus, "bone_niche": bone_niche, "workbench": workbench,
          "cogwheel": cogwheel, "stalagmite": stalagmite, "stalactite": stalactite,
          "crystal_cluster": crystal_cluster, "crystal_ceiling": crystal_ceiling,
-         "crystal_spire": crystal_spire}  # fmt: skip
+         "crystal_spire": crystal_spire, "egg_sacks": egg_sacks, "brood_glow": brood_glow,
+         "brood_ceiling": brood_ceiling, "bones": bones, "slime": slime, "pillar": pillar,
+         "pillar_broken": pillar_broken,
+         "rubble_heap": rubble_heap, "gold_hoard": gold_hoard}  # fmt: skip
 
 KIT = {
     "gate": gate,
