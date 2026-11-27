@@ -1545,6 +1545,14 @@ void Engine::performWorldChange()
     const PendingWorldChange change = std::move(*m_pendingWorldChange);
     m_pendingWorldChange.reset();
     const std::string key = toLower(change.world);
+    if (!m_menuMode && !m_worldPath.empty() && toLower(m_worldPath) == key)
+    {
+        // The hero's own world (e.g. a shaft onto a start point of the same level): a move within the world.
+        // Loading it again would read it fresh from its file - gates, chests and dead monsters reset - and
+        // autosave; nothing of that here.
+        moveToStartInWorld(change);
+        return;
+    }
     // The target: as left earlier (its state kept: delta, items, mobs, NPCs, triggers; M15 part C) or from
     // its file.
     std::optional<save::WorldState> kept;
@@ -1631,6 +1639,34 @@ void Engine::performWorldChange()
     {
         autosave(); // S3: after a level change
     }
+}
+
+void Engine::moveToStartInWorld(const PendingWorldChange& change)
+{
+    auto start = world::findStartPoint(m_scene, change.start);
+    if (!start)
+    {
+        G7_LOG_WARN("engine", "move in {} failed, staying here: {}", m_worldPath, start.error().message);
+        return;
+    }
+    G7_LOG_INFO("engine", "level change into the own world {}: to {}", m_worldPath, change.start);
+    if (!m_player.valid())
+    {
+        (void)applyStartPoint(change.start);
+        return;
+    }
+    const Mat4 m = m_scene.worldMatrix(start.value());
+    const Vec3 ahead = Vec3(m * Vec4(0.0f, 0.0f, -1.0f, 0.0f));
+    teleportPlayer(Vec3(m[3]) + Vec3(0.0f, 0.05f, 0.0f), std::atan2(-ahead.x, -ahead.z));
+    m_screenFade = ScreenFade{Vec3(0.0f), 0.6f, 0.6f}; // the same short black as a level change
+    if (change.fall)
+    {
+        m_player.setVelocity(*change.fall);
+        m_fallUnhurt = true;
+    }
+    // Arriving inside a trigger counts as already in it, as after a teleport: no bouncing back.
+    const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
+    m_triggers.prime(m_scene, std::span(&probe, 1));
 }
 
 void Engine::releaseUnusedModels()

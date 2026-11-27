@@ -166,6 +166,10 @@ Result<void> applyGame(const save::GameState&);    // Welt aus Datei + Delta, NP
   bleiben fallen gelassene Items (Laufzeit-Vobs), Truhen-Inhalte, Schlösser und NPCs (Werte, tot) über einen
   Weltwechsel erhalten – bis M14 gingen sie verloren (offener Punkt aus M4 erledigt).
 - Die Menü-Welt (Hauptmenü) wird beim Verlassen nicht erfasst.
+- Ein Weltwechsel in die **eigene Welt** des Helden (Pfad ohne Rücksicht auf Groß/Klein gleich, z. B. ein Schacht auf
+  einen Startpunkt derselben Ebene) ist ein Versetzen an den Startpunkt (`moveToStartInWorld`): kein Neuladen, kein
+  Zustandsverlust (Tore, Truhen, tote Monster bleiben), kein Autosave; kurze Schwarzblende, `fall` wirkt wie sonst.
+  Vorher wurde die Ebene frisch aus der Datei geladen und der eben erfasste Zustand verworfen (welt-Befund, E7).
 - `captureGame()` enthält alle besuchten Welten (verlassene nach Pfad, dann die aktuelle); `applyGame()` lädt die
   aktuelle und legt die anderen als verlassene Welten ab.
 - **Tests:** `tests/runtime/test_engine_save.cpp` (Lager → Höhle → Lager: NPC-Werte, toter Wolf, Item, Truhe;
