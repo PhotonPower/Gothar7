@@ -268,7 +268,9 @@ class ShadowMap { static Result<ShadowMap> create(Device&, const ShadowSettings&
   zur Sonne, damit auch Werfer hinter der Kamera Schatten ins Bild werfen.
 - **Gegen Akne:** Polygon-Offset im Schattenpass (`rhi::PipelineDesc::depthBias`, konstant + neigungsabhängig) und
   Normal-Offset beim Abtasten (in Schatten-Texeln der Kaskade); 3×3-PCF über Hardware-Vergleich
-  (`sampler2DShadow`, Einheit 3), Kernel bleibt in seiner Kachel.
+  (`sampler2DShadow`, Einheit 3), Kernel bleibt in seiner Kachel. Ohne Schattenkarte (Sonne unter dem Boden, z. B.
+  im Dungeon, oder Schatten aus) bindet `MeshRenderer` an Einheit 3 eine 1×1-`Depth32F`-Ersatztextur mit
+  Vergleichs-Sampler (`bindShadowAtlas`), damit der Treiber nicht jedes Bild warnt (GL #131204/#131222).
 - Alpha-getestete Materialien werfen löchrige Schatten (gleiche Alpha-Test-Variante); transparente werfen keine.
 - **Seltener neu gezeichnet** (`Engine::shadowRedraw`): Kaskade 1 und 2 jedes Bild, Kaskade 3 jedes 2. und Kaskade 4
   jedes 4. Bild (nie im selben). Dazwischen behält die Kachel ihre Tiefe, schattiert wird mit der Matrix, mit der sie

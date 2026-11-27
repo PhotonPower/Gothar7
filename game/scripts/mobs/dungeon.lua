@@ -241,3 +241,63 @@ Mob "mob_dng_e5_chest_treppe" {
     lock = "RLRLLR",
     contents = { it_gulden = 90, it_potion_heal_medium = 2, it_potion_speed = 1, it_scroll_sleep = 1 },
 }
+
+-- Ebene 6 „Labyrinth“ (welt #510). Maßvoll wie Ebene 5: das versteckte Depot hält schon Goldring, Heiltränke, Gulden
+-- und Pfeile; keine Rune, keine Zweihandwaffe.
+-- Sackgasse hinter der Geheimwand (Norden): verschlossen, der Lohn fürs Suchen.
+Mob "mob_dng_e6_chest_geheim" {
+    name = "Verschlossene Truhe",
+    type = "chest",
+    lock = "LRRLR",
+    contents = { it_gulden = 60, it_ring_silver = 1, it_potion_heal_medium = 1, it_scroll_fear = 1 },
+}
+
+-- Sackgasse im Westen: was ein Verirrter zurückließ.
+Mob "mob_dng_e6_chest_west" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_torch = 2, it_bread = 1, it_potion_heal_small = 1, it_gulden = 15 },
+}
+
+-- Sackgasse im Süden.
+Mob "mob_dng_e6_chest_sued" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_arrow = 20, it_potion_mana_small = 1, it_gulden = 25 },
+}
+
+-- Sackgasse im Südosten bei der Teleporter-Tür.
+Mob "mob_dng_e6_chest_teleporter" {
+    name = "Truhe",
+    type = "chest",
+    contents = { it_scroll_light = 1, it_potion_speed = 1, it_lockpick = 2, it_gulden = 20 },
+}
+
+-- Hebelkammer: verschlossen.
+Mob "mob_dng_e6_chest_hebel" {
+    name = "Verschlossene Truhe",
+    type = "chest",
+    lock = "RLLRLR",
+    contents = { it_gulden = 80, it_potion_heal_medium = 2, it_potion_mana_medium = 1, it_scroll_sleep = 1 },
+}
+
+-- Depot: nur eine Kleinigkeit neben den Funden auf dem Boden.
+Mob "mob_dng_e6_niche_depot" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_potion_strength = 1, it_gulden = 15 },
+}
+
+-- Nordostecke vor dem Depot.
+Mob "mob_dng_e6_niche_nordost" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_scroll_heal = 1, it_herbs_dried = 2 },
+}
+
+-- Gang im Süden.
+Mob "mob_dng_e6_niche_gang" {
+    name = "Nische",
+    type = "niche",
+    contents = { it_scroll_firebolt = 1, it_gulden = 10 },
+}

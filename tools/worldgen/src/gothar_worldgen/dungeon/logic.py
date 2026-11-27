@@ -20,6 +20,7 @@ runs ``window`` cells (``(delay - TIMER_MARGIN_S) * RUN_M_S / cellM``, the margi
 the gate's travel), then arrives. So a gate that a button opens and a delayed relay shuts again is
 open only for the next few cells: what lies further away than that stays shut. Pending events are
 part of the search state with the cells still left. A sarcophagus (``props``) fills its cell.
+A spinner (``spin``) only turns the hero on his cell: for the search it is floor.
 """
 
 from __future__ import annotations

@@ -441,7 +441,7 @@ schreibt.
   - Treppe hinab nach Ebene 6 (`START_E06_VON_OBEN`).
   - Erreichbarkeit grün; ohne den losen Stein bleiben Halle und Treppe unerreichbar, ohne den Hebel der Schmiede die
     Uhrwerkskammer, ohne den Depot-Stein das Depot (Tests).
-- **Ebene 6** als Stub (Thema `labyrinth`, vorerst Ambiente `gewoelbe`).
+- **Ebene 6** siehe 7g.
 
 ## 7f. Truhen, Nischen und Ambienten (welt, nach engine #491/#494/#496/#502)
 - Alle Truhen und Nischen der Ebenen 1–5 tragen ihre Mob-Definition aus `game/scripts/mobs/dungeon.lua`
@@ -451,6 +451,27 @@ schreibt.
   `gewoelbe`).
 - Damit sind die engine-Punkte unter 7a–7e erledigt (Instanzen `mon_brunnenmolch` und `mon_beinhauswart` sind auf
   main, die Ebenen laden ohne Warnung).
+
+## 7g. Stand D3 (welt): Ebene 6 „Labyrinth“, Ebene 7 als Stub
+- **Neu in der Karten-JSON:** Teleporter mit `spin: true` (**Drehfalle**): Der Ziel-Marker liegt in der eigenen Zelle
+  und blickt nach `facing`; der Held bleibt stehen und ist danach in eine andere Richtung gedreht. Mit `trap: true`
+  ist sie unsichtbar. Die Engine setzt ihn „schon drin“, er springt also nicht erneut. Für die Erreichbarkeit ist sie
+  Boden.
+- **Ebene 6** (31 × 29, 467 begehbare Zellen = 52 %): ein Irrgarten aus einem festen Zufallsbaum (Startwert 6) mit
+  22 zusätzlichen Durchbrüchen als Schleifen; in der Karte bleibt er Text wie jede Ebene.
+  - Ankunft (Treppe hinauf), Mittelhalle mit Pfeiler.
+  - **Teleporter-Türen:** zwei sichtbare Teleporter verbinden eine Sackgasse im Nordwesten mit einer im Südosten;
+    ein dritter führt aus der Mittelhalle in die abgeschlossene **Hebelkammer** (Südwesten), ein vierter von dort
+    zurück.
+  - **Drehfallen:** vier unsichtbare an Kreuzungen.
+  - Der Hebel der Hebelkammer öffnet das **Gatter zum Treppenraum** (Treppe hinab nach Ebene 7).
+  - **Geheimwände:** Ein loser Stein öffnet die Wand zu einer Sackgasse mit Truhe; ein zweiter öffnet das
+    **versteckte Depot** im Nordosten (Goldring, Heiltränke, Gulden, Pfeile, Nische).
+  - **Mauerschlupfer** in Sackgassen, Mittelhalle, Hebelkammer und Treppenraum (6 Plätze, 9 Tiere).
+  - Erreichbarkeit grün; ohne den Hebel bleibt die Treppe, ohne die losen Steine bleiben Depot und Truhen-Sackgasse
+    zu (Tests).
+- **Ebene 7** als Stub (Thema `grotte`, vorerst Ambiente `gewoelbe`).
+- **Offen für engine:** Ambiente `labyrinth` (und später `grotte`), Mob-Definitionen für Truhen und Nischen der Ebene 6.
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |
