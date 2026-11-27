@@ -1694,6 +1694,54 @@
       "context": "mobs/dungeon.lua",
       "status": "entwurf"
     },
+    "mob_dng_e6_chest_geheim.name": {
+      "de": "Verschlossene Truhe",
+      "text": "Locked Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e6_chest_hebel.name": {
+      "de": "Verschlossene Truhe",
+      "text": "Locked Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e6_chest_sued.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e6_chest_teleporter.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e6_chest_west.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e6_niche_depot.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e6_niche_gang.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
+    "mob_dng_e6_niche_nordost.name": {
+      "de": "Nische",
+      "text": "Niche",
+      "context": "mobs/dungeon.lua",
+      "status": "entwurf"
+    },
     "mob_testdungeon_niche.name": {
       "de": "Nische",
       "text": "Niche",

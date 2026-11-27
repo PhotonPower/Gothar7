@@ -51,6 +51,15 @@ randoms = ["metal_clang_far", "water_drip", "wood_creak", "wood_creak"]
 interval = [4, 12]
 distance = [4, 20]
 
+# Ebene 6 des Dungeons (welt, Thema „labyrinth“): dumpf und orientierungslos - leiser Luftzug, Schritte und Schleifen
+# irgendwo in den Gängen (große, wechselnde Abstände, damit sie von überall zu kommen scheinen), selten ein Tropfen.
+# Tag und Nacht gleich; Platzhalter.
+[labyrinth]
+loop = "amb_labyrinth"
+randoms = ["steps_distant", "steps_distant", "stone_scrape", "water_drip"]
+interval = [5, 14]
+distance = [6, 24]
+
 # Leonberg (Zonen von welt: world.md „Zonen“) - feld ist die Vorgabe-Box über die Welt.
 [feld]
 loop = "amb_field"

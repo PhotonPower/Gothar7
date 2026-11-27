@@ -517,6 +517,70 @@ def metal_clang_far(rng: random.Random) -> Samples:
     return normalise(fade(out, 0.002, 0.3), 0.55)
 
 
+def amb_labyrinth(rng: random.Random) -> Samples:
+    # The labyrinth (dungeon level 6): muffled, close air between narrow walls, a quiet draught that swells and
+    # falls without a direction, and once in a while steps somewhere in the corridors - so smeared by the echo that
+    # they could come from anywhere.
+    air = lowpass(noise(LOOP, rng), 100.0)
+    draught = highpass(lowpass(noise(LOOP, rng), 650.0), 250.0)
+    n = len(draught)
+    swell = [
+        0.3 + 0.7 * (0.5 + 0.5 * math.sin(2 * math.pi * i / n * 1.0 + 0.8 * math.sin(i / 9000.0)))
+        for i in range(n)
+    ]
+    wind = [d * s for d, s in zip(draught, swell, strict=True)]
+    steps = [0.0] * n
+    at = rng.uniform(0.6, 1.2)
+    for _ in range(3):
+        step = lowpass(envelope(mix((tone(70.0, 0.12), 1.0), (noise(0.12, rng), 0.4)), 0.004, 0.03), 400.0)
+        start = int(at * RATE)
+        for delay, gain in ((0.0, 0.25), (0.13, 0.18), (0.29, 0.12), (0.53, 0.07)):
+            d = start + int(delay * RATE)
+            for i, x in enumerate(step):
+                steps[(d + i) % n] += gain * x
+        at += rng.uniform(0.55, 0.7)
+    return normalise(seamless(mix((air, 1.0), (wind, 0.35), (steps, 0.5))), 0.4)
+
+
+def steps_distant(rng: random.Random) -> Samples:
+    # Someone walking in another corridor of the labyrinth: four or five dull steps, muffled by the walls, each
+    # followed by its echo from several sides.
+    count = rng.randint(4, 5)
+    beat = rng.uniform(0.45, 0.6)
+    length = int((count * beat + 1.0) * RATE)
+    out = [0.0] * length
+    for k in range(count):
+        step = lowpass(
+            envelope(mix((tone(rng.uniform(60.0, 80.0), 0.14), 1.0), (noise(0.14, rng), 0.5)), 0.003, 0.03),
+            500.0,
+        )
+        start = int(k * beat * RATE)
+        gain0 = 0.6 + 0.4 * math.sin(math.pi * k / max(1, count - 1))  # coming closer, then going away
+        for delay, gain in ((0.0, 1.0), (0.11, 0.5), (0.23, 0.4), (0.41, 0.25), (0.67, 0.12)):
+            d = start + int(delay * RATE)
+            for i, x in enumerate(step):
+                out[d + i] += gain0 * gain * x
+    return normalise(fade(out, 0.01, 0.4), 0.5)
+
+
+def stone_scrape(rng: random.Random) -> Samples:
+    # Stone dragged over stone somewhere far away (a secret wall? something moving?): a rough, low grinding that
+    # swells and stops, with the echo of the corridors.
+    seconds = rng.uniform(1.0, 1.5)
+    grind = highpass(lowpass(noise(seconds, rng), 900.0), 120.0)
+    n = len(grind)
+    rough = [
+        x * math.sin(math.pi * i / n) * (0.6 + 0.4 * math.sin(2 * math.pi * 13.0 * i / RATE))
+        for i, x in enumerate(grind)
+    ]
+    out = rough + [0.0] * int(0.8 * RATE)
+    for delay, gain in ((0.17, 0.4), (0.38, 0.22), (0.66, 0.1)):
+        d = int(delay * RATE)
+        for i in range(n):
+            out[i + d] += gain * rough[i]
+    return normalise(fade(lowpass(out, 1100.0), 0.05, 0.4), 0.5)
+
+
 # --- Footsteps (M13 E): six materials, four variants each (footstep_<material>_<n>) --------------------------
 
 
@@ -704,6 +768,9 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "bone_rattle": bone_rattle,
     "amb_workshop": amb_workshop,
     "metal_clang_far": metal_clang_far,
+    "amb_labyrinth": amb_labyrinth,
+    "steps_distant": steps_distant,
+    "stone_scrape": stone_scrape,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,
     "amb_night": amb_night,
