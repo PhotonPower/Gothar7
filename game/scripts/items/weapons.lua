@@ -13,12 +13,13 @@ Item "it_sword_old" {
 -- Modell von figuren (#526).
 Item "it_scythe_blade" {
     name = "Sensenklinge",
-    description = "Aus der Fangklaue der Kellermutter geschliffen. Leicht gekrümmt, schärfer als jede Klinge aus der Schmiede.",
+    description = "Aus der Fangklaue der Kellermutter geschliffen. Leicht gekrümmt, schärfer als jede Klinge aus der Schmiede. Gegen ihre Brut schneidet sie besonders tief.",
     mesh = "items/it_scythe_blade.glb",
     category = "melee_1h",
     value = 450,
     weight = 2.8,
     damage = { edge = 32 },
+    bane = { species = { "mauerkriecher", "kellermutter" }, bonus = 50 }, -- die Brut der Kellermutter
     requires = { str = 20 },
 }
 

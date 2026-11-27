@@ -1401,8 +1401,8 @@
       "status": "entwurf"
     },
     "it_scythe_blade.description": {
-      "de": "Aus der Fangklaue der Kellermutter geschliffen. Leicht gekrümmt, schärfer als jede Klinge aus der Schmiede.",
-      "text": "Ground from the Kellermutter's grasping claw. Slightly curved, sharper than any blade from the forge.",
+      "de": "Aus der Fangklaue der Kellermutter geschliffen. Leicht gekrümmt, schärfer als jede Klinge aus der Schmiede. Gegen ihre Brut schneidet sie besonders tief.",
+      "text": "Ground from the Kellermutter's grasping claw. Slightly curved, sharper than any blade from the forge. It cuts especially deep into her brood.",
       "context": "items/weapons.lua",
       "status": "entwurf"
     },

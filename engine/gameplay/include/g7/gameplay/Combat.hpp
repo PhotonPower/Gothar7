@@ -15,11 +15,13 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace g7::script
 {
 struct Table;
-}
+class Value;
+} // namespace g7::script
 
 namespace g7::gameplay
 {
@@ -86,6 +88,21 @@ struct DamageResult
 [[nodiscard]] DamageResult meleeDamage(const DamageByType& weapon, i32 strength,
                                        const std::function<i32(std::string_view type)>& protection,
                                        i32 talentLevel, f32 roll, const CombatSettings& settings);
+
+/// An item's `bane` (gameplay.md "Kampf"): a fixed bonus to every hit on a target of one of `species` (the
+/// Npc field `species`; the Sensenklinge against the Kellermutter's brood).
+struct Bane
+{
+    std::vector<std::string> species;
+    i32 bonus = 0;
+    friend bool operator==(const Bane&, const Bane&) = default;
+};
+
+/// Reads Item.bane: `{ species = "x" | { "x", "y" }, bonus = n }` (n >= 1, species not empty); nil: none.
+[[nodiscard]] Result<std::optional<Bane>> readBane(const script::Value& field);
+
+/// The extra damage of `bane` against a target of `targetSpecies` (0: none, or another species).
+[[nodiscard]] i32 baneBonus(const std::optional<Bane>& bane, std::string_view targetSpecies) noexcept;
 
 /// R3: the damage of a projectile - per type max(weapon - protection, 0), no strength, no critical hit; at
 /// least `minDamage`.
