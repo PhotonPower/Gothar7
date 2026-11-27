@@ -15,16 +15,16 @@
   ],
   "cells": [
     {"at": [2, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_07.g7world", "start": "START_E07_VON_UNTEN", "facing": "S"}, "arrive": "START_E08_VON_OBEN"},
-    {"at": [26, 8], "niche": {"facing": "S"}},
-    {"at": [25, 9], "chest": {}},
-    {"at": [28, 9], "chest": {}},
+    {"at": [26, 8], "niche": {"definition": "mob_dng_e8_niche_hort", "facing": "S"}},
+    {"at": [25, 9], "chest": {"definition": "mob_dng_e8_chest_hort_1"}},
+    {"at": [28, 9], "chest": {"definition": "mob_dng_e8_chest_hort_2"}},
     {"at": [11, 12], "gate": {"name": "ARENA", "open": true, "seconds": 1.2}},
     {"at": [12, 12], "plate": {"name": "ARENA", "weight": "player", "once": true, "hidden": true, "targets": ["GATE_E08_ARENA"], "action": "close"}},
     {"at": [17, 12], "monster": {"name": "KELLERMUTTER", "npc": "mon_kellermutter", "count": 1, "facing": "W", "targets": ["RELAY_E08_BOSS_TOT"], "action": "open"}},
     {"at": [23, 12], "gate": {"name": "HORT", "open": false}},
     {"at": [28, 12], "teleport": {"world": "worlds/leonberg/leonberg.g7world", "start": "START_SCHLOSS_FASS", "visible": true}},
-    {"at": [6, 14], "chest": {}},
-    {"at": [27, 15], "chest": {}}
+    {"at": [6, 14], "chest": {"definition": "mob_dng_e8_chest_vorkammer"}},
+    {"at": [27, 15], "chest": {"definition": "mob_dng_e8_chest_hort_3"}}
   ],
   "relays": [
     {"name": "BOSS_TOT", "mode": "any", "once": true, "at": [17, 12], "targets": ["GATE_E08_ARENA", "GATE_E08_HORT"], "action": "open"}

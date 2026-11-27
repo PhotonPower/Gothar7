@@ -298,7 +298,7 @@ def test_level_5_riddles_hold() -> None:
     assert (23, 9) in check_reach(level).unreached
 
 
-@pytest.mark.parametrize("number", [1, 2, 3, 4, 5, 6, 7])
+@pytest.mark.parametrize("number", [1, 2, 3, 4, 5, 6, 7, 8])
 def test_chests_and_niches_name_their_lua_definition(number: int) -> None:
     """engine's contents (game/scripts/mobs/dungeon.lua): one definition per chest and niche."""
     level = load_level(DATA, number)
