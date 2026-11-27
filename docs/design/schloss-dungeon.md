@@ -575,8 +575,8 @@ schreibt.
   - **Hort:** Gold auf zwei Haufen, 500 Gulden, drei Truhen, eine Nische, **Teleporter hinauf** in den
     Schlosskeller (`leonberg.g7world`, `START_SCHLOSS_FASS`; ein Weltwechsel, also kein Neuladen derselben Welt).
   - Erreichbarkeit grün; ohne ihren Tod bleibt die Arena eine Falle ohne Rückweg und der Hort zu (Tests).
-  - Truhen [6,14] Vorkammer, [25,9], [28,9], [27,15] Hort; Nische [26,8] Hort – vorerst ohne Definition
-    (`chest`/`niche`), die `mob_dng_e8_*`-Namen kommen mit engine2.
+  - Truhen und Nische mit ihren Definitionen (engine #524): [6,14] `mob_dng_e8_chest_vorkammer`, [25,9]
+    `mob_dng_e8_chest_hort_1`, [28,9] `_hort_2`, [27,15] `_hort_3`, Nische [26,8] `mob_dng_e8_niche_hort`.
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |
