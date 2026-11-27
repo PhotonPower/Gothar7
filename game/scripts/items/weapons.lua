@@ -10,11 +10,11 @@ Item "it_sword_old" {
 }
 
 -- Lohn im Hort der Kellermutter (Dungeon Ebene 8, Entscheidung des Projektinhabers): die beste Einhandwaffe des Spiels.
--- Modell: vorerst das alte Schwert als Platzhalter, bis figurens items/it_scythe_blade.glb da ist.
+-- Modell von figuren (#526).
 Item "it_scythe_blade" {
     name = "Sensenklinge",
     description = "Aus der Fangklaue der Kellermutter geschliffen. Leicht gekrümmt, schärfer als jede Klinge aus der Schmiede.",
-    mesh = "items/it_sword_old.glb",
+    mesh = "items/it_scythe_blade.glb",
     category = "melee_1h",
     value = 450,
     weight = 2.8,
