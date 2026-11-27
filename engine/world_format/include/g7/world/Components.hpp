@@ -247,8 +247,10 @@ struct Teleport
     std::string start;
     bool visible = true; ///< a column of light and a hum; false: nothing shows
     Filter filter = Filter::Player;
-    std::optional<f32> yaw; ///< degrees after arriving (else the target's)
-    bool active = true;     ///< at the start; on/off/toggle events switch it
+    std::optional<f32> yaw;    ///< degrees after arriving (else the target's)
+    bool active = true;        ///< at the start; on/off/toggle events switch it
+    bool silent = false;       ///< no effect, sound or white flash at either end (e.g. under a trapdoor)
+    bool keepVelocity = false; ///< the hero keeps his velocity: a fall goes on at the target (unhurt)
 
     bool operator==(const Teleport&) const = default;
 };

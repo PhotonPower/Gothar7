@@ -2489,6 +2489,8 @@ private:
         std::string source; ///< the teleporter's name
         Vec3 feet{0.0f};
         f32 yaw = 0.0f;
+        bool silent = false;              ///< no effect, sound or flash
+        std::optional<Vec3> keepVelocity; ///< the hero's velocity when he entered, kept at the target
     };
     std::optional<PendingTeleport> m_pendingTeleport;
     struct ScreenFade
