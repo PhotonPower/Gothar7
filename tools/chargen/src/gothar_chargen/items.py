@@ -1266,6 +1266,71 @@ def brood_gland(seg: int) -> list[Mesh]:
     return [gland, ribs]
 
 
+SCYTHE_CURVE = (
+    0.13  # m the blade tip bends back towards -Z (sickle; the edge on the concave -Z side)
+)
+
+
+def scythe_blade(seg: int) -> list[Mesh]:
+    """Sensenklinge (it_scythe_blade, 2026-11-27, the reward of the Kellermutter's hoard): a
+    one-handed blade made from her scythe claw, held like the swords (origin in the middle of the
+    grip, blade along +Y, edge facing -Z, flats +-X). Dark polished chitin, slightly sickle-curved
+    with a thick spine on +Z and a pale sharp edge on the concave -Z side; two faintly orange
+    glowing grooves on each flat (own emissive map, only the grooves glow); set into a collar and
+    cross-guard of black iron, leather grip, small chitin pommel. 1.06 m."""
+    chitin, edge, groove = Mesh("chitin_dark"), Mesh("chitin_edge"), Mesh("scythe_groove")
+    iron, grip, knob = Mesh("iron_forged"), Mesh("leather"), Mesh("chitin")
+    loft(grip, np.array([[0, y, 0] for y in np.linspace(-0.09, 0.09, 6)]),
+         [circle(0.016, seg)] * 6, tile=0.08)  # fmt: skip
+    lathe(knob, [(0.0, -0.13), (0.014, -0.127), (0.021, -0.112), (0.017, -0.096), (0.012, -0.09)],
+          seg, tile=0.08)  # fmt: skip
+    for z0, z1 in ((0.0, 0.075), (0.0, -0.075)):  # cross-guard in the edge plane, ends bent down
+        zs = np.linspace(z0, z1, 5)
+        ys = 0.098 - 0.025 * ((zs / 0.075) ** 4)
+        loft(iron, np.stack([0 * zs, ys, zs], axis=1),
+             [circle(0.009, 6, rx=1.0, ry=1.1)] * 5, ref=(0.0, 1.0, 0.0), tile=0.1)  # fmt: skip
+    collar = np.array([[0.0, y, 0.004] for y in (0.1, 0.165)])  # iron socket the blade sits in
+    loft(iron, collar, [circle(1.0, 8, rx=0.013, ry=0.034)] * 2, tile=0.1)
+
+    n = 14 + seg
+    t = np.linspace(0.0, 1.0, n)
+    ys = 0.12 + 0.81 * t
+    zs = -SCYTHE_CURVE * t**2.2
+    path = np.stack([np.zeros(n), ys, zs], axis=1)
+    taper = np.where(t < 0.75, 1.0 - 0.25 * t, (1.0 - 0.25 * 0.75) * (1.0 - (t - 0.75) / 0.25))
+    w = np.maximum(0.03 * taper, 0.0015)  # half width (spine to edge ~ 2 w)
+    th = np.maximum(0.0055 * (1.0 - 0.55 * t), 0.0008)  # half thickness at the spine
+
+    def body(i: int) -> np.ndarray:
+        return np.array([[0.0, w[i]], [th[i], 0.55 * w[i]], [th[i] * 0.8, 0.1 * w[i]],
+                         [th[i] * 0.35, -0.6 * w[i]], [-th[i] * 0.35, -0.6 * w[i]],
+                         [-th[i] * 0.8, 0.1 * w[i]], [-th[i], 0.55 * w[i]]])  # fmt: skip
+
+    def keen(i: int) -> np.ndarray:  # the pale edge, overlapping the body a little
+        return np.array([[th[i] * 0.36, -0.55 * w[i]], [0.0, -w[i]], [-th[i] * 0.36, -0.55 * w[i]],
+                         [0.0, -0.5 * w[i]]])  # fmt: skip
+
+    loft(chitin, path, [body(i) for i in range(n)], fit_uv=True)
+    loft(edge, path, [keen(i) for i in range(n)], fit_uv=True)
+    for side in (1.0, -1.0):  # grooves: thin strips lying on each flat (spine side of the middle)
+        for b0, b1 in ((0.28, 0.4), (0.05, 0.17)):
+            sections = []
+            for i in range(n):
+                # the flat runs from (th, 0.55 w) to (0.8 th, 0.1 w): its height at b0/b1
+                def a_at(b: float, i: int = i) -> float:
+                    return th[i] * (0.8 + 0.2 * (b - 0.1) / 0.45) + 0.0004
+
+                p0, p1 = (a_at(b0), b0 * w[i]), (a_at(b1), b1 * w[i])
+                sections.append(side * np.array([[p0[0], p0[1] * side], [p1[0], p1[1] * side],
+                                                 [p1[0] - 0.0003, p1[1] * side],
+                                                 [p0[0] - 0.0003, p0[1] * side]]))  # fmt: skip
+            if side < 0:  # mirrored: keep the winding outwards
+                sections = [sec[::-1].copy() for sec in sections]
+            keep = slice(1, int(n * 0.82))
+            loft(groove, path[keep], sections[keep], fit_uv=True)
+    return [chitin, edge, groove, iron, grip, knob]
+
+
 RUNES = (
     "firebolt", "heal", "sleep", "transform_wolf", "summon_wolf", "telekinesis", "light",
 )  # it_rune_<x>  # fmt: skip
@@ -1291,6 +1356,7 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_bolt": (bolt, 5),
     "it_crossbow": (crossbow, 10),
     "it_sword_2h": (sword_2h, 12),
+    "it_scythe_blade": (scythe_blade, 10),
     "it_potion_mana_small": (lambda s: potion(s, "glass_blue"), 16),
     "it_scroll": (scroll, 12),
     **{
@@ -1349,7 +1415,7 @@ PROCEDURAL = (
     "iron_forged", "apple", "bread", "glass_red", "glass_blue", "cork", "straw", "feather",
     "stone", "parchment", "wax_red", "pitch", *(f"rune_{spell}" for spell in RUNES),
     *(f"parchment_{spell}" for spell in SCROLLS), *(f"wax_{spell}" for spell in SCROLLS),
-    "rune_light_glow",
+    "rune_light_glow", "chitin_edge", "scythe_groove", "scythe_groove_glow",
     "ham", "bone", "sausage", "cheese", "clay", "glass_green", "glass_amber", "linen",
     "root", "leaf_sage", "leaf_green", "leaf_dry", "flower_white", "flower_yellow",
     "gold", "silver", "iron_hot", "glass_glow_green",
@@ -1373,7 +1439,8 @@ RUNE_COLOURS = {  # sign colour per spell
     "telekinesis": (0.3, 0.72, 1.0), "light": (0.72, 0.86, 1.0),
 }  # fmt: skip
 EMISSIVE_MAPS = {
-    "rune_light": "rune_light_glow"
+    "rune_light": "rune_light_glow",
+    "scythe_groove": "scythe_groove_glow",
 }  # material -> own emissive texture (only the sign)
 
 
@@ -1555,6 +1622,15 @@ def procedural_texture(name: str, size: int = 256) -> np.ndarray:
             0.8 + 0.08 * weave[..., None] + 0.2 * n1[..., None]
         )
         return np.clip(c - 0.1 * (n2[..., None] > 0.7), 0, 1)
+    if name == "chitin_edge":  # the pale, sharp edge of the Sensenklinge: ivory with fine streaks
+        streak = value_noise(size, 64, rng)[:, :1].repeat(size, axis=1).T
+        c = np.array([0.86, 0.82, 0.72])[None, None] * (0.85 + 0.15 * streak[..., None])
+        return np.clip(c * (0.95 + 0.1 * n2[..., None]), 0, 1)
+    if name == "scythe_groove":  # the grooves: dark burnt orange (lit by its emissive map)
+        return np.clip(np.array([0.32, 0.12, 0.04])[None, None] * (0.8 + 0.3 * n1[..., None]), 0, 1)
+    if name == "scythe_groove_glow":  # emissive: faint orange, brighter veins along the groove
+        vein = 0.55 + 0.45 * n2
+        return np.clip(np.array([0.55, 0.22, 0.04])[None, None] * vein[..., None], 0, 1)
     if name == "linen":  # undyed linen weave: fine checker of threads
         y, x = np.mgrid[0:size, 0:size]
         weave = 0.5 + 0.5 * np.sign(np.sin(x * np.pi / 3) * np.sin(y * np.pi / 3))
@@ -1760,6 +1836,7 @@ def build_items(items_dir: Path, only: list[str] | None = None) -> list[Path]:
 # expected length along +Y (metres) per item: (min, max)
 LENGTHS = {
     "it_sword_old": (0.9, 1.15), "it_sword_crude": (0.9, 1.15), "it_club": (0.6, 0.85),
+    "it_scythe_blade": (0.95, 1.15),
     "it_bow_short": (1.0, 1.4), "it_apple": (0.06, 0.1), "it_bread": (0.15, 0.3),
     "it_potion_heal_small": (0.12, 0.2), "it_lockpick": (0.1, 0.2), "it_key": (0.07, 0.15),
     "it_broom": (1.2, 1.6), "it_mug": (0.09, 0.15), "it_axe": (0.6, 0.9),
