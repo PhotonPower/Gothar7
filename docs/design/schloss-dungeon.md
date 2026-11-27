@@ -471,7 +471,8 @@ schreibt.
   - Erreichbarkeit grün; ohne den Hebel bleibt die Treppe, ohne die losen Steine bleiben Depot und Truhen-Sackgasse
     zu (Tests).
 - **Ebene 7** als Stub (Thema `grotte`, vorerst Ambiente `gewoelbe`).
-- **Offen für engine:** Ambiente `labyrinth` (und später `grotte`), Mob-Definitionen für Truhen und Nischen der Ebene 6.
+- Truhen und Nischen tragen ihre Definitionen `mob_dng_e6_…`, Ambiente `labyrinth` (engine #514). Offen für
+  engine: Ambiente `grotte` (Ebene 7).
 
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |
