@@ -356,10 +356,7 @@ void MeshRenderer::drawGroups(Device& device, bool shadow, const Mat4& viewProje
     if (!shadow)
     {
         device.bindUniformBuffer(0, m_lightingBuffer);
-        if (m_shadowMap)
-        {
-            device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
-        }
+        bindShadowAtlas(device);
         bindAmbientOcclusion(device);
     }
     for (const BatchGroup& group : m_groups)

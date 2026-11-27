@@ -252,6 +252,12 @@ private:
     const rhi::Texture* m_historyColor = nullptr;
     const rhi::Texture* m_historyDepth = nullptr;
     void bindAmbientOcclusion(Device& device) const;
+    /// Unit 3: the shadow atlas, or without one the 1x1 fallback, so the shaders' sampler2DShadow never meets
+    /// an empty unit or a colour texture (GL #131204/#131222 every frame, e.g. in the dungeon with the sun
+    /// below).
+    void bindShadowAtlas(Device& device) const;
+    rhi::Texture m_fallbackShadow; // 1x1 Depth32F, cleared to 1 (far: lit)
+    rhi::Sampler m_shadowSampler;  // compare LessEqual, for the fallback
     static void setWindUniforms(rhi::ShaderProgram& program, const Material& material);
     rhi::Buffer m_windBuffer; // GpuWind, uniform block binding 4 (M17 W)
     WindFrame m_wind;
