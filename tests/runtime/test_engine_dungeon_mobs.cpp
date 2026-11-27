@@ -6,6 +6,7 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <ostream> // doctest needs it to print std::string operands
 #include <string>
 
@@ -46,4 +47,57 @@ TEST_CASE("Dungeon mobs: chests and niches with existing items")
         }
     }
     CHECK(definitions >= 50);
+}
+
+TEST_CASE("Dungeon mobs: the Sensenklinge lies in the hoard's niche, the best one-handed weapon, the hero "
+          "wields it")
+{
+    EngineConfig config;
+    config.headless = true;
+    Engine engine(config);
+    REQUIRE(engine.init().ok());
+    const script::ScriptVm* scripts = engine.scripts();
+    REQUIRE(scripts != nullptr);
+
+    const script::Instance* blade = scripts->findInstance("Item", "it_scythe_blade");
+    REQUIRE(blade != nullptr);
+    CHECK(blade->fields["category"].asString() == "melee_1h");
+    const script::Table* damage = blade->fields["damage"].asTable();
+    REQUIRE(damage != nullptr);
+    const i64 edge = damage->fields.at("edge").asInteger(0);
+    // Clearly the best one-handed weapon: above every other melee_1h item.
+    for (const script::Instance& instance : scripts->instances())
+    {
+        if (instance.kind == "Item" && instance.name != "it_scythe_blade" &&
+            instance.fields["category"].asString() == "melee_1h")
+        {
+            CAPTURE(instance.name);
+            const script::Table* other = instance.fields["damage"].asTable();
+            i64 best = 0;
+            if (other != nullptr)
+            {
+                for (const auto& [type, value] : other->fields)
+                {
+                    best = std::max(best, value.asInteger(0));
+                }
+            }
+            CHECK(edge > best);
+        }
+    }
+
+    const script::Instance* niche = scripts->findInstance("Mob", "mob_dng_e8_niche_hort");
+    REQUIRE(niche != nullptr);
+    const script::Table* contents = niche->fields["contents"].asTable();
+    REQUIRE(contents != nullptr);
+    CHECK(contents->fields.contains("it_scythe_blade"));
+    CHECK(contents->fields.contains("it_brood_gland"));
+
+    // The hero takes it up and wields it (moderate strength needed).
+    REQUIRE(engine.runConsoleLine("set_stat('str', 20) give_item('it_scythe_blade')").ok());
+    auto slot = engine.runConsoleLine("equip('it_scythe_blade')");
+    REQUIRE_MESSAGE(slot.ok(), (slot.ok() ? "" : slot.error().message));
+    CHECK(slot.value().asString() == "melee");
+    auto equipped = engine.runConsoleLine("equipped('melee')");
+    REQUIRE(equipped.ok());
+    CHECK(equipped.value().asString() == "it_scythe_blade");
 }

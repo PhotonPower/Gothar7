@@ -1400,6 +1400,18 @@
       "context": "items/magic.lua",
       "status": "entwurf"
     },
+    "it_scythe_blade.description": {
+      "de": "Aus der Fangklaue der Kellermutter geschliffen. Leicht gekrümmt, schärfer als jede Klinge aus der Schmiede.",
+      "text": "Ground from the Kellermutter's grasping claw. Slightly curved, sharper than any blade from the forge.",
+      "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
+    "it_scythe_blade.name": {
+      "de": "Sensenklinge",
+      "text": "Scythe Blade",
+      "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
     "it_scythe_claw.name": {
       "de": "Sensenklaue",
       "text": "Scythe claw",

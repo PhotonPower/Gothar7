@@ -382,9 +382,9 @@ Mob "mob_dng_e8_chest_hort_3" {
     contents = { it_rune_sleep = 1, it_crossbow = 1, it_bolt = 30, it_ring_silver = 1, it_gulden = 200 },
 }
 
--- Nische im Hort: was von der Brut der Kellermutter blieb, und ein altes Amulett.
+-- Nische im Hort: der besondere Lohn - die Sensenklinge (Entscheidung des Projektinhabers) und was von der Brut blieb.
 Mob "mob_dng_e8_niche_hort" {
     name = "Nische",
     type = "niche",
-    contents = { it_brood_gland = 1, it_amulet_old = 1 },
+    contents = { it_scythe_blade = 1, it_brood_gland = 1 },
 }
