@@ -557,8 +557,11 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
         {
             return r.error(tat, "needs 'to' (a vob of this world) or 'world' and 'start'");
         }
-        for (const auto& [key, flag] : {std::pair<const char*, bool*>{"visible", &teleport.visible},
-                                        std::pair<const char*, bool*>{"active", &teleport.active}})
+        for (const auto& [key, flag] :
+             {std::pair<const char*, bool*>{"visible", &teleport.visible},
+              std::pair<const char*, bool*>{"active", &teleport.active},
+              std::pair<const char*, bool*>{"silent", &teleport.silent},
+              std::pair<const char*, bool*>{"keep_velocity", &teleport.keepVelocity}})
         {
             if (p.contains(key))
             {
@@ -1854,6 +1857,14 @@ Json vobJson(const WorldFileVob& vob)
                 teleport["yaw"] = tidy(*p.yaw);
             }
             teleport["active"] = p.active;
+            if (p.silent) // only when set, in welt's order: active, silent, keep_velocity
+            {
+                teleport["silent"] = true;
+            }
+            if (p.keepVelocity)
+            {
+                teleport["keep_velocity"] = true;
+            }
             trigger["teleport"] = std::move(teleport);
         }
         if (tv.plate)
