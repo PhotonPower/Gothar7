@@ -897,13 +897,34 @@ class CullGrid { void build(span<const AABB>, f32 cellSize = 64); void query(con
 - Die Engine sortiert alle Instanzen in ein **Raster** (64-m-Zellen über x/z; eine Zelle wächst auf die Bounds ihrer
   Objekte, große Objekte gehen nicht verloren). Haupt- und Schattenpass fragen erst Zellen ab (Frustum, Sichtweite),
   dann die Objekte darin. Neuaufbau, wenn sich Instanzen ändern.
-- **Sichtweite** `view_distance` (Vorgabe 400 m; Nebel deckt dort 98,7 %): Abstand zum nächsten Punkt der Bounds.
+- **Sichtweite** `view_distance` (Vorgabe 400 m; seit der Fernsicht deckt der Dunst dort nur ~21 %, große Objekte
+  bleiben bis `far_view_distance`, unten): Abstand zum nächsten Punkt der Bounds.
   **Größe** `size_cull` (Vorgabe 0.005 ≈ 4 Pixel Radius bei 1600×900): nur Deko (`category` deco, world.md); Mobs und
   `gameplay` nie. Was der Hauptpass ausblendet, wirft auch keinen Schatten.
 - Begründung der Vorgaben: Leonberg-Kern mit Fachwerk (905 Häuser, 1,6 Mio. Dreiecke) von START_UEBERSICHT –
   Bild ohne sichtbaren Unterschied (nur ferne Häuser im dichten Nebel), 4,16 → 2,91 ms (RTX 3080). Aufploppen an
   der Grenze verdeckt der Nebel; fällt es auf, ist es ein offener Punkt (kein Überblenden in M4).
 - Overlay (F2): „hidden: N far, M small“.
+
+### Fernsicht (Burg auf dem Engelberg, W9; 2026-11-28)
+- **Große Objekte weit sichtbar:** `CullSettings::farDistance`/`farRadius` (`[render] far_view_distance` = 1500 m,
+  `far_view_radius` = 4 m, 0 = aus). Objekte mit Begrenzungsradius ab 4 m (Häuser, Stadtmauer, Schloss, Kirche, die
+  Burg; auch große Bäume) bleiben jenseits von `view_distance` (400 m) bis 1500 m sichtbar: `cullByDistance` liefert
+  `KeptFar`, die Engine zeichnet sie in der **niedrigsten Detailstufe** (LOD 2; Modelle ohne Stufen ganz), ohne
+  Schatten (der Schattenpass bleibt bei `view_distance`) und nicht drinnen (`indoor_view_distance`). Kleines endet
+  wie bisher bei 400 m bzw. über `size_cull`.
+- **Eigenes Raster:** nur die großen Instanzen in einem zweiten `CullGrid` (128-m-Zellen); der Hauptpass fragt das
+  normale Raster bis `view_distance` und das Fern-Raster bis `far_view_distance` (nur was weiter als `view_distance`
+  liegt) – keine Doppelten, wenig Mehrarbeit in der Stadt.
+- **Dunst statt Nebelwand:** Vorgabe `fog_density` jetzt 0,0013 (90 % bei 1200 m, 97 % bei 1500 m; vorher 0,00562 =
+  90 % bei 300 m), damit die Ferne weich im Dunst endet; Wetter (Regen, Nebel) verdichtet ihn wie bisher.
+  `camera.far` 2500 m.
+- **Gemessen** (RTX 3080 Laptop, Release, 1600×900; die GPU wechselte zwischen zwei Taktstufen, deshalb Paare aus
+  derselben Stufe): Markt 10 Uhr 959 Zeichenaufrufe vorher wie nachher (1,35 → 1,37 Mio. Dreiecke), Bildzeit
+  4,72 → 4,67 ms bzw. 8,16 → 8,56 ms; Engelberg-Gipfel (Perf-Szenario `engelberg`, `--cam=743,126,-119`) 846 → 1060
+  Zeichenaufrufe, 0,43 → 0,63 Mio. Dreiecke, GPU 2,25 → 2,26 ms. Bilder `C:\GotharData\review\fernsicht\`.
+- **Tests:** `test_visibility.cpp` (KeptFar, Grenzen, aus), GPU `test_engine_far_view.cpp` (großes Objekt bei 900 m
+  gezeichnet, kleines und eines bei 2 km nicht, 0 = aus).
 
 ### Himmel – `background.frag`, `render::Sky` (M4)
 - Verlauf vom Horizont (= Nebelfarbe, damit Fernes in den Himmel übergeht) zum Zenit, Sonnenscheibe mit Schein,

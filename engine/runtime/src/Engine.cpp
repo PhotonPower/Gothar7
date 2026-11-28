@@ -135,7 +135,7 @@ Result<void> Engine::init()
     // which places the camera.
     m_camera.fovY = toRadians(static_cast<f32>(m_config.settings.get<f64>("camera.fov", 70.0)));
     m_camera.nearPlane = static_cast<f32>(m_config.settings.get<f64>("camera.near", 0.1));
-    m_camera.farPlane = static_cast<f32>(m_config.settings.get<f64>("camera.far", 1500.0));
+    m_camera.farPlane = static_cast<f32>(m_config.settings.get<f64>("camera.far", 2500.0));
     m_camera.transform.position = Vec3(0.0f, 1.8f, 6.0f);
     m_flyCamera.sensitivity =
         toRadians(static_cast<f32>(m_config.settings.get<f64>("camera.mouse_sensitivity", 0.1)));
@@ -722,6 +722,9 @@ Result<void> Engine::initSceneRendering()
     m_shadowDebug = m_config.settings.get<bool>("render.shadow_debug", false);
     m_cullSettings.viewDistance = static_cast<f32>(m_config.settings.get<f64>("render.view_distance", 400.0));
     m_cullSettings.sizeCull = static_cast<f32>(m_config.settings.get<f64>("render.size_cull", 0.005));
+    m_cullSettings.farDistance =
+        static_cast<f32>(m_config.settings.get<f64>("render.far_view_distance", 1500.0));
+    m_cullSettings.farRadius = static_cast<f32>(m_config.settings.get<f64>("render.far_view_radius", 4.0));
     // Indoors: nothing beyond this (m) is drawn or casts a shadow (render.md "Innenräume"); 0 = off.
     m_indoorViewDistance = static_cast<f32>(m_config.settings.get<f64>("render.indoor_view_distance", 30.0));
     m_indoorShadowDistance =
@@ -1826,9 +1829,9 @@ void Engine::initEnvironment()
     m_environment.fogColor = Vec3(0.0844f, 0.0395f, 0.0331f); // sRGB (0.32, 0.22, 0.20), the dusk horizon
     m_environment.fogStart = static_cast<f32>(m_config.settings.get<f64>("render.fog_start", 30.0));
     m_fogStart = m_environment.fogStart;
-    // Default density: 90 % fog at 300 m.
+    // Default density: 90 % haze at 1200 m (the far view, render.md "Fernsicht", ends softly).
     m_environment.fogDensity = static_cast<f32>(
-        m_config.settings.get<f64>("render.fog_density", render::fogDensityFor(0.9f, 300.0f, 30.0f)));
+        m_config.settings.get<f64>("render.fog_density", render::fogDensityFor(0.9f, 1200.0f, 30.0f)));
     m_fogBaseDensity = m_environment.fogDensity;
     // Weather (M17 E1): states and schedule from data; without the file always clear.
     const std::string weatherPath = m_config.settings.get<std::string>("time.weather", "data/weather.toml");
@@ -2318,11 +2321,21 @@ void Engine::updateCullGrid()
     {
         std::vector<AABB> bounds;
         bounds.reserve(m_instances.size());
-        for (const SceneInstance& instance : m_instances)
+        std::vector<AABB> farBounds;
+        m_farInstances.clear();
+        for (u32 i = 0; i < m_instances.size(); ++i)
         {
-            bounds.push_back(instance.bounds);
+            const AABB& b = m_instances[i].bounds;
+            bounds.push_back(b);
+            // The far view (render.md "Fernsicht") looks only at the big ones: a grid of their own, coarser.
+            if (glm::length(b.max - b.min) * 0.5f >= m_cullSettings.farRadius)
+            {
+                farBounds.push_back(b);
+                m_farInstances.push_back(i);
+            }
         }
         m_cullGrid.build(bounds);
+        m_farCullGrid.build(farBounds, 128.0f);
         m_cullGridDirty = false;
     }
 }
@@ -2335,6 +2348,7 @@ void Engine::drawScene(u32 width, u32 height)
     // sun's shadows (through the windows) end at indoor_shadow_distance; beyond it the rooms get no sun.
     m_frameCull = m_cullSettings;
     m_frameShadowCull = m_cullSettings;
+    m_frameShadowCull.farDistance = 0.0f; // the far view casts no shadows (beyond every cascade)
     const bool inside = m_indoorViewDistance > 0.0f &&
                         render::indoorAmount(m_camera.transform.position, m_environment.indoor, 0.0f) > 0.5f;
     const auto limited = [](f32 distance, f32 limit)
@@ -2343,6 +2357,7 @@ void Engine::drawScene(u32 width, u32 height)
     if (inside)
     {
         m_frameCull.viewDistance = limited(m_frameCull.viewDistance, m_indoorViewDistance);
+        m_frameCull.farDistance = 0.0f; // indoors: no far view through the windows
         m_frameShadowCull.viewDistance = m_frameCull.viewDistance;
         shadowRange = limited(m_frameCull.viewDistance, std::max(m_indoorShadowDistance, 0.1f));
     }
@@ -2575,9 +2590,27 @@ void Engine::cullInstances(const Frustum& view)
     m_culledIndoor = 0;
     m_cullCandidates.clear();
     m_cullGrid.query(view, m_camera.transform.position, m_frameCull.viewDistance, m_cullCandidates);
-    m_drawItems.clear();
-    for (const u32 index : m_cullCandidates)
+    m_culledFarView = 0;
+    const usize nearCount = m_cullCandidates.size(); // after these: the far view's
+    if (m_frameCull.farDistance > m_frameCull.viewDistance && m_frameCull.viewDistance > 0.0f)
     {
+        // Far view: the big objects beyond the view distance (those nearer came from the grid above).
+        m_farCandidates.clear();
+        m_farCullGrid.query(view, m_camera.transform.position, m_frameCull.farDistance, m_farCandidates);
+        for (const u32 far : m_farCandidates)
+        {
+            const u32 index = m_farInstances[far];
+            if (render::distanceTo(m_instances[index].bounds, m_camera.transform.position) >
+                m_frameCull.viewDistance)
+            {
+                m_cullCandidates.push_back(index);
+            }
+        }
+    }
+    m_drawItems.clear();
+    for (usize c = 0; c < m_cullCandidates.size(); ++c)
+    {
+        const u32 index = m_cullCandidates[c];
         SceneInstance& instance = m_instances[index];
         if (hiddenInRoom(instance))
         {
@@ -2586,14 +2619,23 @@ void Engine::cullInstances(const Frustum& view)
         }
         const render::CullResult cull = render::cullByDistance(instance.bounds, m_camera.transform.position,
                                                                m_frameCull, instance.sizeCullable);
+        if (cull == render::CullResult::KeptFar && c < nearCount)
+        {
+            continue; // a big one beyond the view distance in a near cell: the far list has it
+        }
         m_culledFar += cull == render::CullResult::TooFar ? 1 : 0;
         m_culledSmall += cull == render::CullResult::TooSmall ? 1 : 0;
-        if (cull == render::CullResult::Kept && view.intersects(instance.bounds))
+        const bool far = cull == render::CullResult::KeptFar;
+        if ((cull == render::CullResult::Kept || far) && view.intersects(instance.bounds))
         {
-            // Level of detail by the distance to the centre of the bounds (with hysteresis).
-            instance.lod = render::selectLod(
-                glm::length(instance.bounds.center() - m_camera.transform.position), instance.lod,
-                m_lodSettings, glm::length(instance.bounds.max - instance.bounds.min) * 0.5f);
+            // Level of detail by the distance to the centre of the bounds (with hysteresis); the far view
+            // always the lowest.
+            instance.lod =
+                far ? 2u
+                    : render::selectLod(glm::length(instance.bounds.center() - m_camera.transform.position),
+                                        instance.lod, m_lodSettings,
+                                        glm::length(instance.bounds.max - instance.bounds.min) * 0.5f);
+            m_culledFarView += far ? 1 : 0;
             ++m_lodCounts[std::min<u32>(instance.lod, 2)];
             if (m_multiDraw)
             {

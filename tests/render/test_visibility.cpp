@@ -144,3 +144,25 @@ TEST_CASE("Shadows: small deco only in the first two cascades (M17 V)")
         CHECK(castsShadowInCascade(tree, true, c));
     }
 }
+
+TEST_CASE("Visibility: the far view keeps big objects beyond the view distance (render.md \"Fernsicht\")")
+{
+    CullSettings s{.viewDistance = 400.0f, .sizeCull = 0.005f};
+    s.farDistance = 1500.0f;
+    s.farRadius = 4.0f;
+    const Vec3 eye(0.0f);
+    const AABB house = boxAt(Vec3(0, 0, -900), 5.0f); // radius 8.7 m
+    const AABB barrel = boxAt(Vec3(0, 0, -900), 0.5f);
+    CHECK(cullByDistance(house, eye, s, true) == CullResult::KeptFar);
+    CHECK(cullByDistance(barrel, eye, s, true) == CullResult::TooFar);
+    CHECK(cullByDistance(boxAt(Vec3(0, 0, -1700), 5.0f), eye, s, true) == CullResult::TooFar); // beyond
+    CHECK(cullByDistance(boxAt(Vec3(0, 0, -300), 5.0f), eye, s, true) == CullResult::Kept); // near: as before
+    CHECK(s.reach() == 1500.0f);
+    // Off (0, or not beyond the view distance): as before.
+    s.farDistance = 0.0f;
+    CHECK(cullByDistance(house, eye, s, true) == CullResult::TooFar);
+    CHECK(s.reach() == 400.0f);
+    s.farDistance = 300.0f;
+    CHECK(cullByDistance(house, eye, s, true) == CullResult::TooFar);
+    CHECK(s.reach() == 400.0f);
+}

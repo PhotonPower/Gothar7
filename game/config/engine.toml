@@ -15,7 +15,7 @@ max_fps = 240
 # schnell mit walk (Shift), Umsehen mit gehaltener rechter Maustaste. Spielfigur und Kamera: data/movement.toml.
 fov = 70.0               # vertikal, Grad
 near = 0.1               # Meter
-far = 1500.0             # Meter
+far = 2500.0             # Meter (Fernsicht bis render.far_view_distance braucht mehr als diese)
 mouse_sensitivity = 0.1  # Grad pro Pixel
 fly_speed = 10.0         # m/s
 
@@ -78,12 +78,17 @@ shadow_resolution = 2048
 shadow_distance = 150.0
 # Hintere Kaskaden (3 und 4) nur jedes 2. bzw. 4. Bild neu zeichnen; sofort, wenn sich die Ansicht deutlich bewegt.
 shadow_far_cadence = true
-# Sichtbarkeit: Objekte weiter als view_distance Meter (nächster Punkt ihrer Bounds) werden nicht gezeichnet; der
-# Nebel (unten) deckt bei 400 m schon 98,7 %. Deko-Objekte verschwinden zusätzlich, wenn Radius/Entfernung unter
+# Sichtbarkeit: Objekte weiter als view_distance Meter (nächster Punkt ihrer Bounds) werden nicht gezeichnet (außer
+# großen in der Fernsicht, unten); der Dunst (unten) deckt bei 400 m etwa 21 %. Deko-Objekte verschwinden zusätzlich, wenn Radius/Entfernung unter
 # size_cull fällt (0.005 ≈ 4 Pixel Radius bei 1600×900); spielrelevante (Mobs, category = "gameplay") nie wegen der
 # Größe. 0 schaltet die jeweilige Prüfung ab. Leonberg-Kern von oben: gleiches Bild, 4,2 → 2,9 ms (RTX 3080).
 view_distance = 400.0
 size_cull = 0.005
+# Fernsicht (render.md „Fernsicht“): große Objekte (Begrenzungsradius ab far_view_radius Metern: Häuser, Stadtmauer,
+# Schloss, Kirche, Burg) bleiben bis far_view_distance Meter sichtbar, in ihrer niedrigsten Detailstufe und ohne
+# Schatten; alles andere endet bei view_distance. 0 = aus (wie vorher).
+far_view_distance = 1500.0
+far_view_radius = 4.0
 # Drinnen (Kamera in einer Innenzone, world.md „Zonen“): weiter als indoor_view_distance Meter wird nichts gezeichnet
 # und wirft keinen Schatten; durch Fenster und Tür sieht man dann nur die Nähe (render.md „Innenräume“). 0 = aus.
 indoor_view_distance = 30.0
@@ -121,10 +126,10 @@ figure_shadow_distance = 40.0
 # Tonemapping des HDR-Bildes: "aces" (filmisch, Standard), "reinhard" (neutral), "none" (abschneiden).
 tonemap = "aces"
 exposure = 1.0
-# Distanznebel: kein Nebel bis fog_start (Meter), danach exponentiell-quadratisch; 0.00562 = 90 % bei 300 m.
-# fog_density = 0 schaltet ihn ab.
+# Distanznebel: kein Nebel bis fog_start (Meter), danach exponentiell-quadratisch; 0.0013 = 90 % bei 1200 m (Dunst,
+# der die Fernsicht weich abschließt; vorher 0.00562 = 90 % bei 300 m). fog_density = 0 schaltet ihn ab.
 fog_start = 30.0
-fog_density = 0.00562
+fog_density = 0.0013
 # Debug-Overlay (Achsen, Raster, Bounds, Lichtradien, FPS) beim Start zeigen; umschalten mit der Aktion debug_draw (F2).
 debug_draw = false
 # ImGui-Debugfenster (Leistung, Kamera, Render-Einstellungen live) beim Start zeigen; umschalten mit debug_ui (F1).
