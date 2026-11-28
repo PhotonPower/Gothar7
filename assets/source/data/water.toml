@@ -8,6 +8,8 @@
 #   refraction     größter Versatz der Brechung als Anteil der Bildbreite (Plan: höchstens 0,02)
 #   glint, shininess  Stärke und Schärfe des Sonnenglanzes;  shore_fade  Meter Wassertiefe, über die das Ufer einblendet
 #   underwater_visibility  Sicht beim Tauchen in Metern (M17 W3; 0 = wie absorption); die Farbe von oben bleibt
+#   glow           Eigenton des Wassers (linear, unbeleuchtet; Vorgabe 0) - ein See unter der Erde ohne Himmel
+# Nahe Punktlichter (Kristalle, Fackeln, Laternen) beleuchten jede Art und glänzen auf der Oberfläche.
 version = 1
 default = "pond"
 
@@ -38,3 +40,19 @@ glint = 1.4
 shininess = 1500.0     # klarer, enger Glanz wie beim Fluss (Koordinator, 2026-11-07)
 shore_fade = 0.25
 underwater_visibility = 8.0    # Tauchen „etwas klarer“ (Projektinhaber, 2026-11-07)
+
+# See unter der Erde (Kristallgrotte, Ebene 7): klar, blaugrün, mit leichtem Eigenton - ohne Himmel trägt das
+# Kristalllicht (Punktlichter) den Glanz; ruhig.
+[kind.grotto]
+absorption = [0.6, 0.32, 0.28]
+scatter = [0.03, 0.09, 0.1]
+glow = [0.003, 0.012, 0.016]
+wave_scale = 5.0
+wave_speed = 0.015
+wave_strength = 0.08
+flow_speed = 0.0
+refraction = 0.012
+glint = 1.2
+shininess = 1200.0
+shore_fade = 0.3
+underwater_visibility = 12.0

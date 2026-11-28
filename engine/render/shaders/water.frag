@@ -4,6 +4,8 @@
 // soft shore edge, Fresnel (Schlick) between that and the reflection, sun glint, fog. Output linear HDR.
 // The reflection (M17 W2, quality high): a ray marched through the copy of the depth (screen-space reflection),
 // fading out towards the screen edge, the sky where it finds nothing.
+// Nearby point lights (render::waterLights, up to 8: crystals, torches, lanterns) light the deep colour and shine
+// on the surface as a glint; `uGlow` is the water's own faint colour (a lake under the earth, default none).
 
 layout(binding = 0) uniform sampler2D uSceneColor; // copy of the scene, linear (medium/high)
 layout(binding = 1) uniform sampler2D uSceneDepth; // copy of the depth (R32F, reverse-Z)
@@ -36,6 +38,10 @@ uniform vec3 uAmbient;
 uniform vec3 uSkyHorizon;
 uniform vec3 uSkyZenith;
 uniform vec3 uFogColor;
+uniform vec3 uGlow;
+uniform int uLightCount;
+uniform float uLightPositionRadius[32]; // render::kWaterMaxLights x (x, y, z, radius)
+uniform float uLightColor[32];          // x (r, g, b, unused), colour times intensity
 uniform float uFogStart;
 uniform float uFogDensity;
 
@@ -60,6 +66,37 @@ float fresnel(float cosTheta)
 float viewDepth(vec3 p)
 {
     return dot(p - uCameraPosition, uCameraForward);
+}
+
+// saturate(1 - (d/r)^4)^2 / (d^2 + 1): as common/lighting.glsl (render::pointLightAttenuation).
+float pointAttenuation(float distance, float radius)
+{
+    const float ratio = distance / radius;
+    const float window = clamp(1.0 - ratio * ratio * ratio * ratio, 0.0, 1.0);
+    return window * window / (distance * distance + 1.0);
+}
+
+// The point lights on the water: `diffuse` the light they bring into it (for the deep colour), the return value
+// their glint - a broader highlight than the sun's, so that a crystal's light lies on the waves as a streak.
+vec3 pointLights(vec3 normal, vec3 view, out vec3 diffuse)
+{
+    diffuse = vec3(0.0);
+    vec3 glint = vec3(0.0);
+    const float shininess = clamp(uShininess * 0.1, 24.0, 200.0);
+    for (int i = 0; i < uLightCount; ++i)
+    {
+        const vec3 position = vec3(uLightPositionRadius[i * 4], uLightPositionRadius[i * 4 + 1],
+                                   uLightPositionRadius[i * 4 + 2]);
+        const vec3 colour = vec3(uLightColor[i * 4], uLightColor[i * 4 + 1], uLightColor[i * 4 + 2]);
+        const vec3 toLight = position - vWorld;
+        const float distance = length(toLight);
+        const vec3 l = toLight / max(distance, 1e-4);
+        const vec3 light = colour * pointAttenuation(distance, uLightPositionRadius[i * 4 + 3]);
+        diffuse += light * max(l.y, 0.0);
+        const vec3 halfway = normalize(view + l);
+        glint += light * uGlint * pow(max(dot(normal, halfway), 0.0), shininess) * (shininess + 8.0) / 25.0;
+    }
+    return glint;
 }
 
 float hash(vec2 p)
@@ -119,8 +156,10 @@ void main()
     const vec3 toCamera = uCameraPosition - vWorld;
     const float surfaceDistance = length(toCamera);
     const vec3 view = toCamera / max(surfaceDistance, 1e-4);
-    const vec3 lit = uAmbient + uSunColor * max(uSunDirection.y, 0.0);
-    const vec3 deep = uScatter * lit;
+    vec3 local;
+    const vec3 lightGlint = pointLights(normal, view.y < 0.0 ? -view : view, local);
+    const vec3 lit = uAmbient + uSunColor * max(uSunDirection.y, 0.0) + local;
+    const vec3 deep = uScatter * lit + uGlow;
 
     if (view.y < 0.0)
     {
@@ -147,7 +186,7 @@ void main()
     }
     const vec3 halfway = normalize(view + uSunDirection);
     const float sunUp = smoothstep(-0.02, 0.05, uSunDirection.y);
-    const vec3 glint = uSunColor * uGlint * sunUp * pow(max(dot(normal, halfway), 0.0), uShininess);
+    const vec3 glint = uSunColor * uGlint * sunUp * pow(max(dot(normal, halfway), 0.0), uShininess) + lightGlint;
 
     vec3 color;
     float alpha;
