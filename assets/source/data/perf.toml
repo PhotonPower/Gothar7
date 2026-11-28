@@ -50,3 +50,12 @@ times = ["10:00"]
 extra_npcs = 60
 npcs = ["npc_leo_citizen", "npc_leo_merchant_m", "npc_leo_merchant_f", "npc_leo_monk_1", "npc_leo_monk_2"]
 npc_radius = 25.0
+
+# Fernsicht (render.md „Fernsicht“): vom Bergfried der Burg auf dem Engelberg (welt W9) nach Westen über die Stadt.
+[[scenario]]
+name = "engelberg"
+description = "Bergfried der Burg auf dem Engelberg, Blick ueber die Stadt (Fernsicht)"
+cam = [743.0, 126.0, -119.0]
+yaw = 95.0
+pitch = -6.0
+times = ["10:00"]

@@ -440,6 +440,8 @@ public:
     /// Objects the last frame hid for their distance (view_distance) or size (size_cull) - counted among
     /// the objects of the grid cells it visited (whole cells beyond view_distance are skipped uncounted).
     [[nodiscard]] u32 culledByDistance() const noexcept { return m_culledFar; }
+    /// Objects the last frame drew beyond view_distance for the far view (render.md "Fernsicht").
+    [[nodiscard]] u32 farViewObjects() const noexcept { return m_culledFarView; }
     [[nodiscard]] u32 culledBySize() const noexcept { return m_culledSmall; }
     /// Objects wholly inside rooms the last frame left out of the main pass because the camera was in no room
     /// and farther than [render] indoor_cull_distance from theirs (render.md "Innenräume").
@@ -2157,6 +2159,7 @@ private:
     std::vector<SceneViewpoint> m_viewpoints;
     u32 m_visibleInstances = 0;
     u32 m_culledFar = 0;
+    u32 m_culledFarView = 0; // drawn beyond view_distance (far view, lowest LOD)
     u32 m_culledSmall = 0;
     render::CullSettings m_cullSettings;
     render::CullSettings m_frameCull; // this frame's: m_cullSettings, indoors with indoor_view_distance (E2)
@@ -2173,6 +2176,9 @@ private:
     render::LodSettings m_lodSettings;
     std::array<u32, 3> m_lodCounts{}; // instances drawn per level of detail in the last main pass
     render::CullGrid m_cullGrid;      // over m_instances; rebuilt when instances change
+    render::CullGrid m_farCullGrid;   // the big instances only (far view), index into m_farInstances
+    std::vector<u32> m_farInstances;  // far grid index -> m_instances index
+    std::vector<u32> m_farCandidates; // scratch of the far grid query
     bool m_cullGridDirty = true;
     physics::PhysicsWorld m_physics;
     // Player (M5): character, movement and camera. Drawn feet at the last two fixed steps for interpolation.

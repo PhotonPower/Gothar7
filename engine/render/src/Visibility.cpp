@@ -49,7 +49,11 @@ CullResult cullByDistance(const AABB& bounds, const Vec3& eye, const CullSetting
     const f32 distance = distanceTo(bounds, eye);
     if (settings.viewDistance > 0.0f && distance > settings.viewDistance)
     {
-        return CullResult::TooFar;
+        const f32 radius = glm::length(bounds.max - bounds.min) * 0.5f;
+        return settings.farDistance > settings.viewDistance && distance <= settings.farDistance &&
+                       radius >= settings.farRadius
+                   ? CullResult::KeptFar
+                   : CullResult::TooFar;
     }
     if (sizeCullable && settings.sizeCull > 0.0f && distance > 0.0f)
     {

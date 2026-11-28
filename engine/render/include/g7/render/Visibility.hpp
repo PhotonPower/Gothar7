@@ -18,6 +18,15 @@ struct CullSettings
     /// Hides size-cullable objects whose bounding radius divided by their distance is below this
     /// (0.005 at 60 degrees vertical field of view and 900 pixels is a radius of about 4 pixels).
     f32 sizeCull = 0.0f;
+    /// Far view (render.md "Fernsicht"): objects with a bounding radius of at least `farRadius` (houses, the
+    /// town wall, a castle) stay up to `farDistance` metres, at their lowest level of detail; 0: off.
+    f32 farDistance = 0.0f;
+    f32 farRadius = 4.0f;
+    /// How far the cull grid must look: the larger of both distances (0 = no limit).
+    [[nodiscard]] f32 reach() const noexcept
+    {
+        return viewDistance > 0.0f && farDistance > viewDistance ? farDistance : viewDistance;
+    }
 };
 
 enum class CullResult : u8
@@ -25,6 +34,7 @@ enum class CullResult : u8
     Kept,
     TooFar,   ///< beyond viewDistance
     TooSmall, ///< below sizeCull (size-cullable objects only)
+    KeptFar,  ///< beyond viewDistance, but big enough for the far view: drawn at the lowest level of detail
 };
 
 /// Levels of detail of static models by distance (asset.md "Detailstufen (LOD) statischer Modelle").
