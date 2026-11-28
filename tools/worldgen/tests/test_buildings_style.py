@@ -150,7 +150,8 @@ def test_socle_and_massive_ground_storey():
     )
     assert beams[:, 1].min() < 3.0  # timber already in the ground storey
     mauer = build_house(house(function="51007_1510"), -0.3, (5.0, -3.5), RULES, SITE)
-    assert set(materials(mauer)) <= {"stone", "roof_old", "roof_old_moss"}  # no openings, no timber
+    no_openings = {"stone", "roof_old", "roof_old_moss", "roof_ridge"}
+    assert set(materials(mauer)) <= no_openings  # no openings, no timber
 
 
 def test_low_roofs_become_steep_saddles():

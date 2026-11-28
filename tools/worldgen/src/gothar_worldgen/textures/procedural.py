@@ -318,13 +318,19 @@ def roof(size: int, rng: np.random.Generator) -> Texture:
     round_end = 0.42 * (1 - np.sqrt(np.clip(1 - (2 * fu - 1) ** 2, 0, 1)))
     gap = (fu < 0.03) | (fu > 0.97) | (fv < round_end)
     shade = rng.uniform(0.72, 1.2, (rows, cols))[row % rows, col]
+    # (owner 2026-11-27) each course a little lighter or darker, each tile a little redder or
+    # browner: fired clay is never one colour
+    course = rng.uniform(0.9, 1.1, rows)[row % rows]
+    warm = rng.normal(0.0, 1.0, (rows, cols))[row % rows, col]
     grain = periodic_noise((size, size), rng, beta=1.6, low_cut=6.0)
     under = np.clip((fv - 0.78) / 0.22, 0.0, 1.0)  # shadow under the next row's edge
-    albedo = shade * (0.92 + 0.14 * (grain - 0.5)) * (1 - 0.35 * under)
+    albedo = shade * course * (0.92 + 0.14 * (grain - 0.5)) * (1 - 0.35 * under)
     # through a gap one sees the tile of the row below, in its shadow
     albedo = np.where(gap, 0.5 * shade, albedo)
+    hue = np.stack([1.0 + 0.07 * warm, 1.0 - 0.01 * warm, 1.0 - 0.09 * warm], axis=2)
+    rgb = albedo[:, :, None] * np.clip(hue, 0.7, 1.3)
     height = np.where(gap, 0.05, 0.35 + 0.65 * fv) + 0.08 * grain
-    return Texture("roof", _mean_one(albedo), height, 3.0)
+    return Texture("roof", _mean_one(rgb), height, 3.0)
 
 
 def boards(size: int, rng: np.random.Generator) -> Texture:
@@ -346,7 +352,7 @@ def roof_moss(size: int, rng: np.random.Generator) -> Texture:
     patches = np.clip((periodic_noise((size, size), rng, beta=2.4) - 0.45) / 0.3, 0.0, 1.0)
     low_edges = np.clip(1.0 - base.height / 0.5, 0.0, 1.0)  # joints and lower edges
     moss = np.clip(patches * (0.4 + 0.8 * low_edges), 0.0, 1.0)
-    rgb = np.repeat(base.albedo[:, :, None], 3, axis=2)
+    rgb = base.albedo if base.albedo.ndim == 3 else np.repeat(base.albedo[:, :, None], 3, axis=2)
     green = np.array([0.75, 1.0, 0.45])
     rgb = rgb * (1 - moss[:, :, None]) + rgb * green * 1.15 * moss[:, :, None]
     return Texture("roof_moss", _mean_one(rgb), base.height + 0.15 * moss, base.normal_strength)

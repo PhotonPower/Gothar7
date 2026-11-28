@@ -102,6 +102,36 @@ TEST_CASE("Dungeon mobs: the Sensenklinge lies in the hoard's niche, the best on
     CHECK(equipped.value().asString() == "it_scythe_blade");
 }
 
+TEST_CASE("Dungeon mobs: level 1 holds two light scrolls in open containers (nobody goes down without light)")
+{
+    EngineConfig config;
+    config.headless = true;
+    Engine engine(config);
+    REQUIRE(engine.init().ok());
+    const script::ScriptVm* scripts = engine.scripts();
+    REQUIRE(scripts != nullptr);
+    i64 scrolls = 0;
+    for (const char* name : {"mob_dng_e1_chest", "mob_dng_e1_niche"})
+    {
+        CAPTURE(name);
+        const script::Instance* mob = scripts->findInstance("Mob", name);
+        REQUIRE(mob != nullptr);
+        CHECK(mob->fields["lock"].asString().empty()); // no lockpick needed
+        const script::Table* contents = mob->fields["contents"].asTable();
+        REQUIRE(contents != nullptr);
+        if (const auto it = contents->fields.find("it_scroll_light"); it != contents->fields.end())
+        {
+            CHECK(it->second.asInteger(0) >= 1); // one in each
+            scrolls += it->second.asInteger(0);
+        }
+        else
+        {
+            FAIL_CHECK("no light scroll");
+        }
+    }
+    CHECK(scrolls >= 2);
+}
+
 TEST_CASE("Dungeon mobs: level 4's stair chest holds the fire rune and a one-hander, the two-hander lies on "
           "level 6")
 {

@@ -307,6 +307,11 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
   Faust 0,5 m, Einhand 1,2 m, Zweihand 1,6 m) und im Winkel (±50°) vor dem Angreifer, ohne Wand oder Mob dazwischen.
 - **Schaden (K2, K3):** je Schadensart max(Waffe − Schutz, 0), die Stärke zur Hauptart der Waffe (Fäuste: stumpf),
   mindestens 5; kritisch nach Talent 0/10/20 % mit doppeltem Waffenschaden. Tiere: `Npc.damage` (Art) plus Stärke.
+- **Gegnerart-Bonus `bane`** (Item-Feld): `bane = { species = "<art>" | { "<art>", … }, bonus = n }` – fester
+  Zusatzschaden (n ≥ 1, ohne Schutz und Kritisch) für jeden Nahkampftreffer auf ein Ziel, dessen `Npc.species` in der
+  Liste steht (`gameplay::readBane`, `baneBonus`; eine Stelle in `EngineCombat`, vor Schwachstelle/Einrollen). Beim
+  Laden prüft die Engine jedes `bane` (Fehler im Log, kaputte zählen 0; unbekannte Art = Warnung). Die Sensenklinge
+  `it_scythe_blade` hat `bane` +50 gegen die Brut (`mauerkriecher`, `kellermutter`).
 - **Parade (K6):** blockt 0,4 s ab Beginn Schläge von vorn (±60°); der Schlag prallt ab (der Angreifer taumelt).
   Fäuste parieren keine Waffen, Tiere lassen sich nicht parieren.
 - **Folgen (K7, K8):** Treffer lassen taumeln. Menschen, von Menschen auf 0 geschlagen, werden bewusstlos (1 LP,
