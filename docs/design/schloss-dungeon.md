@@ -363,7 +363,8 @@ schreibt.
 ## 7c. Stand D3 (welt): Ebene 3 „Zisterne“, Ebene 4 als Stub
 - **Neu in der Karten-JSON:**
   - `water`: `depthM` (Beckenboden unter dem Umgang, Vorgabe 1,0) und `edgeM` (Wasserspiegel unter dem Rand,
-    Vorgabe 0,2); je Zeilenlauf ein Wasser-Vob statt je Zelle.
+    Vorgabe 0,2), `kind` (Wasserart aus der `water.toml` der Engine, Vorgabe `pond`); je Zeilenlauf ein Wasser-Vob
+    statt je Zelle.
   - `spawns`: Monsterplätze `SPAWN_E03_<x>_<y>` auf beliebigen Boden- und Wasserzellen (der Brunnenmolch lauert im
     Wasser).
   - Teleporter mit `active: false` lassen sich per Ereignis einschalten; die Erreichbarkeit rechnet das mit, dazu
@@ -519,7 +520,8 @@ schreibt.
     **Kristallkammer** mit Depot (Nische; Schutzring, Manatrank, 250 Gulden) und dem **Kristallschalter**. Er
     öffnet das Gatter zur Treppenkammer.
   - **See-Grotte:** See (1,4 m Becken, Wasser 1,1 m tief) mit flachem Wasser am Westufer, Steg zur Insel (Truhe,
-    Pfeile), zwei **Brunnenmolche** im Wasser, Kristallkrebs und Truhe am Nordufer.
+    Pfeile), zwei **Brunnenmolche** im Wasser, Kristallkrebs und Truhe am Nordufer. Wasserart `grotto` (engine #534:
+    klar, blaugrün, ohne Himmel; `water.kind` in ebene_07.json).
   - **Rätsel 2 (Falle mit Rückweg):** Der Westgang der Halle endet an einer Falltür (Platte `player`), hinter der
     Kristalle leuchten. Der Sturz endet in der **Tiefen Grotte**, 1,2 m tiefer (Schacht-Ankunft
     `START_E07_SCHACHT_UNTEN`; Truhe, Heiltrank, Kristallkrebs, Mauerschlupfer). Zurück geht es den Hang hinauf;

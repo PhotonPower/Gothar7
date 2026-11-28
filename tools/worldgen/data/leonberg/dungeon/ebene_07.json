@@ -8,7 +8,7 @@
   "cellM": 3.0,
   "heightM": 3.5,
   "noAutoTorches": true,
-  "water": {"depthM": 1.4, "edgeM": 0.3, "shallowM": 0.35, "shallowEdgeM": 0.1, "shallow": [{"from": [15, 15], "to": [15, 20]}, {"from": [16, 20], "to": [16, 20]}]},
+  "water": {"kind": "grotto", "depthM": 1.4, "edgeM": 0.3, "shallowM": 0.35, "shallowEdgeM": 0.1, "shallow": [{"from": [15, 15], "to": [15, 20]}, {"from": [16, 20], "to": [16, 20]}]},
   "cells": [
     {"at": [2, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_06.g7world", "start": "START_E06_VON_UNTEN", "facing": "S"}, "arrive": "START_E07_VON_OBEN"},
     {"at": [24, 1], "niche": {"definition": "mob_dng_e7_niche_kristall", "facing": "S"}},
