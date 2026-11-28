@@ -43,6 +43,7 @@ from gothar_chargen.fabrics import apply_fray_materials, load_fabrics
 from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
 from gothar_chargen.figure import FigureError
 from gothar_chargen.gltf import Gltf, GltfError
+from gothar_chargen.heraldry import HERALDRY_DIR, write_drafts, write_heraldry
 from gothar_chargen.human import SUFFIX as HUMAN_SUFFIX
 from gothar_chargen.human import HumanError, load_human
 from gothar_chargen.items import build_items, validate_item
@@ -675,6 +676,20 @@ def _cmd_ui_frames(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_heraldry(args: argparse.Namespace, out: TextIO) -> int:
+    """Own coat of arms of the Engelberg castle and its banner (procedural, numpy)."""
+    root = find_repo_root()
+    if args.out is None and root is None:
+        print("error: repository not found; use --out", file=out)
+        return EXIT_ERROR
+    paths = write_heraldry(args.out or root / HERALDRY_DIR, args.seed)
+    if args.drafts is not None:
+        paths += write_drafts(args.drafts, args.seed)
+    for p in paths:
+        print(f"wrote {p} ({p.stat().st_size} bytes)", file=out)
+    return EXIT_OK
+
+
 def _cmd_fabrics(args: argparse.Namespace, out: TextIO) -> int:
     """Worn cloth textures from data/fabrics.toml (F3n; fabric sources in DATA_ROOT, Blender)."""
     characters = _characters_dir(args)
@@ -854,6 +869,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--items", type=Path, help="inventory cell images <item>.png for the mock-up")
     p.add_argument("--background", type=Path, help="screenshot behind the mock-up")
     p.set_defaults(func=_cmd_ui_frames)
+
+    p = sub.add_parser("heraldry", help="Engelberg arms and banner -> items/textures/heraldry")
+    p.add_argument("--out", type=Path, help="output folder (default: repository)")
+    p.add_argument("--seed", type=int, default=7, help="random seed (default 7)")
+    p.add_argument("--drafts", type=Path, help="also write every draft design here (review)")
+    p.set_defaults(func=_cmd_heraldry)
 
     p = sub.add_parser("fabrics", help="worn cloth textures from data/fabrics.toml (local, F3n)")
     p.add_argument(
