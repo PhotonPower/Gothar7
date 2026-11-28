@@ -410,7 +410,7 @@ Engine::waterSurfaces(), waterSurfacesDrawn(), waterQuality(), waterStyles();  w
   (Eigenton, linear, unbeleuchtet, Vorgabe 0) und die Art `[kind.grotto]` (klar, blaugrün, leichter Eigenton) für
   Seen unter der Erde. Welten ohne Himmel (`environment`, Dungeon D7b): eine Spiegelung ohne Treffer zeigt den Fels
   im Grundlicht (`ambient` × 0,5) statt des schwarzen Nebels. Leonbergs Außenwasser bei Tag unverändert (Bildvergleich
-  Parksee Mittag/Nacht pixelgleich, kein Licht in Reichweite); Bilder `C:\GotharDataeview\e7-wasser\`.
+  Parksee Mittag/Nacht pixelgleich, kein Licht in Reichweite); Bilder `C:\GotharData\review\e7-wasser\`.
 - **Qualität:** `[render] water_quality = "low" | "medium" | "high"` (Vorgabe `medium`), Optionen → Grafik
   „Wasserqualität“. `low`: ohne Kopien, die Fläche halbdurchsichtig mit Fresnel und Glanz. `high` dazu die
   Spiegelung (W2, unten).
