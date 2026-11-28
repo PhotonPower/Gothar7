@@ -9,6 +9,7 @@
 
 #include <g7/core/Math.hpp>
 #include <g7/core/Result.hpp>
+#include <g7/render/Lighting.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
 #include <map>
@@ -38,19 +39,24 @@ enum class WaterQuality : u8
 struct WaterStyle
 {
     Vec3 absorption{1.0f, 0.85f, 1.3f}; ///< per metre and channel (Beer-Lambert): higher = murkier
-    Vec3 scatter{0.04f, 0.05f, 0.03f};  ///< colour of deep water (linear, lit by sun and sky)
-    f32 waveScale = 3.0f;               ///< metres per tile of the wave pattern
-    f32 waveSpeed = 0.04f;              ///< tiles per second the two wave layers drift apart
-    f32 waveStrength = 0.35f;           ///< tilt of the normals (0 = a mirror)
-    f32 flowSpeed = 0.0f;               ///< m/s along the box's local +X (rivers); 0 = standing water
-    f32 refraction = 0.02f;             ///< largest offset of the refraction, part of the screen width
-    f32 glint = 2.0f;                   ///< strength of the sun's highlight
-    f32 shininess = 400.0f;             ///< sharpness of the highlight (Blinn-Phong exponent)
-    f32 shoreFade = 0.25f;              ///< metres of water depth over which the shore edge fades in
+    Vec3 scatter{0.04f, 0.05f, 0.03f};  ///< colour of deep water (linear, lit by sun, sky and nearby lights)
+    /// The water's own faint colour (linear, unlit; default none): a glowing grotto lake under the earth.
+    Vec3 glow{0.0f};
+    f32 waveScale = 3.0f;     ///< metres per tile of the wave pattern
+    f32 waveSpeed = 0.04f;    ///< tiles per second the two wave layers drift apart
+    f32 waveStrength = 0.35f; ///< tilt of the normals (0 = a mirror)
+    f32 flowSpeed = 0.0f;     ///< m/s along the box's local +X (rivers); 0 = standing water
+    f32 refraction = 0.02f;   ///< largest offset of the refraction, part of the screen width
+    f32 glint = 2.0f;         ///< strength of the sun's highlight
+    f32 shininess = 400.0f;   ///< sharpness of the highlight (Blinn-Phong exponent)
+    f32 shoreFade = 0.25f;    ///< metres of water depth over which the shore edge fades in
     /// Metres one sees under water (M17 W3, the camera diving); 0: as `absorption` gives it. Only the view
     /// from below uses it, the colour of the surface seen from above stays.
     f32 underwaterVisibility = 0.0f;
 };
+
+/// Point lights a surface takes at most (the nearest reaching it): their glint and the light in the water.
+inline constexpr u32 kWaterMaxLights = 8;
 
 /// Screen-space reflection (W2, quality high): steps along the ray and how far it goes.
 inline constexpr u32 kReflectionSteps = 32;
@@ -107,7 +113,14 @@ struct WaterFrame
     Vec3 fogColor{0.5f};
     f32 fogStart = 30.0f;
     f32 fogDensity = 0.0f;
+    /// The frame's point lights (crystals, torches, lanterns): the nearest reaching a surface light its deep
+    /// colour and shine on it as a glint (render.md "Wasser"); empty: none.
+    std::span<const PointLight> lights;
 };
+
+/// Indices of the lights in `lights` that reach the water surface `s` (a light's sphere touches its
+/// rectangle), nearest first, at most kWaterMaxLights; public for tests.
+[[nodiscard]] std::vector<u32> waterLights(const WaterSurface& s, std::span<const PointLight> lights);
 
 class WaterRenderer
 {

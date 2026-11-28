@@ -2729,6 +2729,14 @@ void Engine::drawWater()
     frame.fogColor = m_environment.fogColor;
     frame.fogStart = m_environment.fogStart;
     frame.fogDensity = m_environment.fogDensity;
+    frame.lights = m_frameLights.lights(); // crystals, torches, lanterns: glint and light in the water
+    if (m_worldFile.environment)
+    {
+        // No sky (dungeon D7b): what a missed reflection shows is the rock above, in the world's ambient
+        // light, not the (black) fog.
+        frame.skyHorizon = frame.skyZenith =
+            glm::max(m_environment.ambientSky * 0.5f, m_environment.fogColor);
+    }
     m_waterDrawn = m_waterRenderer.draw(*m_device, m_sceneTarget, m_camera, m_waterSurfaces, frame);
 }
 

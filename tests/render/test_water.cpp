@@ -7,6 +7,7 @@
 
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 using namespace g7;
 using namespace g7::render;
@@ -109,4 +110,46 @@ TEST_CASE("Water: the shipped kinds (decision 5: Glems about 4 m visibility, pon
     CHECK(waterTransmittance(underwaterAbsorption(pond), 8.0f).y == doctest::Approx(0.02f).epsilon(0.05));
     CHECK(waterTransmittance(underwaterAbsorption(river), 10.0f).y == doctest::Approx(0.02f).epsilon(0.05));
     CHECK(waterTransmittance(underwaterAbsorption(pond), 4.0f).y > 0.1f);
+}
+
+TEST_CASE("Water: glow (a lake under the earth) and the lights that reach a surface")
+{
+    const auto parsed = WaterStyles::parse(
+        "version = 1\n[kind.grotto]\nglow = [0.01, 0.02, 0.03]\n[kind.pond]\n", "water.toml");
+    REQUIRE_MESSAGE(parsed.ok(), (parsed.ok() ? "" : parsed.error().message));
+    CHECK(parsed.value().style("grotto").glow.z == doctest::Approx(0.03f));
+    CHECK(parsed.value().style("pond").glow == Vec3(0.0f)); // default: none (outside water stays as it was)
+    const auto bad = WaterStyles::parse("version = 1\n[kind.x]\nglow = [0.0, -0.1, 0.0]\n", "water.toml");
+    REQUIRE_FALSE(bad.ok());
+    CHECK(bad.error().message == "water.toml: kind.x: glow must not be negative");
+
+    // A surface 10 x 4 m (half 5 x 2) at the origin, turned 90 degrees: its long side along world z.
+    const WaterSurface s{Vec3(0.0f), glm::radians(90.0f), Vec2(5.0f, 2.0f), nullptr};
+    std::vector<PointLight> lights = {
+        {Vec3(0.0f, 1.0f, 4.0f), 3.0f, Vec3(1.0f), 1.0f},   // over the surface (long side): reaches, 1 m
+        {Vec3(4.0f, 1.0f, 0.0f), 2.5f, Vec3(1.0f), 1.0f},   // 2 m beside the short side: reaches, ~2.2 m
+        {Vec3(4.0f, 0.0f, 0.0f), 1.5f, Vec3(1.0f), 1.0f},   // 2 m beside, radius 1.5: does not reach
+        {Vec3(0.0f, 30.0f, 0.0f), 10.0f, Vec3(1.0f), 1.0f}, // far above: does not reach
+    };
+    CHECK(waterLights(s, lights) == std::vector<u32>{0, 1}); // nearest first
+    // At most kWaterMaxLights, the nearest.
+    for (u32 i = 0; i < 12; ++i)
+    {
+        lights.push_back({Vec3(0.0f, 0.5f + 0.1f * static_cast<f32>(i), 0.0f), 5.0f, Vec3(1.0f), 1.0f});
+    }
+    const std::vector<u32> near = waterLights(s, lights);
+    REQUIRE(near.size() == kWaterMaxLights);
+    CHECK(near[0] == 4); // 0.5 m above
+}
+
+TEST_CASE("Water: the grotto kind glows a little, the outside kinds do not")
+{
+    const auto loaded = fs::readText(fs::fromUtf8(G7_ASSET_SOURCE_DIR) / "data" / "water.toml");
+    REQUIRE(loaded.ok());
+    const auto parsed = WaterStyles::parse(loaded.value(), "water.toml");
+    REQUIRE(parsed.ok());
+    REQUIRE(parsed.value().contains("grotto"));
+    CHECK(parsed.value().style("grotto").glow.z > 0.0f);
+    CHECK(parsed.value().style("pond").glow == Vec3(0.0f));
+    CHECK(parsed.value().style("river").glow == Vec3(0.0f));
 }

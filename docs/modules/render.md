@@ -403,6 +403,14 @@ Engine::waterSurfaces(), waterSurfacesDrawn(), waterQuality(), waterStyles();  w
 - **Daten** `data/water.toml`: `[kind.river]`, `[kind.pond]`, `default = "pond"` (fehlt `kind` oder ist es
   unbekannt, gilt die Vorgabe). Werte nach Entscheidung 5/6: Glems trüb grün-braun (Sicht ca. 4 m), fließt 0,6 m/s;
   Teich dunkel-oliv (ca. 3 m), ruhiger und mit schärferem Glanz.
+- **Lokale Lichter und Eigenton (E7-Abnahme, 2026-11-28):** Je Fläche die bis zu `kWaterMaxLights` (8) nächsten
+  Punktlichter des Bildes, deren Kugel ihr Rechteck erreicht (`render::waterLights`, `WaterFrame::lights` aus
+  `Engine::m_frameLights`): Sie beleuchten die Tiefenfarbe (`scatter`) und glänzen als breiterer Blinn-Phong-Streifen
+  (Schärfe `shininess`/10, 24–200; Stärke `glint`) – Kristalle, Fackeln, Laternen spiegeln sich. Neues Feld `glow`
+  (Eigenton, linear, unbeleuchtet, Vorgabe 0) und die Art `[kind.grotto]` (klar, blaugrün, leichter Eigenton) für
+  Seen unter der Erde. Welten ohne Himmel (`environment`, Dungeon D7b): eine Spiegelung ohne Treffer zeigt den Fels
+  im Grundlicht (`ambient` × 0,5) statt des schwarzen Nebels. Leonbergs Außenwasser bei Tag unverändert (Bildvergleich
+  Parksee Mittag/Nacht pixelgleich, kein Licht in Reichweite); Bilder `C:\GotharDataeview\e7-wasser\`.
 - **Qualität:** `[render] water_quality = "low" | "medium" | "high"` (Vorgabe `medium`), Optionen → Grafik
   „Wasserqualität“. `low`: ohne Kopien, die Fläche halbdurchsichtig mit Fresnel und Glanz. `high` dazu die
   Spiegelung (W2, unten).
@@ -411,7 +419,8 @@ Engine::waterSurfaces(), waterSurfacesDrawn(), waterQuality(), waterStyles();  w
   Benchmark (Budget ≤ 0,6 ms bei sichtbarem Fluss, `low` ≤ 0,3 ms).
 - **Tests:** `tests/render/test_water.cpp` (Fresnel, Absorption, nahtlose Wellen, Wasserarten und Fehler, gelieferte
   Werte: Sichtweiten), GPU `test_water.cpp` (tieferes Wasser dunkler, Ufer ohne Sprung, Brechung versetzt nur unter
-  Wasser, ohne Wellen kein Versatz, `low` ohne Kopien, außer Sicht nichts gezeichnet), `test_engine_render.cpp`
+  Wasser, ohne Wellen kein Versatz, `low` ohne Kopien, außer Sicht nichts gezeichnet, Punktlicht glänzt und
+  beleuchtet, fernes Licht nichts, `glow` hebt an), `test_engine_render.cpp`
   (Teich im Testlager über den Wasser-Pass, Vorgabe-Art, Qualität aus den Einstellungen).
 
 ### Spiegelung auf dem Wasser (M17 Teil W2, umgesetzt) – `water.frag`

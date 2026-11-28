@@ -9,6 +9,7 @@
 #include <g7/render/Water.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <format>
 #include <numbers>
@@ -51,8 +52,8 @@ Result<WaterStyles> WaterStyles::parse(std::string_view toml, std::string_view s
     {
         const std::string at = "kind." + name;
         WaterStyle style;
-        for (auto [key, target] :
-             {std::pair{"absorption", &style.absorption}, std::pair{"scatter", &style.scatter}})
+        for (auto [key, target] : {std::pair{"absorption", &style.absorption},
+                                   std::pair{"scatter", &style.scatter}, std::pair{"glow", &style.glow}})
         {
             if (const auto value = c.find<std::vector<f64>>(at + "." + key); value && value->size() == 3)
             {
@@ -82,6 +83,10 @@ Result<WaterStyles> WaterStyles::parse(std::string_view toml, std::string_view s
         if (glm::any(glm::lessThan(style.absorption, Vec3(0.0f))))
         {
             return error(at, "absorption must not be negative");
+        }
+        if (glm::any(glm::lessThan(style.glow, Vec3(0.0f))))
+        {
+            return error(at, "glow must not be negative");
         }
         if (style.underwaterVisibility < 0.0f)
         {
@@ -284,6 +289,35 @@ Result<void> WaterRenderer::resize(Device& device, u32 width, u32 height)
     return {};
 }
 
+std::vector<u32> waterLights(const WaterSurface& s, std::span<const PointLight> lights)
+{
+    // Distance from a light to the surface's rectangle (in its own frame), nearest first.
+    const Vec2 axis(std::cos(s.yaw), std::sin(s.yaw));
+    std::vector<std::pair<f32, u32>> reach;
+    for (u32 i = 0; i < lights.size(); ++i)
+    {
+        const Vec3 d = lights[i].position - s.centre;
+        // Local x along (cos, 0, -sin), local z along (sin, 0, cos) - the turn about +Y used to draw it.
+        const f32 lx = d.x * axis.x - d.z * axis.y;
+        const f32 lz = d.x * axis.y + d.z * axis.x;
+        const f32 ox = std::max(std::abs(lx) - s.halfExtents.x, 0.0f);
+        const f32 oz = std::max(std::abs(lz) - s.halfExtents.y, 0.0f);
+        const f32 distance = std::sqrt(ox * ox + oz * oz + d.y * d.y);
+        if (distance < lights[i].radius)
+        {
+            reach.emplace_back(distance, i);
+        }
+    }
+    std::stable_sort(reach.begin(), reach.end(),
+                     [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::vector<u32> out;
+    for (usize k = 0; k < reach.size() && k < kWaterMaxLights; ++k)
+    {
+        out.push_back(reach[k].second);
+    }
+    return out;
+}
+
 u32 WaterRenderer::draw(Device& device, const SceneTarget& scene, const Camera& camera,
                         std::span<const WaterSurface> surfaces, const WaterFrame& frame)
 {
@@ -376,6 +410,27 @@ u32 WaterRenderer::draw(Device& device, const SceneTarget& scene, const Camera& 
         p.setUniform("uGlint", style.glint);
         p.setUniform("uShininess", style.shininess);
         p.setUniform("uShoreFade", style.shoreFade);
+        p.setUniform("uGlow", style.glow);
+        // The nearest point lights reaching it: glint and light in the water (an underground lake by its
+        // crystals).
+        std::array<f32, kWaterMaxLights * 4> positions{};
+        std::array<f32, kWaterMaxLights * 4> colours{};
+        const std::vector<u32> near = waterLights(s, frame.lights);
+        for (usize k = 0; k < near.size(); ++k)
+        {
+            const PointLight& l = frame.lights[near[k]];
+            const Vec3 c = l.color * l.intensity;
+            positions[k * 4 + 0] = l.position.x;
+            positions[k * 4 + 1] = l.position.y;
+            positions[k * 4 + 2] = l.position.z;
+            positions[k * 4 + 3] = l.radius;
+            colours[k * 4 + 0] = c.r;
+            colours[k * 4 + 1] = c.g;
+            colours[k * 4 + 2] = c.b;
+        }
+        p.setUniform("uLightCount", static_cast<i32>(near.size()));
+        p.setUniform("uLightPositionRadius", std::span<const f32>(positions));
+        p.setUniform("uLightColor", std::span<const f32>(colours));
         device.draw(6);
     }
     return static_cast<u32>(m_visible.size());

@@ -12,6 +12,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <span>
+#include <vector>
 
 using namespace g7;
 using namespace g7::render;
@@ -241,5 +243,33 @@ TEST_CASE("Water surface: rain rings ruffle a still surface (M17 R)")
     };
     const f32 still = spread(0.0f);
     CHECK(spread(1.0f) > 3.0f * still + 0.05f); // rings
+    CHECK(w.gl.device->debugErrorCount() == 0);
+}
+
+TEST_CASE("Water surface: a point light shines on the water and lights it; a light far away changes nothing")
+{
+    WaterScene w;
+    WaterStyle style = calm();
+    style.waveStrength = 0.05f;
+    style.scatter = Vec3(0.05f, 0.1f, 0.1f);
+    w.frame.quality = WaterQuality::Low;
+    const auto brightness = [&](std::span<const PointLight> lights)
+    {
+        w.frame.lights = lights;
+        w.floor(-2.0f, Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        REQUIRE(w.draw(0.0f, style) == 1);
+        const Vec3 p = w.pixel(32, 32);
+        return p.x + p.y + p.z;
+    };
+    const f32 dark = brightness({});
+    // A light 1 m over the middle (straight below the camera): its glint and its light in the water.
+    const PointLight crystal{Vec3(0.0f, 1.0f, 0.0f), 8.0f, Vec3(0.35f, 0.8f, 1.0f), 9.0f};
+    const f32 lit = brightness(std::span(&crystal, 1));
+    CHECK(lit > dark + 0.5f);
+    const PointLight far{Vec3(200.0f, 1.0f, 0.0f), 8.0f, Vec3(1.0f), 9.0f};
+    CHECK(brightness(std::span(&far, 1)) == doctest::Approx(dark));
+    // The water's own glow lifts the dark surface.
+    style.glow = Vec3(0.0f, 0.05f, 0.05f);
+    CHECK(brightness({}) > dark + 0.05f);
     CHECK(w.gl.device->debugErrorCount() == 0);
 }
