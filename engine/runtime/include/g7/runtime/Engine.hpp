@@ -1626,6 +1626,8 @@ private:
     struct Combatant;
     void loadCombat();
     void loadAnimalBodies(); ///< Creatures.<species>.body (data/creatures.lua)
+    /// Item.bane of every item: a broken one is an error in the log, a species no Npc has a warning.
+    void checkItemBanes() const;
     /// The body a blow hits and the AI walks up to: people upright, animals by their Creatures body.
     [[nodiscard]] gameplay::SweepTarget bodyOf(const Combatant& c) const;
     /// Ground distance from `from` to `to` counted to the target's body (as between two people's middles).

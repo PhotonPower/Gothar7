@@ -11,6 +11,7 @@
 #include <ostream> // doctest needs it to print std::string operands
 #include <sstream>
 #include <string>
+#include <vector>
 
 using namespace g7;
 using namespace g7::gameplay;
@@ -210,4 +211,46 @@ TEST_CASE("Ranged: point damage minus protection, at least 5; the flat ballistic
     }
     CHECK(closest < 0.1f);
     CHECK_FALSE(ballisticDirection(from, Vec3(500.0f, 0.0f, 0.0f), 40.0f).has_value()); // out of reach
+}
+
+TEST_CASE("Combat bane: a fixed bonus against its species, read from Item.bane, broken ones refused")
+{
+    auto created = script::ScriptVm::create({});
+    REQUIRE(created.ok());
+    script::ScriptVm& vm = created.value();
+    REQUIRE(vm.runString(R"(
+        One = { species = "mauerkriecher", bonus = 50 }
+        Two = { species = { "mauerkriecher", "kellermutter" }, bonus = 25 }
+        NoBonus = { species = "x" }
+        ZeroBonus = { species = "x", bonus = 0 }
+        NoSpecies = { bonus = 5 }
+        EmptyList = { species = {}, bonus = 5 }
+        Extra = { species = "x", bonus = 5, factor = 2 }
+    )",
+                         "bane.lua")
+                .ok());
+    auto one = readBane(vm.global("One"));
+    REQUIRE(one.ok());
+    REQUIRE(one.value().has_value());
+    CHECK(one.value()->species == std::vector<std::string>{"mauerkriecher"});
+    CHECK(baneBonus(one.value(), "mauerkriecher") == 50);
+    CHECK(baneBonus(one.value(), "wolf") == 0); // another species
+    CHECK(baneBonus(one.value(), "") == 0);     // people have no species
+    auto two = readBane(vm.global("Two"));
+    REQUIRE(two.ok());
+    CHECK(baneBonus(two.value(), "kellermutter") == 25);
+    CHECK(baneBonus(two.value(), "mauerkriecher") == 25);
+
+    // No bane: nothing.
+    auto none = readBane(script::Value());
+    REQUIRE(none.ok());
+    CHECK_FALSE(none.value().has_value());
+    CHECK(baneBonus(none.value(), "mauerkriecher") == 0);
+
+    for (const char* broken : {"NoBonus", "ZeroBonus", "NoSpecies", "EmptyList", "Extra"})
+    {
+        CAPTURE(broken);
+        CHECK_FALSE(readBane(vm.global(broken)).ok());
+    }
+    CHECK_FALSE(readBane(script::Value(i64{3})).ok());
 }

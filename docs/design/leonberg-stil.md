@@ -53,6 +53,13 @@ Rähm und Ständer Balken. Die Muster sind eigene Geometrie in normierten Feldko
 - **Dachdeckung:**
   - Biberschwanz alt (dunkles Rotbraun, bemoost) 70 %, Biberschwanz rot 25 %, Holzschindeln 5 % (Schuppen, Anbauten).
   - Kein Schiefer (in Württemberg untypisch). Stroh nur bei Scheunen außerhalb der Mauer.
+  - **Farbe (Projektinhaber 2026-11-27: von Weitem keine glatte rotbraune Fläche):** In der Textur ist jede
+    Ziegelreihe etwas heller oder dunkler und jeder Ziegel etwas röter oder brauner. Für die Entfernung (auch in den
+    Detailstufen lod1/lod2) wird jede Dachfläche entlang der Ziegelreihen in Flicken geteilt: Bänder von 8 Reihen
+    (1,23 m), darin Stücke von 1,6–5 m Länge, von Band zu Band versetzt. Etwa ein Viertel der Flicken ist dunkler
+    (ältere Ziegel, Material `<dach>~p1`), ein Fünftel röter und heller (neu gedeckt, `~p2`), fest je Haus.
+  - **First:** Firstziegel als dunkle Linie (`roof_ridge`, 0,2 m je Seite, 9 cm über den Ziegeln) auf jedem
+    Satteldach, auch in lod1 und lod2.
 - **Dachneigung:** typisch 50–55°.
   - Im Modus medieval werden flache, Pult- und flach geneigte Dächer (unter 35°) zu Satteldächern mit 50–55°,
     die Traufe bleibt.

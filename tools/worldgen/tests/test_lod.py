@@ -45,7 +45,8 @@ def test_lod1_is_simpler_and_never_has_more_timber_than_lod0():
     assert not any(p.material.startswith("timber") for p in late.primitives)  # lod0 had none
     p2 = lod2_primitives(h0, -0.3, (5.0, -3.5), r)
     assert 0 < tris(p2) <= 0.1 * tris(h0.primitives)
-    assert {p.material for p in p2} == {h0.style.infill, h0.style.roof}
+    ridge = "roof_ridge"  # the dark ridge, also from afar (owner 2026-11-27)
+    assert {p.material for p in p2} == {h0.style.infill, h0.style.roof, ridge}
 
 
 @pytest.mark.parametrize("suffixes", [["_lod0", "_lod1", "_lod2"], ["", "_lod1", "_lod2"]])

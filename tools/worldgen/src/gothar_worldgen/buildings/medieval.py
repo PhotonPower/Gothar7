@@ -50,13 +50,19 @@ from gothar_worldgen.buildings.massing import (
 )
 
 # *_low: the dirty foot band of a textured house (W5)
-ROLES = ("wall_ground", "infill", "timber", "roof", "roof_north", "frame", "glass", "sash",
-         "chimney", "wall_ground_low", "infill_low", "wall_ground_streak", "infill_streak",
+ROLES = ("wall_ground", "infill", "timber", "roof", "roof_north", "roof_ridge", "frame", "glass",
+         "sash", "chimney", "wall_ground_low", "infill_low", "wall_ground_streak", "infill_streak",
          "room_wall", "room_floor", "room_ceiling", "room_beam")  # fmt: skip
 ROOM_ROLES = ("room_wall", "room_floor", "room_ceiling", "room_beam")  # outside the house budget
 LOW_SUFFIX = "~low"  # material name of the foot band (textures.apply.LOW)
 MOSS_SUFFIX = "~moss"  # shady roof side of a textured house (textures.apply.MOSS)
 STREAK_SUFFIX = "~streak"  # plaster under a window with a rain streak (textures.apply.STREAK)
+RIDGE = "roof_ridge"  # palette entry of the ridge tiles (textures.apply.RIDGE)
+# the ridge (owner 2026-11-27: a dark line at the ridge, also from afar): a cap of ridge tiles
+# over the crease, ``RIDGE_W`` down each slope, ``RIDGE_UP`` proud of the tiles at the top, in
+# the palette's dark ``roof_ridge`` (mortar and soot of the ridge) on every kind of roof
+RIDGE_W, RIDGE_UP, RIDGE_LIFT = 0.2, 0.09, 0.015
+RIDGE_STEP_M = 0.75  # samples along a sagging ridge
 STREAK_M = 0.6  # how far a streak runs down from the sill
 DOOR_PARTITION_M = 0.5  # (W7) a partition keeps this far from the house door's edge
 STREAK_SHARE = 0.65  # share of windows with a streak (deterministic per window)
@@ -2331,7 +2337,7 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
         if edge >= 0 and edge in ctx.wall_edges:
             cuts.append((a, outlines[-1][(k + 1) % len(outlines[-1])][0], top_n[k]))
     _add_roof(ctx.builders["roof"], ctx.builders["roof_north"], roof, top_poly, crease, rules,
-              cuts)  # fmt: skip
+              cuts, ridge=ctx.builders["roof_ridge"])  # fmt: skip
     ctx.roofs.append(_RoofPart(roof, top_poly, Polygon(ring)))
 
 
@@ -2351,8 +2357,8 @@ def _materials(st: HouseStyle) -> dict[str, str]:
     """Role -> palette entry for one house."""
     north = "roof_old_moss" if st.roof == "roof_old" else st.roof
     return {"wall_ground": st.wall, "infill": st.infill, "timber": st.timber_color,
-            "roof": st.roof, "roof_north": north, "frame": "frame", "glass": "window_glass",
-            "sash": SASH,
+            "roof": st.roof, "roof_north": north, "roof_ridge": RIDGE, "frame": "frame",
+            "glass": "window_glass", "sash": SASH,
             "chimney": st.chimney, "wall_ground_low": st.wall,
             "infill_low": st.infill, "wall_ground_streak": st.wall,
             "infill_streak": st.infill, "room_wall": "plaster_white",
@@ -2539,18 +2545,56 @@ def lod2_primitives(house: HouseResult, base_y: float, origin_xz: tuple[float, f
     wall_mat = st.infill if st.timber else st.wall
     walls = _Builder((origin_xz[0], base_y, origin_xz[1]))
     roofs = _Builder((origin_xz[0], base_y, origin_xz[1]))
+    ridges = _Builder((origin_xz[0], base_y, origin_xz[1]))
     for mass in house.masses:
-        _add_mass(walls, mass, base_y, roofs)
+        if _add_mass(walls, mass, base_y, roofs):
+            poly = _valid_polygon(mass.footprint)
+            roof = _Roof(mass, poly) if poly is not None else None
+            crease = roof.crease(poly) if roof is not None and poly is not None else None
+            if roof is not None and poly is not None and crease is not None:
+                _ridge_cap(ridges, roof.height, roof, poly.intersection(crease), False)
     out = []
     for mat, b in ((wall_mat, walls), (st.roof, roofs)):
         if b.idx:
             out.append(Primitive(mat, rules.color(mat), b.mesh()))
+    if ridges.idx:
+        out.append(Primitive(RIDGE, rules.color(RIDGE), ridges.mesh()))
     return out
+
+
+def _ridge_cap(b: _Builder, height: Callable[[float, float], float], roof: _Roof,
+               line: Any, sag: bool) -> None:  # noqa: ANN401  # fmt: skip
+    """Ridge tiles over the crease ``line`` (the part inside the roof): an inverted V ``RIDGE_W``
+    down each slope, ``RIDGE_UP`` proud at the top, closed at both ends; a sagging ridge is
+    sampled every ``RIDGE_STEP_M``."""
+    vx, vz = roof.v
+    for seg in getattr(line, "geoms", [line]):
+        if not isinstance(seg, LineString) or seg.length < 0.3:
+            continue
+        a, c = seg.coords[0], seg.coords[-1]
+        n = max(1, math.ceil(seg.length / RIDGE_STEP_M)) if sag else 1
+        cols = []
+        for k in range(n + 1):
+            x = a[0] + (c[0] - a[0]) * k / n
+            z = a[1] + (c[1] - a[1]) * k / n
+            top = (x, height(x, z) + RIDGE_UP, z)
+            sides = [(x + sx * vx * RIDGE_W, z + sx * vz * RIDGE_W) for sx in (1.0, -1.0)]
+            left, right = ((px, height(px, pz) + RIDGE_LIFT, pz) for px, pz in sides)
+            cols.append((left, top, right))
+        for (l0, t0, r0), (l1, t1, r1) in zip(cols, cols[1:], strict=False):
+            for side, (p0, p1) in ((1.0, (l0, l1)), (-1.0, (r0, r1))):
+                quad = [p0, p1, t1, t0]
+                b.polygon(quad, [(q[0] - b.ox, q[2] - b.oz) for q in quad],
+                          (side * vx, 1.0, side * vz))  # fmt: skip
+        ux, uz = c[0] - a[0], c[1] - a[1]
+        for (lft, top, rgt), s_ in ((cols[0], -1.0), (cols[-1], 1.0)):
+            tri = [lft, top, rgt]
+            b.polygon(tri, [(q[0] - b.ox, q[2] - b.oz) for q in tri], (s_ * ux, 0.0, s_ * uz))
 
 
 def _add_roof(
     b: _Builder, north: _Builder, roof: _Roof, top: Polygon, crease: LineString | None,
-    rules: Rules, cuts: Sequence[tuple[Any, Any, Any]] = (),
+    rules: Rules, cuts: Sequence[tuple[Any, Any, Any]] = (), ridge: _Builder | None = None,
 ) -> None:  # fmt: skip
     over = float(rules.get("roof", "overhangM"))
     thick = float(rules.get("roof", "thicknessM"))
@@ -2569,6 +2613,10 @@ def _add_roof(
         if isinstance(clipped, Polygon) and not clipped.is_empty:
             outer = clipped
     pieces = list(split(outer, crease).geoms) if crease is not None else [outer]
+    if ridge is not None and crease is not None:
+        sag = isinstance(roof, _SagRoof) and roof.sag > 0
+        _ridge_cap(ridge, lambda x, z: _extrapolated_height(roof, x, z) + thick, roof,
+                   outer.intersection(crease), sag)  # fmt: skip
     if isinstance(roof, _SagRoof):
         for line in roof.bands(outer, int(rules.data.get("aging", {}).get("roofBands", 4))):
             pieces = [g for piece in pieces for g in split(piece, line).geoms]

@@ -21,6 +21,8 @@ void defineContentKinds(script::ScriptVm& vm)
              {"weight", Type::Number, false, 0.0, 1000.0},
              {"mesh", Type::String}, // model in the VFS; without one a placeholder by category
              {"damage", Type::Table},
+             {"bane",
+              Type::Table}, // { species = "x" | { ... }, bonus = n }: extra damage to those (Combat.hpp)
              {"protection", Type::Table},
              {"requires", Type::Table},
              {"effects", Type::Table}, // using it: { hp = 20, mana = 10 } (food, potions)

@@ -2,11 +2,12 @@
 -- als components.mob.definition an der Truhe bzw. Nische ein; `type` wählt Slots und Clips aus data/mobs.toml.
 -- Schlösser ohne Schlüssel: nur mit dem Dietrich (wie im Lager); der erste liegt in der Truhe von Ebene 1.
 
--- Ebene 1 „Alte Gewölbe“
+-- Ebene 1 „Alte Gewölbe“. Zwei Lichtspruchrollen (Projektinhaber): eine in der offenen Truhe, eine in der Nische -
+-- beide früh und ohne Schloss erreichbar, damit niemand ohne Licht in den Dungeon geht.
 Mob "mob_dng_e1_chest" {
     name = "Truhe",
     type = "chest",
-    contents = { it_gulden = 15, it_potion_heal_small = 1, it_lockpick = 2, it_torch = 1 },
+    contents = { it_gulden = 15, it_potion_heal_small = 1, it_lockpick = 2, it_torch = 1, it_scroll_light = 1 },
 }
 
 Mob "mob_dng_e1_niche" {
