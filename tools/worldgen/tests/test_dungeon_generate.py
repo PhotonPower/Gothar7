@@ -239,6 +239,7 @@ def test_cistern_water_boxes_and_molch_spawns() -> None:
         hx, hy, _ = v["components"]["water"]["halfExtents"]
         assert v["pos"][1] + hy == pytest.approx(-lv.water_edge)  # surface below the edge
         assert v["pos"][1] - hy == pytest.approx(-lv.water_depth)  # on the basin floor
+        assert v["components"]["water"]["kind"] == "pond"  # the default look
     assert sum(v["components"]["water"]["halfExtents"][0] * 2 / 3 for v in water) == len(
         lv.cells("~")
     )
@@ -408,6 +409,8 @@ def test_cave_crystals_trap_and_mechanisms() -> None:
     depths = {v["components"]["water"]["halfExtents"][1] for v in by.values()
               if v["type"] == "water"}  # fmt: skip
     assert len(depths) == 2  # the lake and the shallow pool
+    kinds = {v["components"]["water"]["kind"] for v in by.values() if v["type"] == "water"}
+    assert kinds == {"grotto"}  # the lake under ground (engine #534, water.toml)
     ambient = [z["value"] for z in plan.zones if z["type"] == "ambient"]
     assert ambient == ["grotte"]  # engine #517
 

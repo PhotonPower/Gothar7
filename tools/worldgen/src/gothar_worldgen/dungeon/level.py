@@ -10,7 +10,8 @@ Top level of the JSON besides ``cells``: ``starts`` (extra arrivals), ``relays``
 floor cell: ``at``, ``instance``, ``count``; the finds of the hidden depots), ``spawns`` (monster
 places ``SPAWN_E01_<x>_<y>`` like ``m``, but on any floor cell, also in the water ``~``: the
 Brunnenmolch lurks there), ``water`` (``depthM`` of a basin's floor below the others,
-``edgeM`` of the water's surface below the edge; plan W8 D3) and ``props`` (still pieces of the
+``edgeM`` of the water's surface below the edge, ``kind`` its look from the engine's water.toml,
+default ``pond``; plan W8 D3) and ``props`` (still pieces of the
 kit on a plain floor cell: ``at``, ``kind``, ``facing``; vobs ``PROP_E04_<x>_<y>``). A
 ``sarcophagus`` or ``workbench`` stands in the middle of its cell and blocks it (no waypoint, no
 way through); a ``bone_niche`` or ``cogwheel`` hangs on the wall behind it (opposite ``facing``)
@@ -53,6 +54,7 @@ all others are floor cells. Vob names follow the plan: ``GATE_E01_<x>_<y>`` and 
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -114,6 +116,11 @@ class Level:
     def blocked(self) -> set[tuple[int, int]]:
         """Floor cells a prop fills (a sarcophagus): no waypoint, no way through."""
         return {at for at, p in self.props.items() if PROPS[p["kind"]] == "fill"}
+
+    @property
+    def water_kind(self) -> str:
+        """The look of the level's water (``water.kind``, an entry of the engine's water.toml)."""
+        return str(self.raw.get("water", {}).get("kind", "pond"))
 
     @property
     def water_depth(self) -> float:
@@ -316,6 +323,8 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
     w = doc.get("water", {})
     if w and not 0.0 < float(w.get("edgeM", 0.2)) < float(w.get("depthM", 1.0)):
         raise LevelError("water: needs 0 < edgeM < depthM")
+    if w and not re.fullmatch(r"[a-z][a-z0-9_]*", str(w.get("kind", "pond"))):
+        raise LevelError("water: kind must be a water.toml name (lower case)")
     if w.get("shallow"):
         if not 0.0 < float(w.get("shallowEdgeM", 0.12)) < float(w.get("shallowM", 0.35)):
             raise LevelError("water: needs 0 < shallowEdgeM < shallowM")

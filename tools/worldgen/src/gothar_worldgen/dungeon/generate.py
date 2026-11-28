@@ -1123,7 +1123,10 @@ class _Gen:
                     (cx, self.y(-depth + hy), cz),
                     ident,
                     components={
-                        "water": {"halfExtents": [n * self.c / 2, hy, self.c / 2], "kind": "pond"}
+                        "water": {
+                            "halfExtents": [n * self.c / 2, hy, self.c / 2],
+                            "kind": lv.water_kind,
+                        }
                     },
                 )
         for st in lv.starts:

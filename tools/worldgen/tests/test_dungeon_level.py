@@ -161,6 +161,8 @@ def test_spawns_and_water_are_checked() -> None:
         parse_level("#####\n#<..#\n#####", {**doc(), "spawns": [{"at": [0, 0], "npc": "m"}]})
     with pytest.raises(LevelError, match="edgeM"):
         parse_level("#####\n#<..#\n#####", {**doc(), "water": {"depthM": 0.3, "edgeM": 0.5}})
+    with pytest.raises(LevelError, match="kind"):
+        parse_level("#####\n#<..#\n#####", {**doc(), "water": {"kind": "Grotte See"}})
 
 
 def test_level_4_beinhaus_is_complete_and_solvable() -> None:
