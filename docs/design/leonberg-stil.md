@@ -68,6 +68,10 @@ Rähm und Ständer Balken. Die Muster sind eigene Geometrie in normierten Feldko
 - **Fenster:** dunkle Holzrahmen, kleine Scheiben. Glas (M17, `window_glass`): Rauten in Bleiruten an Bürger-, Amts-
   und Handwerkerhäusern, schlichte Scheiben an Ackerbürger-, Stein- und Mauerhäusern, Butzen in grünem Waldglas an
   Kirche und Schloss.
+  - **Rahmen und Kreuz (Projektinhaber 2026-11-27: das Glas des weißen Hauses am Markt wirkte von vorn schwarz):**
+    Ein geschlossenes Fenster in einer Wand ohne Fachwerk (Steinhaus, massives Erdgeschoss, Geschosse ohne Balken)
+    bekommt einen weiß gestrichenen Rahmen (7 cm) und ein Kreuz (6 cm, Kämpfer auf 62 % der Höhe) knapp vor der
+    Scheibe (Palette `plaster_white`), auch in lod1; im Fachwerk rahmen die Balken das Fenster.
 - **Palette:** feste Materialwerte (für die Häuser, dazu `hedge` und `water` für den Schlossgarten, `timber_floor` für den Dielenboden im Schloss-OG, `window_glass` für die Scheiben) mit gleichem Wert in allen Häusern; die Engine bündelt danach.
 
 ## Alterung

@@ -51,7 +51,7 @@ from gothar_worldgen.buildings.massing import (
 
 # *_low: the dirty foot band of a textured house (W5)
 ROLES = ("wall_ground", "infill", "timber", "roof", "roof_north", "roof_ridge", "frame", "glass",
-         "chimney", "wall_ground_low", "infill_low", "wall_ground_streak", "infill_streak",
+         "sash", "chimney", "wall_ground_low", "infill_low", "wall_ground_streak", "infill_streak",
          "room_wall", "room_floor", "room_ceiling", "room_beam")  # fmt: skip
 ROOM_ROLES = ("room_wall", "room_floor", "room_ceiling", "room_beam")  # outside the house budget
 LOW_SUFFIX = "~low"  # material name of the foot band (textures.apply.LOW)
@@ -1008,7 +1008,29 @@ def _frame_box(b: _Builder, f: Frame, u0: float, u1: float, v0: float, v1: float
 
 
 WINDOW_BAR_M = 0.05  # the window cross: oak bars this wide
+# (owner 2026-11-27: "das Glas des weißen Hauses am Markt wirkt von vorn schwarz") a closed window
+# in a wall without timber gets a painted frame and cross in front of its panes, as the timber
+# of the other houses frames theirs: ``SASH_M`` wide, the cross's transom at ``SASH_TRANSOM`` of
+# the height; palette ``SASH`` (white-painted wood), flat strips just in front of the glass
+SASH = "plaster_white"
+SASH_M, SASH_BAR_M, SASH_TRANSOM, SASH_GAP_M = 0.07, 0.06, 0.62, 0.008
 OPEN_EVERY = 2  # in the room storey every second window is open (W7)
+
+
+def _sash(b: _Builder, f: Frame, op: Any, depth: float) -> None:  # noqa: ANN401
+    """The painted frame and cross of a closed window: flat strips facing out, ``depth`` into
+    the wall (just in front of the pane)."""
+    u0, u1, v0, v1 = op.u, op.u + op.w, op.v, op.v + op.h
+    w, h = SASH_M, SASH_BAR_M / 2
+    um, vm = (u0 + u1) / 2, v0 + (v1 - v0) * SASH_TRANSOM
+    strips = [(u0, u1, v0, v0 + w), (u0, u1, v1 - w, v1), (u0, u0 + w, v0 + w, v1 - w),
+              (u1 - w, u1, v0 + w, v1 - w), (um - h, um + h, v0 + w, v1 - w),
+              (u0 + w, um - h, vm - h, vm + h), (um + h, u1 - w, vm - h, vm + h)]  # fmt: skip
+    n = f.n3()
+    for a, c, lo, hi in strips:
+        quad = [f.point(a, lo, -depth), f.point(c, lo, -depth), f.point(c, hi, -depth),
+                f.point(a, hi, -depth)]  # fmt: skip
+        b.polygon(quad, [(a, lo), (c, lo), (c, hi), (a, hi)], n)
 
 
 def _window_cross(b: _Builder, f: Frame, op: Any, depth: float) -> None:  # noqa: ANN401
@@ -1631,9 +1653,13 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
                 ctx.upper_windows.append((f, op, depth))
         elif ctx.lod:
             _flat_opening(_pane(ctx, op), f, op)
+            if op.kind == "window" and (massive or not timbered):
+                _sash(ctx.builders["sash"], f, op, -LOD_PANEL_M - SASH_GAP_M)
         else:
-            _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")),
-                    pane=_pane(ctx, op))  # fmt: skip
+            reveal = float(rules.get("openings", "revealM"))
+            _reveal(ctx.builders["frame"], f, op, reveal, pane=_pane(ctx, op))
+            if op.kind == "window" and (massive or not timbered):
+                _sash(ctx.builders["sash"], f, op, reveal - SASH_GAP_M)
     role = "wall_ground" if massive else "timber"  # lintel in the house's style
     for u0, u1, v in lintels:
         mid = v + LINTEL_M / 2
@@ -2332,7 +2358,7 @@ def _materials(st: HouseStyle) -> dict[str, str]:
     north = "roof_old_moss" if st.roof == "roof_old" else st.roof
     return {"wall_ground": st.wall, "infill": st.infill, "timber": st.timber_color,
             "roof": st.roof, "roof_north": north, "roof_ridge": RIDGE, "frame": "frame",
-            "glass": "window_glass",
+            "glass": "window_glass", "sash": SASH,
             "chimney": st.chimney, "wall_ground_low": st.wall,
             "infill_low": st.infill, "wall_ground_streak": st.wall,
             "infill_streak": st.infill, "room_wall": "plaster_white",
@@ -2472,7 +2498,8 @@ def build_house(
         # the weathering splits walls into a few more triangles and the room (W7) lies outside
         # the house budget: neither costs timber
         tris = sum(len(builders[r].idx) // 3 for r in ROLES
-                   if r not in ROOM_ROLES and not r.endswith(("_low", "_streak")))  # fmt: skip
+                   if r not in ROOM_ROLES and r != "sash"
+                   and not r.endswith(("_low", "_streak")))  # fmt: skip
         collision = collision_for(masses, base_y, origin_xz, ctx.carve)
         col = collision
         origin3 = (origin_xz[0], base_y, origin_xz[1])

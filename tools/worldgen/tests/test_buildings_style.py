@@ -207,3 +207,23 @@ def test_rueckbau_spares_steep_historic_roofs_and_the_old_town_hall():
     assert sel.protected["STEEP"].startswith("historic steep roof 53")
     assert sel.protected["OLDHALL"] == "ALKIS 31001_3012 (town hall)"
     assert "STEEP" in sel.guarded  # not split for the triangle budget either
+
+
+def test_windows_in_walls_without_timber_get_a_painted_frame_and_cross():
+    """Owner 2026-11-27: the panes of the white house at the market looked black from the front;
+    a window in a wall without timber gets a white frame and cross just in front of the glass
+    (lod0 and lod1); a timbered storey's windows keep the timber as their frame."""
+    from gothar_worldgen.buildings.medieval import SASH
+
+    stone = from_json({"id": "H", "style": "steinhaus"})
+    for lod in (0, 1):
+        h = build_house(house(), -0.3, (5.0, -3.5), RULES, SITE, stone, lod=lod)
+        sash = [p for p in h.primitives if p.material == SASH]
+        glass = next(p for p in h.primitives if p.material == "window_glass")
+        assert sash and sash[0].mesh.triangle_count == 7 * glass.mesh.triangle_count  # 7 strips
+    plain = from_json({"id": "H", "style": "handwerkerhaus"})
+    h = build_house(house(), -0.3, (5.0, -3.5), RULES, SITE, plain)
+    sash = next((p for p in h.primitives if p.material == SASH), None)
+    glass = next(p for p in h.primitives if p.material == "window_glass")
+    # only the massive ground storey of a timbered house (if any), never every window
+    assert sash is None or sash.mesh.triangle_count < 7 * glass.mesh.triangle_count
