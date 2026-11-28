@@ -679,6 +679,19 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
 - **Inventar-Ansicht** (M14, Vorschlag): jedes Modell braucht eine Zellen-Ansicht in
   `assets/source/data/inventory_views.toml` (über seine Lua-Kategorie oder einen Eintrag `[model."items/<id>.glb"]`);
   Format und Regel in `docs/modules/ui.md` „Inventar-Ansichten“, Prüfblatt `gothar-chargen inventory-sheet`.
+- **Wappen der Burg Engelberg** (Stauferburg Engelberg, 2026-11-28; Motiv Engel bzw. Engelsflügel auf einem
+  Schild, Wahl des Projektinhabers): `gothar-chargen heraldry` (`heraldry.py`, numpy, Seed 7, eigene Arbeit, frei
+  gestaltet ohne Vorbild) schreibt nach `assets/source/items/textures/heraldry/`:
+  - `engelberg_arms.png` (512², RGBA, außerhalb des Schilds transparent): blauer Dreiecksschild mit goldenem
+    Bord, darauf ein silberner Engel im langen Gewand mit goldenem Nimbus zwischen zwei erhobenen silbernen
+    Flügeln. Motiv für den Wappenrock der Burgwache und für Dekor.
+  - `engelberg_banner.png` (512 × 1024, RGBA): hängendes Banner aus Stoff – oben ein dunklerer Saum für die
+    Stange (8 % der Höhe), goldene Kanten, das Wappen in der oberen Mitte, unten ein Schwalbenschwanz als
+    Alpha-Ausschnitt (Material mit `alphaMode` MASK, beidseitig). Für die Banner und Fahnen der Burg (welt,
+    UV 0..1 über die ganze Bahn; Windgewicht `cloth` bzw. `hanging` nach dem Wind-Vertrag).
+  - Farben im Rahmen des Stilblatts (Sättigung ≤ 0,6, kein reines Weiß oder Schwarz); zwei weitere Entwürfe
+    (nur Flügel; geflügelter Engelskopf auf Rot) mit `--drafts <ordner>` für das Prüfblatt. Schilde sind keine
+    Items (keine Schild-Mechanik); `test_heraldry.py` prüft, dass die Dateien zum Generator passen.
 
 ### 6.4 Figuren-Sets und Gilden-Figuren (Vertrag mit engine, F3v, vereinbart 2026-10-04)
 
